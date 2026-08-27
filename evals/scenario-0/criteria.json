@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent correctly follows ADR lifecycle conventions when documenting an architecture decision change: storing ADRs in the right directory with the right naming scheme, using proper frontmatter fields (including supersedes/superseded_by), structuring the body correctly, and avoiding prohibited content.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "ADR directory location",
+      "description": "All ADR files are stored under docs/adr/ at the project root",
+      "max_score": 5
+    },
+    {
+      "name": "File naming pattern",
+      "description": "Both ADR filenames follow the NNNN-kebab-slug.md pattern with a 4-digit zero-padded monotonic number (e.g. 0001-choose-sqlite.md, 0002-migrate-to-postgresql.md)",
+      "max_score": 10
+    },
+    {
+      "name": "Two separate ADR files",
+      "description": "Two distinct ADR files exist under docs/adr/ — one for the original SQLite decision and one for the PostgreSQL decision — rather than a single edited file",
+      "max_score": 10
+    },
+    {
+      "name": "Original ADR status superseded",
+      "description": "The first/original ADR has `status: superseded` in its YAML frontmatter",
+      "max_score": 10
+    },
+    {
+      "name": "Original ADR superseded_by field",
+      "description": "The first/original ADR has a `superseded_by:` field populated with the filename of the new ADR (not null)",
+      "max_score": 10
+    },
+    {
+      "name": "New ADR supersedes field",
+      "description": "The new/PostgreSQL ADR has a `supersedes:` field populated with the filename of the original ADR (not null)",
+      "max_score": 10
+    },
+    {
+      "name": "New ADR status valid",
+      "description": "The new/PostgreSQL ADR has `status:` set to either `proposed` or `accepted` (not superseded or any other value)",
+      "max_score": 5
+    },
+    {
+      "name": "Required frontmatter fields",
+      "description": "Both ADR files include all five required frontmatter fields: title, status, date, supersedes, superseded_by",
+      "max_score": 10
+    },
+    {
+      "name": "ADR date field present",
+      "description": "Both ADR files have a `date:` field in ISO date format (YYYY-MM-DD)",
+      "max_score": 5
+    },
+    {
+      "name": "Body section order",
+      "description": "The new ADR body contains sections in this order: Context appears before Decision, Decision appears before any Alternatives considered section, Alternatives considered (if present) appears before Consequences",
+      "max_score": 10
+    },
+    {
+      "name": "No ordered task lists in ADR",
+      "description": "Neither ADR contains ordered step-by-step task lists in the body (e.g. numbered lists of the form '1. Do X, 2. Do Y' describing actions to take)",
+      "max_score": 10
+    },
+    {
+      "name": "No test/verification content in ADR",
+      "description": "Neither ADR body contains sections or content labelled as verification steps, test lists, or progress state markers (words like 'done', 'blocked', 'TODO' as progress indicators)",
+      "max_score": 5
+    }
+  ]
+}

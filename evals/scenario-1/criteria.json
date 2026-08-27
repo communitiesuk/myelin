@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent recognizes that an implementation plan requires a prior ADR, creates the ADR first with the correct structure and conventions, then produces a conformant plan that references the ADR—including all required frontmatter fields, body sections, and a reference to the test-first-workflow for coding steps.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "ADR file location and naming",
+      "description": "A file exists under docs/adr/ with a name matching the pattern NNNN-kebab-slug.md (four-digit zero-padded number followed by a lowercase hyphenated description, e.g. 0001-rate-limiting.md)",
+      "max_score": 8
+    },
+    {
+      "name": "ADR frontmatter completeness",
+      "description": "The ADR file's YAML frontmatter contains all five required fields: title, status, date, supersedes, and superseded_by",
+      "max_score": 8
+    },
+    {
+      "name": "ADR status validity",
+      "description": "The ADR's status field is set to exactly one of the allowed values: proposed, accepted, or superseded",
+      "max_score": 7
+    },
+    {
+      "name": "ADR body sections",
+      "description": "The ADR body contains all four required sections in order: Context, Decision, Alternatives considered, and Consequences",
+      "max_score": 10
+    },
+    {
+      "name": "ADR content purity",
+      "description": "The ADR body does NOT contain ordered task lists (step 1, step 2...), test lists, verification steps, or progress-state markers (e.g. 'done', 'blocked', checkboxes)",
+      "max_score": 8
+    },
+    {
+      "name": "Plan file location and naming",
+      "description": "A file exists under plans/ at the project root with a name matching the pattern NNNN-kebab-slug.md (four-digit zero-padded number followed by a lowercase hyphenated description)",
+      "max_score": 8
+    },
+    {
+      "name": "Plan frontmatter completeness",
+      "description": "The plan file's YAML frontmatter contains all five required fields: title, status, adr, date, and deferred_reason",
+      "max_score": 8
+    },
+    {
+      "name": "Plan-ADR linkage",
+      "description": "The plan's frontmatter adr: field is non-null and contains a number (e.g., 0001) that corresponds to a file in docs/adr/",
+      "max_score": 10
+    },
+    {
+      "name": "Plan body structure",
+      "description": "The plan body contains all three required sections: Reference (a link back to the ADR), Steps, and Verification",
+      "max_score": 10
+    },
+    {
+      "name": "Test-first-workflow reference",
+      "description": "The plan's Steps section explicitly references or embeds the test-first-workflow, e.g. mentions 'docstrings → failing tests → code', 'test-first-workflow', or the red-commit/green-commit pattern",
+      "max_score": 10
+    },
+    {
+      "name": "Plan content purity",
+      "description": "The plan body does NOT contain the decision rationale, alternatives considered, or design trade-off analysis (those belong exclusively in the ADR)",
+      "max_score": 7
+    },
+    {
+      "name": "Progress notes section",
+      "description": "The plan body includes a Progress notes section (may be empty or contain a placeholder for future entries)",
+      "max_score": 6
+    }
+  ]
+}

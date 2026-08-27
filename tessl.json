@@ -1,0 +1,9 @@
+{
+  "name": "majerr/myelin",
+  "mode": "vendored",
+  "dependencies": {},
+  "agents": [
+    "claude-code",
+    "cursor"
+  ]
+}

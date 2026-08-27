@@ -1,0 +1,66 @@
+{
+  "context": "Tests whether the agent follows a disciplined, phase-ordered development workflow: specifying the contract via docstrings before writing executable logic, committing tests before implementation (red commit), committing implementation separately (green commit), and running a linter as a final verification step. The function is a Python INI-config parser named parse_config.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Docstring complete",
+      "description": "config_utils.py contains a docstring for parse_config that documents: (a) what the function does, (b) the filepath parameter, (c) the return value structure, and (d) at least one raised exception",
+      "max_score": 10
+    },
+    {
+      "name": "Stub body in WORKFLOW.md",
+      "description": "WORKFLOW.md states or shows that the initial function body was raise NotImplementedError or ... (an empty stub) before any tests were written",
+      "max_score": 8
+    },
+    {
+      "name": "Docstring-only commit",
+      "description": "WORKFLOW.md git log shows a commit that added only the docstring/stub before any tests commit and before the implementation commit",
+      "max_score": 8
+    },
+    {
+      "name": "Happy path test",
+      "description": "test_config_utils.py includes a test that calls parse_config with a valid INI file and asserts specific key-value pairs in the returned dict (e.g., assert result[\"section\"][\"key\"] == \"value\"), not just a truthy check",
+      "max_score": 8
+    },
+    {
+      "name": "Missing-file test",
+      "description": "test_config_utils.py includes a test that verifies parse_config raises FileNotFoundError when given a path to a nonexistent file",
+      "max_score": 8
+    },
+    {
+      "name": "Malformed-content test",
+      "description": "test_config_utils.py includes a test that verifies parse_config raises an error when given a file with content that cannot be parsed as valid INI (e.g., a file whose first non-comment line is not a section header)",
+      "max_score": 8
+    },
+    {
+      "name": "Boundary condition test",
+      "description": "test_config_utils.py includes at least one test for a boundary condition: an empty file, a file containing unicode characters in section or key names, or a file with only comments and no sections",
+      "max_score": 8
+    },
+    {
+      "name": "Specific assertions",
+      "description": "All assertions in test_config_utils.py are specific (e.g., assert result == {...} or assert result[\"key\"] == \"value\") — no bare assert result or assert result is not None used as the sole check",
+      "max_score": 8
+    },
+    {
+      "name": "Red commit before green",
+      "description": "WORKFLOW.md git log shows the tests commit appearing earlier in the sequence than the implementation commit",
+      "max_score": 10
+    },
+    {
+      "name": "Linter evidence",
+      "description": "WORKFLOW.md records that a linter or type-checker was run (e.g., flake8, pylint, or mypy) and shows the command or its output",
+      "max_score": 8
+    },
+    {
+      "name": "Test file isolation",
+      "description": "Tests in test_config_utils.py use pytest's tmp_path or tmpdir fixture (or equivalent) to create temporary INI files, rather than hardcoded paths or module-level global state",
+      "max_score": 8
+    },
+    {
+      "name": "Separate test and code commits",
+      "description": "WORKFLOW.md git log shows the test file and the implementation file in separate commits — not combined in one commit",
+      "max_score": 8
+    }
+  ]
+}

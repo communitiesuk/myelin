@@ -1,0 +1,7 @@
+{
+  "name": "majerr/myelin",
+  "version": "0.1.0",
+  "description": "Thinking tools and engineering conventions to accelerate project development",
+  "private": true,
+  "skills": "./skills/"
+}

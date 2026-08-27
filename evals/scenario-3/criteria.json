@@ -1,0 +1,51 @@
+{
+  "context": "Tests whether an agent given an existing plan artifact that CONTAINS a forward-pointer directive to the test-first-workflow follows that workflow when implementing a code step. The plan directs the agent to: write a docstring stub first, then failing tests (red commit), then implementation (green commit). This is the directive-present variant of the paired scenarios 3 and 4; the two scenarios exercise identical coding tasks and differ only in whether the plan artifact contains the directive. Scoring high here and low on scenario-4 is evidence that the directive shifts behaviour.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Docstring-only stub committed first",
+      "description": "The git history shows a first commit that introduces slugify.py containing only a function signature and docstring (body is `raise NotImplementedError`, `pass`, or `...`) — no implementation logic, no tests in the same commit",
+      "max_score": 15
+    },
+    {
+      "name": "Docstring covers the contract",
+      "description": "The docstring for slugify documents (a) purpose, (b) the text parameter, (c) the return value, and (d) at least one behavioural rule (lowercase / hyphen replacement / non-alphanumeric stripping / consecutive-hyphen collapse)",
+      "max_score": 10
+    },
+    {
+      "name": "Red test commit before implementation",
+      "description": "The git history contains a commit that adds test_slugify.py (or equivalent) BEFORE any commit that adds the slugify function body. The commit message or diff makes clear the tests were expected to fail against the stub",
+      "max_score": 15
+    },
+    {
+      "name": "Tests cover multiple behaviours",
+      "description": "test_slugify.py contains at least three distinct test cases exercising: lowercasing, hyphen replacement of spaces, and either non-alphanumeric stripping or consecutive-hyphen collapse. Assertions are specific (e.g. `assert slugify('X') == 'y'`), not bare `assert result`",
+      "max_score": 10
+    },
+    {
+      "name": "Green code commit is separate",
+      "description": "The git history contains a commit — distinct from and later than the red test commit — that adds the slugify function body. Test and implementation are not combined in the same commit",
+      "max_score": 15
+    },
+    {
+      "name": "Tests pass against final implementation",
+      "description": "Running the test suite (e.g. `pytest`) against the final code produces no failures",
+      "max_score": 10
+    },
+    {
+      "name": "Directive was followed, not ignored",
+      "description": "The agent's output (chat transcript or WORKFLOW.md) explicitly acknowledges the directive block in the plan and confirms it invoked test-first-workflow. Silent compliance is acceptable if the commit sequence proves it; explicit acknowledgement is preferred",
+      "max_score": 10
+    },
+    {
+      "name": "No extra scope",
+      "description": "The agent implemented only what the plan step called for — slugify plus its tests. It did not add unrelated helpers, alternative implementations, or CLI wrappers not called for by the plan",
+      "max_score": 5
+    },
+    {
+      "name": "Plan status updated",
+      "description": "The plan file's status field is either left as `in-progress` (if further steps remain) or updated to reflect the step's completion, consistent with the plans skill's guidance that status updates ride with the code changes",
+      "max_score": 10
+    }
+  ]
+}
