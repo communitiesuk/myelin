@@ -59,27 +59,26 @@ Status updates ride with the code changes that reflect the new reality — e.g. 
 
 After frontmatter and H1:
 
-1. **Forward-pointer** — a directive block for the implementer. See "Required forward-pointer" below. This is the first section of the body.
-2. **Reference** — one-line link back to the ADR and any related plans.
-3. **Steps** — ordered actions. Each step is executable and verifiable. Include which files change, what commands run, what commits get made.
-4. **Verification** — how to prove the plan's outcome end-to-end (tests, smoke commands, manual checks).
-5. **Progress notes** — a running log of what's actually happened, dates, blockers, decisions taken during execution that don't rise to the level of a new ADR. Optional but useful for `deferred` and `in-progress` plans.
+1. **Reference** — one-line link back to the ADR and any related plans.
+2. **Steps** — ordered actions. Each step is executable and verifiable. Include which files change, what commands run, what commits get made. Steps that write or modify executable code must be wrapped with the per-step directive block described under "Per-step directive wrappers on code-writing steps" below.
+3. **Verification** — how to prove the plan's outcome end-to-end (tests, smoke commands, manual checks).
+4. **Progress notes** — a running log of what's actually happened, dates, blockers, decisions taken during execution that don't rise to the level of a new ADR. Optional but useful for `deferred` and `in-progress` plans.
 
-## Required forward-pointer
+## Per-step directive wrappers on code-writing steps
 
-Every plan body must open with a directive block, placed immediately after the H1 and before the Reference section, so that anyone reading the plan to execute it encounters the instruction first.
+Plans carry **no** top-of-plan directive. The wrapper is per-step, not per-plan.
 
-- **Placement**: immediately after the H1.
-- **Tone**: directive, not advisory. Use "invoke", not "consider".
-- **Content**: for any step that writes or modifies executable code, the implementer must invoke `test-first-workflow` before writing the code. When spawning subagents for such a step, the implementer must embed the same requirement in the subagent's brief so parallel work carries the directive too.
+Every plan step that **writes or modifies executable code** must be wrapped with the mandated boilerplate below. The wrapper block is placed immediately above the step's text, so that anyone reading the step encounters the instruction first, at the moment of relevance.
 
-Minimal form:
+Steps that do not write code carry **no** wrapper. Silent absence is the convention — do not add a negative assertion such as "this step does not need `test-first-workflow`". If a plan contains zero code-writing steps, the plan carries zero wrapper blocks. That is correct.
+
+The wrapper wording is boilerplate, not paraphrase. Plan authors reproduce it verbatim so the wording continues to match the target skill's own description phrasing, which is what a description-matcher would look for.
+
+Mandated boilerplate:
 
 ```markdown
-> **Directive for the implementer**: for any step below that writes or modifies executable code, invoke the `test-first-workflow` skill before writing the code (docstrings → failing tests → code). When spawning subagents for a code step, brief them with the same requirement so they cannot skip it.
+> **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 ```
-
-If the plan contains no code-writing steps (e.g. a config-only or docs-only plan), the directive block should say so explicitly rather than being omitted, so a future reader can tell the omission was intentional.
 
 The directive lives in the artifact — not the skill body — so it survives context compaction and is re-read every time an implementer opens the plan.
 

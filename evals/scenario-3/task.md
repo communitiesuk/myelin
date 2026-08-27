@@ -23,13 +23,13 @@ deferred_reason: null
 
 # Slugify utility
 
-> **Directive for the implementer**: for any step below that writes or modifies executable code, invoke the `test-first-workflow` skill before writing the code (docstrings → failing tests → code). When spawning subagents for a code step, brief them with the same requirement so they cannot skip it.
-
 ## Reference
 
 Implements `docs/adr/0001-slugify-utility.md`.
 
 ## Steps
+
+> **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
 1. **Add the `slugify` function.** Create `slugify.py` at the project root, exporting a single function `slugify(text: str) -> str` that:
    - Lowercases the input.

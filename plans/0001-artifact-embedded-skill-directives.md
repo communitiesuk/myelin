@@ -8,52 +8,69 @@ deferred_reason: null
 
 # Artifact-embedded skill directives for stage handoffs
 
-> **Directive for the implementer**: Steps 1–3 and Step 5 are configuration edits (Markdown files, artifact retrofits, status transitions) and do not require `test-first-workflow`. Step 4 writes executable code — invoke the `test-first-workflow` skill before writing it (docstrings → failing tests → code). If you spawn subagents for Step 4, brief them with the same requirement so they cannot skip it.
-
 ## Reference
 
 Implements `docs/adr/0001-artifact-embedded-skill-directives.md`.
 
 ## Steps
 
-1. **Update the `adr` skill to require a forward-pointer to `plans`.**
-   - File: `skills/adr/SKILL.md`.
-   - Add a new section, "Required forward-pointer", stating that every ADR body must open with a directive block instructing implementers to invoke the `plans` skill when acting on the ADR.
-   - Specify placement: immediately after the H1, before the Context section.
-   - Specify tone: directive ("When implementing this ADR, invoke the `plans` skill."), not advisory.
-   - Update the "Body" section to reflect the new opening block as the first structural element.
+1. **Edit `skills/plans/SKILL.md` to mandate the per-step wrapper on code-writing steps.**
+   - Add a new section (title suggestion: "Per-step directive wrappers on code-writing steps") after the "Body" section and before "What does NOT belong in a plan".
+   - The section must state:
+     - Plans carry **no** top-of-plan directive. The wrapper is per-step, not per-plan.
+     - Every plan step that **writes or modifies executable code** must be wrapped with the mandated boilerplate.
+     - Steps that do not write code carry **no** wrapper. Silent absence is the convention — do not add a negative assertion such as "this step does not need `test-first-workflow`".
+     - If a plan contains zero code-writing steps, the plan carries zero wrapper blocks. That is correct.
+     - The wrapper wording is boilerplate, not paraphrase — plan authors reproduce it verbatim.
+   - Specify the exact boilerplate. Use the verb "load" rather than "invoke", and echo the target skill's own description phrasing ("write or modify executable code") so the block doubles as a description-matcher cue. Suggested exact text:
 
-2. **Update the `plans` skill to require a forward-pointer to `test-first-workflow`.**
-   - File: `skills/plans/SKILL.md`.
-   - Add a "Required forward-pointer" section stating that every plan body must open with a directive block for the implementer.
-   - The directive block must: (a) instruct the implementer to invoke `test-first-workflow` before any step that writes or modifies executable code, and (b) require that same instruction to be embedded in subagent briefs when parallel work is spawned for code steps.
-   - Update the "Body" section to reflect the new opening directive block as the first structural element, and remove or rework the existing sentence in "Steps" that only mentions test-first-workflow for coding tasks — the directive is now global to the plan, not step-local.
+     ```markdown
+     > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+     ```
 
-3. **Retrofit existing artifacts.**
-   - Add the forward-pointer directive to `docs/adr/0001-artifact-embedded-skill-directives.md` (the ADR this plan implements) so it conforms to its own new rule.
-   - This plan file already includes a directive block at the top of Steps and can serve as the canonical example.
+   - Do not add any subagent-brief-propagation clause, orchestrator instructions, harness instructions, or observability instructions. These are explicitly parked by the ADR.
+   - Files changed: `skills/plans/SKILL.md`.
 
-4. **Add an eval that catches the failure mode.**
-   - Directory: `evals/` (create a subdirectory `evals/artifact-directives/` if the layout supports it; otherwise use the existing convention).
-   - Write an eval that: (a) presents a synthetic long-context session where a plan artifact has been written and Claude is asked to implement a code step; (b) checks that `test-first-workflow` is invoked before code is written; (c) runs both with and without the directive in the plan artifact, to confirm the directive is what shifts behaviour.
-   - This step involves executable code — follow `test-first-workflow`: write docstrings, then failing tests, then the eval implementation, committing each phase separately.
+2. **Review `skills/adr/SKILL.md` for consistency with the ADR.**
+   - Confirm the "Required forward-pointer" section already mandates a top-of-ADR directive pointing to the `plans` skill and that the placement, tone, and content match the ADR's asymmetric-directive design.
+   - Confirm the file names `plans` explicitly (both by skill name and by phrasing that reads as a loader cue) so the coupling described in the ADR's Consequences is realised.
+   - If already consistent, this step is a no-op review; record the finding in Progress notes and move on. If inconsistent, edit the section to bring it into line — do not exceed what the ADR mandates.
+   - Files changed: `skills/adr/SKILL.md` (only if a discrepancy is found).
 
-5. **Flip status to `in-progress` on the commit that lands Step 1, and to `done` on the commit that lands Step 4.**
+3. **Retrofit `evals/scenario-3/task.md` to the per-step wrapper design.**
+   - In the embedded `plans/0001-slugify-utility.md` block:
+     - Remove the existing top-of-plan directive block (the `> **Directive for the implementer**: ...` paragraph placed above `## Reference`).
+     - Wrap Step 1 (the code-writing step: "Add the `slugify` function.") with the mandated per-step boilerplate from Step 1 of this plan, verbatim.
+     - Leave Step 2 unwrapped. It is explicitly deferred and does not write code in this session.
+   - Do not alter the criteria in `evals/scenario-3/criteria.json` in this plan. Any rescoring is a separate decision.
+   - Files changed: `evals/scenario-3/task.md`.
+
+4. **Confirm `evals/scenario-4/task.md` remains directive-free.**
+   - Verify the embedded plan carries neither a top-of-plan directive nor any per-step wrapper. The scenario is the paired control and must stay silent.
+   - No edits expected. Record the confirmation in Progress notes.
+   - Files changed: none expected.
+
+5. **Move ADR 0001 from `proposed` to `accepted`.**
+   - Flip the `status:` frontmatter field in `docs/adr/0001-artifact-embedded-skill-directives.md` from `proposed` to `accepted` once Steps 1–4 are complete.
+   - Do this in the same commit as the plan's `status: in-progress` → `done` transition, per the plans skill's guidance that status updates ride with the code changes.
+   - Files changed: `docs/adr/0001-artifact-embedded-skill-directives.md`, `plans/0001-artifact-embedded-skill-directives.md`.
 
 ## Verification
 
-- Read the updated `skills/adr/SKILL.md` and `skills/plans/SKILL.md` and confirm the forward-pointer rules are present, directive in tone, and specify placement at the top of the artifact.
-- Read `docs/adr/0001-artifact-embedded-skill-directives.md` and confirm it now opens with its own directive block.
-- Run the eval from Step 4 and confirm: (a) the directive-present variant reliably invokes `test-first-workflow` before code; (b) the directive-absent variant does not (baseline for regression tracking).
-- Manually exercise the workflow end-to-end on a fresh throwaway task: run `/facilitated-discovery`, land an ADR, land a plan, and confirm the implementation phase picks up `test-first-workflow` without user prompting.
+- `skills/plans/SKILL.md` contains the new per-step wrapper section, mandates the exact boilerplate, states silent-absence, and forbids a top-of-plan directive.
+- `skills/adr/SKILL.md` still mandates the top-of-ADR forward-pointer to the `plans` skill (unchanged or minimally corrected).
+- `evals/scenario-3/task.md` embedded plan shows no top-of-plan directive and shows the mandated wrapper on Step 1 verbatim; Step 2 is unwrapped.
+- `evals/scenario-4/task.md` embedded plan shows no directive of any kind.
+- `docs/adr/0001-artifact-embedded-skill-directives.md` frontmatter reads `status: accepted`.
+- This plan's frontmatter reads `status: done` in the same commit.
+- Manual read-through of the scenario-3 embedded plan against the boilerplate in `skills/plans/SKILL.md` confirms character-for-character agreement.
 
 ## Progress notes
 
-- 2026-08-27: plan drafted alongside ADR 0001 in a single facilitated-discovery session. Maintenance / ad-hoc code case explicitly parked — no plan step covers it.
-- 2026-08-27: Steps 1–5 executed in the same session.
-  - Step 1: `skills/adr/SKILL.md` gained a "Required forward-pointer" section and the Body ordering now lists Forward-pointer as the first section.
-  - Step 2: `skills/plans/SKILL.md` gained the same, pointing to `test-first-workflow`. Removed the step-local reference to `test-first-workflow` from the Body's Steps entry since the directive is now global to the plan.
-  - Step 3: `docs/adr/0001-*.md` retrofitted with its own directive block; the ADR is still `proposed` so direct edit is permitted under the `adr` skill's rules (supersession applies to accepted/merged ADRs only).
-  - Step 4 deviation: this repo's evals are declarative (`task.md` + `criteria.json` + `scenario.json`), not executable Python. Strict `test-first-workflow` (docstrings → red tests → green code) does not map. Applied the spirit: wrote `criteria.json` (the grading contract) for both variants before `task.md` (the input). Paired scenarios: `evals/scenario-3` (directive present) and `evals/scenario-4` (directive absent baseline). Verified by diff that the two task.md files differ only in the directive block and the two criteria.json files differ only in the intended rubric annotations.
-  - Step 5: this repo is not a git-tracked working directory, so status transitions cannot ride with commits as the plans skill's guidance suggests. Flipped directly to `done` in this progress note commit-equivalent.
-- 2026-08-27: verification against the plan — ADR 0001 opens with its directive block; both updated skills document the forward-pointer requirement at the top of the Body; paired evals exist. End-to-end exercise on a fresh throwaway task deferred; the eval scenarios themselves are the automated substitute.
+- 2026-08-27: plan drafted against ADR 0001 (status `proposed`).
+- 2026-08-27: Steps 1–5 executed.
+  - Step 1: `skills/plans/SKILL.md` gained a "Per-step directive wrappers on code-writing steps" section with the mandated boilerplate. Body outline entry for Steps updated to reference it.
+  - Step 2: `skills/adr/SKILL.md` reviewed; no changes needed. Existing "Required forward-pointer" section already mandates the top-of-ADR directive to the `plans` skill with the right placement and tone.
+  - Step 3: `evals/scenario-3/task.md` retrofitted. Top-of-embedded-plan directive removed; per-step wrapper placed above Step 1 (the code-writing step). Step 2 in the embedded plan is deferred/no-code and correctly carries no wrapper.
+  - Step 4: `evals/scenario-4/task.md` confirmed directive-free — grep found no "Directive" or "test-first-workflow" references. Paired baseline preserved.
+  - Step 5: ADR 0001 status flipped `proposed` → `accepted`; plan status flipped `draft` → `done`.
