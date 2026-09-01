@@ -60,19 +60,23 @@ Status updates ride with the code changes that reflect the new reality — e.g. 
 After frontmatter and H1:
 
 1. **Reference** — one-line link back to the ADR and any related plans.
-2. **Steps** — ordered actions. Each step is executable and verifiable. Include which files change, what commands run, what commits get made. Steps that write or modify executable code must be wrapped with the per-step directive block described under "Per-step directive wrappers on code-writing steps" below.
+2. **Steps** — ordered actions. Each step is executable and verifiable. Include which files change, what commands run, what commits get made. Steps that write or modify executable code, and steps that author a new skill, must be wrapped with the corresponding per-step directive block described under "Per-step directive wrappers" below.
 3. **Verification** — how to prove the plan's outcome end-to-end (tests, smoke commands, manual checks).
 4. **Progress notes** — a running log of what's actually happened, dates, blockers, decisions taken during execution that don't rise to the level of a new ADR. Optional but useful for `deferred` and `in-progress` plans.
 
-## Per-step directive wrappers on code-writing steps
+## Per-step directive wrappers
 
-Plans carry **no** top-of-plan directive. The wrapper is per-step, not per-plan.
+Plans carry **no** top-of-plan directive. Wrappers are per-step, not per-plan.
 
-Every plan step that **writes or modifies executable code** must be wrapped with the mandated boilerplate below. The wrapper block is placed immediately above the step's text, so that anyone reading the step encounters the instruction first, at the moment of relevance.
+There are two wrapper types. Both share the same shape: an instruction to the implementer, placed immediately above the step's text, worded so the block doubles as a description-matcher cue by echoing the target skill's own description phrasing. Both are boilerplate, not paraphrase — reproduce them verbatim.
 
-Steps that do not write code carry **no** wrapper. Silent absence is the convention — do not add a negative assertion such as "this step does not need `test-first-workflow`". If a plan contains zero code-writing steps, the plan carries zero wrapper blocks. That is correct.
+Steps that carry neither wrapper — steps that neither write executable code nor author a new skill — carry **no** wrapper. Silent absence is the convention: do not add a negative assertion such as "this step does not need `test-first-workflow`" or "this step does not author a new skill". If a plan contains zero wrapped steps, it carries zero wrapper blocks. That is correct.
 
-The wrapper wording is boilerplate, not paraphrase. Plan authors reproduce it verbatim so the wording continues to match the target skill's own description phrasing, which is what a description-matcher would look for.
+The directive lives in the artifact — not the skill body — so it survives context compaction and is re-read every time an implementer opens the plan.
+
+### Wrapper for code-writing steps
+
+Every plan step that **writes or modifies executable code** must be wrapped with the mandated boilerplate below. The wording echoes `test-first-workflow`'s own description phrasing ("write or modify executable code") so the block doubles as a description-matcher cue.
 
 Mandated boilerplate:
 
@@ -80,7 +84,17 @@ Mandated boilerplate:
 > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 ```
 
-The directive lives in the artifact — not the skill body — so it survives context compaction and is re-read every time an implementer opens the plan.
+### Wrapper for skill-writing steps
+
+Every plan step whose work is **authoring a new skill** — a new `skills/<name>/SKILL.md` artifact — must be wrapped with the mandated boilerplate below. The wording echoes `skill-forge`'s own description phrasing ("author a new skill") so the block doubles as a description-matcher cue.
+
+Mandated boilerplate:
+
+```markdown
+> **Directive for the implementer**: this step will author a new skill. Load the `skill-forge` skill before writing the `SKILL.md` (frontmatter → failing eval scenario → skill body).
+```
+
+Edits to an existing skill body that do not change its `description` (its trigger contract) are **not** skill-writing steps in this sense; they carry no wrapper. Only the authoring of a new skill — or, equivalently, a change to an existing skill's `description` that retriggers the contract — takes this wrapper.
 
 ## What does NOT belong in a plan
 
