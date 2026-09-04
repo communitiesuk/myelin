@@ -209,8 +209,9 @@ artefact rather than from trunk.
   because amending after a push rewrites published history; trivial
   work takes a short-lived branch like anything else.
 - **Enforcing the workflow with a `PreToolUse` hook.** A hook is
-  executed by the harness and could refuse an edit made on a trunk
-  branch, which a skill cannot guarantee. Deliberately out of scope:
+  executed by the harness and could refuse edits made on a trunk
+  branch through the tools its matcher names, which a skill cannot
+  guarantee. Deliberately out of scope:
   prompting a skill to load is a separate concern with its own
   mechanisms, and this ADR decides the workflow's content, not its
   enforcement.
@@ -242,8 +243,19 @@ artefact rather than from trunk.
   no-negotiation property slightly: the workflow now has two paths
   rather than one, even though the choice between them is
   mechanical.
-- Nothing here guarantees the workflow is followed. It remains
-  dependent on the skill being loaded, which is the concern
+- The invariant "no artefact lands on trunk unmerged" is enforceable
+  outside the agent altogether — by a `pre-commit` hook refusing
+  commits made on trunk, or by branch protection on the remote. Hooks
+  live in the common directory, so one covers every worktree of a
+  repository; `.git/hooks` is not version-controlled, so this is
+  per-clone unless `core.hooksPath` points at a committed directory.
+  This half is most of what `1e7d948` actually cost.
+- The invariant "branch before edit" is not enforceable that way. It
+  depends on the skill being loaded, and a `PreToolUse` hook would
+  cover only the write paths its matcher names — this ADR was itself
+  written with a shell heredoc, which a matcher on the file-editing
+  tools would not have caught. Matching "a shell command that writes
+  a file" is not decidable in general. This half remains the concern
   explicitly parked above.
 
 ## References
