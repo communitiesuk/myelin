@@ -1,12 +1,12 @@
 ---
-title: Git workflow — branch per artefact, always in a worktree
+title: Git workflow — branch per artefact
 status: proposed
 date: 2026-09-04
 supersedes: null
 superseded_by: null
 ---
 
-# Git workflow — branch per artefact, always in a worktree
+# Git workflow — branch per artefact
 
 > **Directive for the implementer**: when implementing this ADR, invoke the `plans` skill to produce the corresponding plan artifact. Do not begin implementation without a plan.
 
@@ -78,12 +78,24 @@ being produced. This applies to markdown decision artefacts exactly
 as it applies to code. The base checkout stays on the trunk and is
 never worked in directly.
 
-### Always in a worktree
+### Isolate on contention, not by default
 
-Each branch is created together with a worktree at
-`.worktrees/<branch>` inside the repository, which is gitignored.
-Different strands of work therefore never contend for one working
-tree, and the parallel case needs no detection — it is the only case.
+A branch is created in the primary checkout when that checkout is on
+trunk and clean. When it is not — because another artefact is already
+in flight there, or the tree is dirty — the branch is created together
+with a worktree at `.worktrees/<branch>` inside the repository, which
+is gitignored.
+
+Both conditions are readable without judgement, from `git rev-parse
+--abbrev-ref HEAD` and `git status --porcelain`. Nothing has to be
+inferred about whether work is "parallel", which is knowledge an agent
+does not have about the author's other sessions.
+
+The checkout is therefore still never worked on while it is on trunk
+— it branches in place — and concurrent strands still never contend
+for one working tree. The common case of a single strand keeps the
+file paths a reader expects, and the extra path depth of a worktree is
+paid only when isolation is the point.
 
 ### Fork point is derived, not configured
 
@@ -130,10 +142,10 @@ automatically.
 
 ### Worktree bootstrap is split
 
-A new worktree receives tracked files only. Git offers no option to
-populate it with ignored files and cannot: ignored files are not in
-the object database. The two categories of missing file are treated
-differently:
+Where a worktree is used, it receives tracked files only. Git offers
+no option to populate it with ignored files and cannot: ignored files
+are not in the object database. The two categories of missing file
+are treated differently:
 
 - **Small configuration files** — `.claude/`, `.env`, `.mcp.json` and
   similar — are copied into the new worktree from the base checkout.
@@ -154,10 +166,14 @@ does not require it.
 
 ### Cleanup
 
-On merge, the worktree is removed and the branch deleted. Once
-dependencies have been installed into a worktree, `git worktree
-remove` requires `--force`, because it refuses to remove a worktree
-containing untracked files.
+On merge, the branch is deleted and, where the work was isolated, the
+worktree is removed. Once dependencies have been installed into a
+worktree, `git worktree remove` requires `--force`, because it refuses
+to remove a worktree containing untracked files.
+
+Work done in the primary checkout returns that checkout to trunk on
+merge. Without this, the next artefact branches from the previous
+artefact rather than from trunk.
 
 ## Alternatives considered
 
@@ -169,10 +185,17 @@ containing untracked files.
   unenforceable.
 - **Squash merge.** Rejected: it is the direct cause of the problem
   in `1e7d948`.
-- **Branch without a worktree.** Rejected: parallel strands then
-  contend for one working tree, and deciding whether work is parallel
-  requires knowledge an agent does not have about the author's other
-  sessions.
+- **Always work in a worktree, never in the primary checkout.** The
+  original form of this decision, rejected on first contact with it:
+  drafting this ADR at
+  `.worktrees/adr-0003-git-workflow/docs/adr/` was meaningfully more
+  onerous than drafting it at `docs/adr/`, for no benefit while only
+  one strand was in flight. That toll falls on every user's first
+  artefact, before they have experienced the collision it prevents.
+  The conditional rule keeps the isolation and drops the toll, at the
+  cost of a state check before branching.
+- **Branch without a worktree at all.** Rejected: concurrent strands
+  then contend for one working tree.
 - **Per-repository configuration of trunk and naming.** Rejected: the
   derivation rule above reproduces the intended behaviour everywhere
   it was tested, and configuration that must be maintained per
@@ -206,11 +229,19 @@ containing untracked files.
   ADR, a plan and an implementation, each with its own branch, merge
   and review point. This is heavier than the current practice,
   particularly in single-developer repositories.
-- Every artefact begins in a worktree without installed dependencies.
-  Harmless for markdown artefacts; for implementation artefacts the
-  governing skill must provision before it can run anything.
-- `.worktrees/` accumulates a directory per in-flight artefact and
-  requires the cleanup discipline described above.
+- An artefact isolated into a worktree begins without installed
+  dependencies. Harmless for markdown artefacts; for implementation
+  artefacts the governing skill must provision before it can run
+  anything.
+- `.worktrees/` accumulates a directory per *concurrent* artefact
+  rather than per artefact, and requires the cleanup discipline
+  described above.
+- The primary checkout is no longer reliably on trunk, so its branch
+  and cleanliness must be checked before branching. This is the price
+  of dropping the unconditional rule, and it weakens the
+  no-negotiation property slightly: the workflow now has two paths
+  rather than one, even though the choice between them is
+  mechanical.
 - Nothing here guarantees the workflow is followed. It remains
   dependent on the skill being loaded, which is the concern
   explicitly parked above.
