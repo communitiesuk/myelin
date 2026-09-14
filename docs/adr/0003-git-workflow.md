@@ -1,6 +1,6 @@
 ---
 title: Git workflow — branch per artefact
-status: proposed
+status: accepted
 date: 2026-09-04
 supersedes: null
 superseded_by: null
