@@ -5,7 +5,7 @@ description: Plans are ordered action lists that implement an ADR. TRIGGER when 
 
 # Plans
 
-Plans are the action side of the ADR/plan pair. Where an ADR captures *what was decided and why*, a plan captures *what happens next and in what order*. Plans are ephemeral in nature but live permanently in the repo so the whole team (and future agents) can see what work has been done, is in flight, is paused, or was abandoned.
+Plans are the action side of the ADR/plan pair. Where an ADR captures *what was decided and why*, a plan captures *what happens next and in what order*. Plans are ephemeral in nature: they live in the tree while their work is intended and leave it when the work is done or abandoned. Git history holds what has been finished.
 
 ## Foundational rule — plans always derive from ADRs
 
@@ -40,7 +40,7 @@ deferred_reason: null
 ---
 ```
 
-- **status**: `draft` | `in-progress` | `deferred` | `done` | `abandoned`.
+- **status**: `draft` | `in-progress` | `deferred`. There is no `done` or `abandoned` status; both are expressed by removing the plan file (see "Status lifecycle").
 - **adr**: required. The ADR number this plan implements (e.g. `0001`). If null, the plan is invalid.
 - **date**: ISO date the plan was first written.
 - **deferred_reason**: null unless `status: deferred`, in which case it must be a non-null string explaining what paused the work and what would unblock it.
@@ -50,10 +50,34 @@ deferred_reason: null
 - **draft**: written but not yet started.
 - **in-progress**: work is actively happening. Update as steps complete.
 - **deferred**: paused, not abandoned. `deferred_reason` must be filled in. Anyone scanning `plans/` sees at a glance what's stalled and why. When resuming, flip back to `in-progress` and clear `deferred_reason`.
-- **done**: fully implemented and merged. Do not delete — the file stays as the historical record of how the ADR was implemented.
-- **abandoned**: work was started but will not be completed. Add a brief note in the body explaining why. Do not delete.
+- **Completion** is not a status. It is expressed by deleting the plan file in the final commit on the last implementation branch. That commit carries this trailer, copied exactly:
 
-Status updates ride with the code changes that reflect the new reality — e.g. flip `in-progress` → `done` in the same commit as the final merge.
+  ```
+  Completes: plans/NNNN-<slug>.md
+  ```
+
+  The value is the repository-relative path of the plan. The commit body says, in sentences, what the plan produced.
+- **Abandonment** is not a status either. A plan whose work will not be done is deleted, and the deleting commit carries this trailer, copied exactly:
+
+  ```
+  Abandons: plans/NNNN-<slug>.md
+  ```
+
+  The commit body says, in sentences, why the work will not be done.
+
+Both bodies are mandatory. Trailers carry the edge; the body carries the reason. Neither is optional.
+
+Status updates ride with the code changes that reflect the new reality — e.g. flip `draft` → `in-progress` in the same commit as the first implementation change. Completion is the concrete case: the commit that deletes the plan file is the one that makes completion true. There is no status to flip first.
+
+## The introducing commit
+
+The first commit on the plan's branch carries this trailer, copied exactly:
+
+```
+Derives-From: docs/adr/NNNN-<slug>.md
+```
+
+A plan's direct upstream is its ADR, and the plan schema names exactly one (the `adr:` field). The trailer does not name the discovery note behind the ADR; that is one hop away through the ADR's own introducing commit.
 
 ## Body
 
@@ -107,6 +131,5 @@ If while writing a plan you find yourself justifying *why* a choice was made, th
 ## Do not
 
 - Do not write a plan without a corresponding ADR. Stop and write the ADR first.
-- Do not delete plans on completion. Set `status: done` and leave them.
-- Do not archive plans to a separate directory. `plans/` holds the full lifecycle.
+- Do not leave a finished or abandoned plan in the tree.
 - Do not edit the ADR from within the plan's commits. Cross-references only.
