@@ -31,8 +31,11 @@ of them:
   artefacts.
 
 Steps 5–7 add no new artefact: Step 5 rehearses the workflow the
-skill describes, Step 6 is a status transition riding with the final
-substantive commit, and Step 7 integrates both branches.
+skill describes, Step 6 removes this plan file — riding with the
+final substantive commit, as bookkeeping under ADR 0003's
+"Bookkeeping is not an artefact" rule and under ADR 0004's rule that
+a completed plan leaves the tree — and Step 7 integrates both
+branches.
 
 This plan file is itself an artefact of the `plans` skill and was
 written on branch `plan-0003-git-workflow`, per the naming rule for
@@ -121,6 +124,15 @@ numbered artefacts.
        fast-forward or a squashed single commit fails this check.
      - After merge the branch is gone, the worktree directory is
        gone, and the primary checkout is back on trunk.
+     - A bookkeeping change made during the scenario rides with the
+       artefact's commit rather than taking a branch of its own. The
+       fixture has no `.worktrees/` entry in `.gitignore`, so the
+       workflow must add one when it creates the worktree; ADR
+       0003's "Bookkeeping is not an artefact" table classifies
+       exactly that entry as bookkeeping.
+     - The first commit on the ADR branch carries a `Derives-From`
+       trailer naming the ADR's direct upstream or, where the ADR
+       has no upstream, carries none.
    - **Author this by hand.** Do not use `tessl scenario generate` —
      it runs remotely against an uploaded plugin and cannot occupy
      the failing-test-before-body slot.
@@ -159,6 +171,24 @@ numbered artefacts.
        contains. Name the governing skills that disagree with one
        another on cadence (`test-first-workflow`, `skill-forge`,
        `plans`) so a reader sees the delegation is deliberate.
+     - **Bookkeeping is not an artefact.** Carry the test and the
+       rule from ADR 0003's "Bookkeeping is not an artefact"
+       subsection, as a rule and not as commentary. The test: a
+       change is bookkeeping when it has no independent truth
+       condition — it is true only because some other work is true;
+       a change that would still need to be made had the
+       accompanying work not happened is work, whatever file it
+       touches. The rule: bookkeeping does not get its own branch;
+       it rides with the change that makes it true, on that change's
+       branch; bookkeeping that has nothing to ride on has an
+       independent truth condition and is work. State that
+       classification is relational — a property of the change's
+       relationship to the work in hand, never of the file or
+       section it touches — and reproduce the ADR's three-row table.
+       State the scope: the exception governs the branch-per-artefact
+       rule and nothing else; bookkeeping is still committed,
+       reviewed and merged, and the governing skill's cadence still
+       decides what a commit holds.
      - **Isolate on contention, not by default.** Branch in the
        primary checkout when it is on trunk **and** clean. Give both
        checks as commands: `git rev-parse --abbrev-ref HEAD` and
@@ -208,6 +238,48 @@ numbered artefacts.
        repository. Instruct the implementer to add the entry to
        `.gitignore` when creating the first worktree in a repository
        that lacks it.
+   - The body must also state, without paraphrase drift from ADR
+     0004's "History is written for retrieval" section, since this
+     is the skill that lands commits:
+     - **The trailer vocabulary**, reproduced verbatim as this table:
+
+       | Trailer | On the commit that | Value |
+       | --- | --- | --- |
+       | `Derives-From:` | establishes that an artefact derives from another: the first commit on the artefact's branch, or a later commit that re-points it | path of the upstream artefact; one trailer per direct upstream |
+       | `Revises:` | changes what an accepted ADR decides | path of the ADR |
+       | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
+       | `Completes:` | removes a plan whose work is done | path of the plan |
+       | `Abandons:` | removes a plan whose work will not be done | path of the plan |
+
+       Values are repository-relative paths. A commit may carry
+       several trailers, and a key may repeat.
+     - **The graph is append-only and the table is exhaustive.** An
+       edge between two artefacts is added by exactly one commit,
+       and that commit carries the trailer for it. Edges are never
+       modified; a relationship that changes is a new edge, added by
+       the commit that changes it. The table lists every kind of
+       edge and the event that adds it. An event not in the table
+       adds no edge, and a change to an artefact's content that
+       leaves its edges as they were carries no trailer for them.
+     - **`Derives-From` sits on the first commit of an artefact's
+       branch** and names direct upstreams only, one trailer per
+       upstream: a skill produced by a plan step names the plan, not
+       the ADR behind it, which is one hop away through the plan's
+       own `adr:` field.
+     - **Trailers record edges between artefacts.** Structure inside
+       an artefact — such as the order of docstring, test and code
+       commits under `test-first-workflow` — belongs to the
+       governing skill under this skill's delegation of commit
+       cadence, and carries no trailer.
+     - **The body carries the reason.** The prose body of a
+       `Revises`, `Abandons` or deleting commit must say what
+       changed and why, in sentences. Trailers carry the edge; the
+       body carries the reason. Neither is optional.
+     - **A squash discards trailers.** State this as a second reason
+       squashing is prohibited, alongside the red/green sequence it
+       removed in `1e7d948`: a squash discards the individual
+       commits, and their trailers with them, and the artefact graph
+       ADR 0004 records in history is lost with them.
    - Mirror the tone and section structure of the sibling
      hand-written skills (`skills/adr/SKILL.md`,
      `skills/plans/SKILL.md`,
@@ -255,18 +327,23 @@ numbered artefacts.
    - Files changed: none tracked. Git refs and ignored
      `.worktrees/` content only.
 
-6. **Flip this plan's status to `done`.**
+6. **Remove this plan when its work is complete.**
    - **Depends on**: Step 5.
    - Flip `status:` from `draft` to `in-progress` when Step 1 or
      Step 2 begins.
-   - Flip `status:` from `in-progress` to `done` as the final commit
-     on the last implementation branch, immediately preceding its
-     merge in Step 7, so the transition rides with the changes that
-     make it true.
+   - There is no `done` status. Completion is expressed by deleting
+     this plan file: `git rm plans/0003-git-workflow.md` as the
+     final commit on the last implementation branch, immediately
+     preceding its merge in Step 7, so the removal rides with the
+     changes that make it true. The commit carries the trailer
+     `Completes: plans/0003-git-workflow.md` and a body saying, in
+     sentences, what the plan produced: the `.worktrees/` gitignore
+     entry and the `git-workflow` skill with its eval scenario
+     `evals/git-workflow-0/`.
    - ADR 0003 is already `accepted` — there is no ADR status
      transition in this plan, and the ADR must not be edited from
      this plan's commits.
-   - Files changed: `plans/0003-git-workflow.md`.
+   - Files changed: `plans/0003-git-workflow.md` (removed).
 
 7. **Integrate and clean up, per ADR 0003.**
    - **Depends on**: Step 6.
@@ -364,7 +441,12 @@ must not be added to it:
   (`.claude/`, `.env`, `.mcp.json` copied; `.venv/`,
   `node_modules/` delegated); cleanup deleting the branch, removing
   the worktree with `--force` where dependencies were installed, and
-  returning the primary checkout to trunk.
+  returning the primary checkout to trunk; the bookkeeping test and
+  rule with the three-row table; the trailer table verbatim, the
+  graph append-only and the table exhaustive, `Derives-From` on the
+  first commit naming direct upstreams only, trailers for edges
+  between artefacts only, the mandatory reason in the body, and a
+  squash discarding trailers.
 - `evals/git-workflow-0/` contains `task.md`, `scenario.json` and
   `criteria.json`. `scenario.json`'s `description` names the
   `git-workflow` target. `criteria.json` is a `weighted_checklist`
@@ -384,8 +466,12 @@ must not be added to it:
   added. See Non-goals.
 - `docs/adr/0003-git-workflow.md` is unmodified by every commit this
   plan produces.
-- This plan's frontmatter reads `status: done` in the final commit
-  before the last merge.
+- `plans/0003-git-workflow.md` is absent from the tree after the
+  last merge. The final commit before that merge removes it,
+  carries `Completes: plans/0003-git-workflow.md`, and has a body
+  saying what the plan produced:
+  `git log --format='%(trailers:key=Completes,valueonly)' | grep -c plans/0003`
+  is 1.
 
 ## Progress notes
 
