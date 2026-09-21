@@ -116,26 +116,46 @@ tree when that purpose is served.
 
 ### History is written for retrieval
 
-Because the tree no longer records relationships between artefacts
-that have left it, every relationship is written into the commit that
-creates or removes an artefact, as a git trailer. Trailers are the
-machine-readable half of a commit message: git parses them natively
-(`git interpret-trailers`, `git log --format='%(trailers:key=...)'`)
-and they are searchable with `git log --grep`.
+The artefacts in the tree form a graph: a plan derives from an ADR,
+an ADR from a discovery note, a code change or a skill from a plan.
+Because the tree no longer keeps artefacts that have left it, that
+graph is recorded in git history, as trailers on commits. Trailers
+are the machine-readable half of a commit message: git parses them
+natively (`git interpret-trailers`,
+`git log --format='%(trailers:key=...)'`) and they are searchable
+with `git log --grep`.
+
+**The graph is append-only.** An edge between two artefacts is added
+by exactly one commit, and that commit carries the trailer for it.
+Edges are never modified; a relationship that changes is a new edge,
+added by the commit that changes it. The table below is therefore
+exhaustive: it lists every kind of edge and the event that adds it.
+An event not in the table adds no edge, and a change to an artefact's
+content that leaves its edges as they were carries no trailer for
+them.
 
 The vocabulary:
 
 | Trailer | On the commit that | Value |
 | --- | --- | --- |
-| `Derives-From:` | introduces an artefact produced from another | path of the upstream artefact |
-| `Revises:` | changes what an existing ADR decides | path of the ADR |
+| `Derives-From:` | establishes that an artefact derives from another: the first commit on the artefact's branch, or a later commit that re-points it | path of the upstream artefact; one trailer per direct upstream |
+| `Revises:` | changes what an accepted ADR decides | path of the ADR |
 | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
 
 Values are repository-relative paths. A commit may carry several
-trailers. `Revises` is for changes to the decision; a typo fix does
-not carry it.
+trailers, and a key may repeat. `Derives-From` names direct
+upstreams only: a skill produced by a plan step names the plan, not
+the ADR behind it, which is one hop away through the plan's own
+`adr:` field. `Revises` is for changes to the decision; a typo fix
+does not carry it, and nor does an edit to a `proposed` ADR, which is
+still being drafted.
+
+Trailers record edges between artefacts. Structure inside an
+artefact, such as the order of docstring, test and code commits
+under `test-first-workflow`, belongs to the governing skill under
+ADR 0003's delegation of commit cadence, and carries no trailer.
 
 The prose body of a `Revises`, `Abandons` or deleting commit must say
 what changed and why, in sentences. Trailers carry the edge; the body
@@ -148,8 +168,10 @@ two, and the identifier shared by the branch names ADR 0003 mandates,
 the artefact graph is recoverable from history alone, without an
 index.
 
-ADR 0003's prohibition on squash merging now protects this too: a
-squash discards the individual commits, and their trailers with them.
+ADR 0003's no-fast-forward merge brackets the commits that belong to
+one artefact, and its prohibition on squash merging now protects
+this too: a squash discards the individual commits, and their
+trailers with them.
 
 ### Revising an ADR revises its plans
 
@@ -252,6 +274,14 @@ question and is deferred to a separate ADR. Until it exists,
 - The artefact graph is recoverable but not yet cheaply queryable.
   The history skill is a separate ADR and its absence is felt until
   it lands.
+- The trailer vocabulary is exhaustive but not closed. A decision
+  that adds an artefact kind or a new relation between kinds adds a
+  row, by revising this ADR. Splitting tests from code into separate
+  artefacts, for example, would add an edge for verification.
+- An ADR revised because another ADR was decided has no edge in the
+  table. The cause is in the body of the `Revises` commit. Whether
+  that needs a trailer is for the history skill's ADR to find out
+  from real history.
 - The "one ADR per decision" principle survives with a sharper
   boundary: one ADR per question.
 
