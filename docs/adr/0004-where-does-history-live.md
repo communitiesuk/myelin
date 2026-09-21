@@ -282,6 +282,18 @@ question and is deferred to a separate ADR. Until it exists,
   table. The cause is in the body of the `Revises` commit. Whether
   that needs a trailer is for the history skill's ADR to find out
   from real history.
+- The vocabulary allows several direct upstreams, but the plan
+  schema allows one ADR. A plan is the implementation of one answer
+  to one question, and that stands until a plan genuinely needs
+  otherwise. Using a decision is not deriving from it: plan 0003
+  uses `skill-forge`, which ADR 0002 decided, and derives from ADR
+  0003 alone.
+- Until the history skill exists, the `adr` skill carries the
+  interim path itself: an author reads every ADR in the tree before
+  writing, which the tree-is-current rule makes a bounded task, and
+  lists under References each ADR whose decision the new one relies
+  on or constrains, saying which. References records what a decision
+  uses; `Derives-From` records what an artefact was produced from.
 - The "one ADR per decision" principle survives with a sharper
   boundary: one ADR per question.
 
