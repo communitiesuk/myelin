@@ -199,6 +199,20 @@ branch here to take a worktree.
      the ADR's branch carries `Derives-From: <path>` for each
      discovery note it derives from, where one exists. Direct
      upstreams only.
+   - New section "Before writing", placed before "Location and
+     naming" so it is met first: read every ADR in `docs/adr/`
+     before writing a new one. The tree holds only current
+     decisions, so this is the complete set of what is decided. Do
+     not write an ADR that answers a question an existing ADR
+     already answers (revise that one), and do not adopt a path an
+     existing ADR's Alternatives section rejects without saying, in
+     the new ADR's Alternatives, why the rejection no longer holds.
+   - "Body", item 6 (References): expand from "related ADRs,
+     external material" to: each ADR whose decision this one relies
+     on or constrains, with a phrase saying which, plus external
+     material. State that References records what a decision uses,
+     and that `Derives-From` on the commit records what the artefact
+     was produced from; the two are different relations.
    - "Do not": replace "Do not edit a merged ADR to change the
      decision. Write a superseding ADR." with "Do not write a new ADR
      to change the answer to a question an existing ADR already
@@ -368,8 +382,9 @@ branch here to take a worktree.
 - `git log --format='%(trailers:key=Completes,valueonly)'` lists
   plans 0001, 0002 and 0004; none of those files is in the tree.
 - `skills/adr/SKILL.md` contains no "Do not edit a merged ADR" and
-  no `superseded_by`; contains "Revises:", "Derives-From:" and the
-  question test.
+  no `superseded_by`; contains "Revises:", "Derives-From:", the
+  question test, and a "Before writing" section that precedes
+  "Location and naming".
 - `grep -c '^- \*\*done\*\*\|^- \*\*abandoned\*\*' skills/plans/SKILL.md`
   is 0; the file contains "Completes:", "Abandons:" and
   "Derives-From:", and contains no "Do not delete plans".
