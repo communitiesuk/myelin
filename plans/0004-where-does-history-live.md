@@ -1,6 +1,6 @@
 ---
 title: Where does history live?
-status: draft
+status: in-progress
 adr: 0004
 date: 2026-09-16
 deferred_reason: null
