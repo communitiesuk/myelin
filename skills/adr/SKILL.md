@@ -7,35 +7,59 @@ description: Architecture Decision Records (ADRs) capture WHAT was decided and W
 
 ADRs capture decisions: what was chosen, why it was chosen, what trade-offs were accepted. They are durable reference material — a new agent or human reads them to orient to the project's intent and history. ADRs do **not** contain action lists, task workflows, or progress state — those live in `plans/` (see the `plans` skill).
 
+## Before writing
+
+Read every ADR in `docs/adr/` before writing a new one. The tree holds only current decisions, so this is the complete set of what is decided, and reading it is a bounded task.
+
+- Do not write an ADR that answers a question an existing ADR already answers. Revise that one (see "Revising an ADR").
+- Do not adopt a path an existing ADR's Alternatives section rejects without saying, in the new ADR's Alternatives section, why the rejection no longer holds.
+
 ## Location and naming
 
 - **Directory**: `docs/adr/` at the project root. Create it if it doesn't exist.
 - **Filename**: `NNNN-kebab-slug.md`. `NNNN` is a zero-padded monotonic number — pick the next unused by `ls docs/adr/ | sort | tail -1`. Slug is a short lowercase description.
   - Examples: `0001-azure-service-principal-auth.md`, `0007-migrate-from-langchain.md`.
-- **One ADR per decision.** Do not amend a merged ADR to record a new decision — supersede it (see lifecycle).
+- **One ADR per question.** The title of an ADR is the question it answers. The test for whether a revision is an edit or a new ADR: if the revision still answers the title's question, edit in place; if it answers a new question, write a new ADR, and edit the old one only where the new decision changes it. Filenames are unaffected by this rule — the slug stays a short description, not the question.
 
 ## Frontmatter
 
 ```yaml
 ---
-title: <human-readable title, matches the H1>
+title: <the question this ADR answers, matches the H1>
 status: proposed
 date: YYYY-MM-DD
-supersedes: null
-superseded_by: null
 ---
 ```
 
-- **status**: `proposed` | `accepted` | `superseded`.
+- **title**: phrased as the question the ADR answers, ending in a question mark. Matches the H1.
+- **status**: `proposed` | `accepted`.
 - **date**: ISO date the ADR was first written. Never updated on later edits — git history is authoritative for that.
-- **supersedes**: null, or the ADR filename this one replaces.
-- **superseded_by**: null, or the ADR filename that replaces this one. Filled in on the superseding ADR's commit.
 
 ## Status lifecycle
 
 - **proposed**: written but not yet agreed. May change during discussion.
 - **accepted**: agreed. This is the current decision of record. May or may not be implemented yet — implementation state is tracked in the corresponding `plans/` entry, not here.
-- **superseded**: replaced by a later ADR. Fill in `superseded_by`. Do not delete.
+
+A decision that is reversed outright is deleted, not marked. The commit that deletes it says why.
+
+## Revising an ADR
+
+An ADR is not frozen at merge. When the answer to its question changes, edit it in place. The superseded text is in the history of the file, reachable with `git log --follow -p`.
+
+- The commit that changes what an accepted ADR decides carries this trailer, copied exactly:
+
+  ```
+  Revises: docs/adr/NNNN-<slug>.md
+  ```
+
+  The value is the repository-relative path of the ADR. The commit body says, in sentences, what changed and why. Trailer and body are both mandatory.
+- When a revision reverses an adopted path, add an entry to the Alternatives section summarising the reversal: what was previously decided and why it was reversed. That is what stops the next author retrying it; the full prior text is in history.
+- On the same branch, every plan in the tree whose `adr:` field names this ADR is either revised to match or set to `deferred` with a reason naming the revision. No plan targets a decision that has changed under it.
+- `Revises` is for changes to what an accepted ADR decides. A typo fix carries no trailer, and nor does an edit to a `proposed` ADR, which is still being drafted.
+
+## The introducing commit
+
+The first commit on the ADR's branch carries `Derives-From: <path>` for each discovery note the ADR derives from, where one exists — one trailer per note. Direct upstreams only.
 
 ## Body
 
@@ -46,7 +70,7 @@ After the frontmatter and `#` H1:
 3. **Decision** — plainly, what was chosen. Include the shape of the resulting behaviour (interface, precedence, invariants). This section is the spec that plans will implement against.
 4. **Alternatives considered** — the options rejected and why.
 5. **Consequences** — what this makes easier, what it rules out, what will need to be revisited.
-6. **References** — related ADRs, external material.
+6. **References** — each ADR whose decision this one relies on or constrains, with a phrase saying which, plus external material. References records what a decision uses; `Derives-From` on the introducing commit records what the artefact was produced from. The two are different relations.
 
 Omit sections that would be empty (except Forward-pointer, which is required). Keep it tight — a reader should be able to scan an ADR in under two minutes.
 
@@ -78,5 +102,5 @@ All of the above belong in `plans/NNNN-*.md`.
 ## Do not
 
 - Do not put decisions in `plans/`. Plans reference ADRs; they don't replace them.
-- Do not edit a merged ADR to change the decision. Write a superseding ADR.
-- Do not delete superseded ADRs. They are the historical record.
+- Do not write a new ADR to change the answer to a question an existing ADR already answers. Revise it.
+- Do not keep a reversed ADR in the tree under a status flag. Delete it; the commit and git history are the record.
