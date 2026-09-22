@@ -12,14 +12,36 @@ deferred_reason: null
 
 Implements `docs/adr/0003-git-workflow.md`. The skill authored by
 Steps 2–4 is written through `skill-forge`
-(`skills/skill-forge/SKILL.md`), delivered by plan 0002
-(`plans/0002-skill-forge.md`), and carries the skill-writing
-per-step directive wrapper defined in `skills/plans/SKILL.md`.
+(`skills/skill-forge/SKILL.md`), delivered by plan 0002 — retired from
+the tree at `a552a82` and reachable there — and carries the
+skill-writing per-step directive wrapper defined in
+`skills/plans/SKILL.md`.
+
+## Scope: one skill, not two
+
+ADR 0003 now states that integration goes through the host's
+pull-request mechanism, and that the host is an implementation detail.
+Its Consequences observe that the decision's content therefore splits:
+the rules that hold everywhere are separable from the commands that
+realise integration on a particular host.
+
+**This plan produces one skill.** `git-workflow` carries the
+platform-invariant rules, plus the local-merge fallback, and *states*
+the platform boundary without implementing any host's commands. A
+platform skill is a separate artefact and gets its own plan.
+
+The reason is cost and testability, not tidiness. Two skills means two
+`skill-forge` passes — two frontmatters, two failing scenarios, two
+bodies — roughly doubling this plan. And the host-specific half is the
+part the eval harness cannot reach: a scenario's `setup.sh` can create
+a bare remote and exercise a real push, but it has no GitHub and no
+`gh` credentials, so a pull request against a live host cannot be
+evaluated. Confining that behaviour to a later skill keeps the
+untestable part out of this one.
 
 ## Execution shape
 
-ADR 0003's unit of work is the artefact, and this plan produces two
-of them:
+ADR 0003's unit of work is the artefact, and this plan produces two:
 
 - **The `.gitignore` change** (Step 1) — not governed by any skill,
   and therefore still an artefact in its own right. Unnumbered, so
@@ -30,16 +52,33 @@ of them:
   are the three mandatory phases of a single artefact, not three
   artefacts.
 
-Steps 5–7 add no new artefact: Step 5 rehearses the workflow the
-skill describes, Step 6 removes this plan file — riding with the
-final substantive commit, as bookkeeping under ADR 0003's
-"Bookkeeping is not an artefact" rule and under ADR 0004's rule that
-a completed plan leaves the tree — and Step 7 integrates both
-branches.
+**Each artefact lands as it completes.** There is no step that
+integrates everything at the end. An earlier form of this plan batched
+every merge into a final step, which an independent review found
+produced a cycle: the rehearsal needed Step 1's line on trunk before a
+step that depended on it, the plan's own removal edited a file absent
+from the branch it committed on, and no step merged the plan's branch
+at all. Batching was also a quiet drift from one-branch-per-artefact —
+an artefact that has not landed is not finished. Landing as you go
+fixes all three at once.
 
-This plan file is itself an artefact of the `plans` skill and was
-written on branch `plan-0003-git-workflow`, per the naming rule for
-numbered artefacts.
+"Lands" is deliberately not "merges". Under ADR 0003 the mechanism is
+the host's pull request where one exists and a local merge otherwise,
+and the required outcome is the same either way: a merge commit with
+two parents, into the branch forked from, never squashed. Steps below
+say *land*; the skill being authored is what knows which path applies.
+
+Step 5 rehearses the workflow the skill describes and adds no artefact.
+Step 6 removes this plan file; under ADR 0003's bookkeeping test that
+removal has nothing to ride with — Step 5 changes no tracked file — so
+it has an independent truth condition, is work, and takes a branch of
+its own. This matches how plan 0004 completed (`5f218ae`, a lone
+deletion on its own branch, merged at `d46fb34`).
+
+This plan file is itself an artefact of the `plans` skill, written on
+branch `plan-0003-git-workflow` per the naming rule for numbered
+artefacts, and merged at `d3a992f` when it was written, per ADR 0003's
+rule that a plan merges on creation.
 
 ## Steps
 
@@ -53,9 +92,22 @@ numbered artefacts.
    - Do not add `.worktrees/` to `.git/info/exclude` instead. The
      entry must be version-controlled so every clone of the
      repository inherits it.
-   - Branch: `chore-gitignore-worktrees`, forked from and merged
-     back into the derived trunk (Step 7).
-   - Files changed: `.gitignore`.
+   - Flip this plan's `status:` from `draft` to `in-progress` in the
+     same commit. `skills/plans/SKILL.md` requires a status update to
+     ride with the change that reflects the new reality, and this is
+     the first implementation change. It is bookkeeping under ADR
+     0003 — true only because the work started — so it takes no
+     branch of its own and rides here.
+   - Branch: `chore-gitignore-worktrees`, forked from the derived
+     trunk and landed into it.
+   - **Do not land this before Step 2 has begun.** See Step 5: the
+     rehearsal has to observe a second artefact isolating because the
+     primary checkout is genuinely occupied, and landing this first
+     returns the checkout to trunk clean, at which point no
+     contention exists to observe. Land it once Step 2 is under way
+     and before Step 5 runs.
+   - Files changed: `.gitignore`, `plans/0003-git-workflow.md`
+     (frontmatter only).
 
 2. **Author the frontmatter for the `git-workflow` skill (skill-forge
    Phase 1).**
@@ -95,19 +147,46 @@ numbered artefacts.
    - Directory name per the per-skill rule: `git-workflow` matches
      the target skill's directory under `skills/`, and `N` is `0`
      because no prior scenarios exist for this skill.
-   - Populate `task.md`, `scenario.json`, `criteria.json`. Use
-     `evals/skill-forge-0/` as the structural reference, not a
-     content reference.
+   - Populate `task.md`, `criteria.json` and — unlike every existing
+     scenario in this repository — **`setup.sh`**. Use
+     `evals/skill-forge-0/` as a structural reference for `task.md`
+     and `criteria.json` only; it builds no fixture and is no guide
+     for one.
+   - **Build the fixture in `setup.sh`, not in `task.md`.** Verified
+     against the harness: `tessl eval lint` documents `setup.sh` as
+     auto-run if present, alongside a `scenario.json` carrying
+     `fixtures`, `include` and `setup` declarations and an
+     auto-included `resources/`. None of this repository's six
+     scenarios uses any of it, so each one instructs the agent to
+     initialise its own git repository — which for a git-workflow
+     skill would mean the skill under test setting up its own exam.
+     `setup.sh` runs before the agent and removes that circularity.
+   - The fixture `setup.sh` must create: a git repository with both a
+     local `dev` branch and a local `main`, checked out on `dev` with
+     a dirty working tree, containing a `.claude/settings.local.json`,
+     and with no `.worktrees/` entry in `.gitignore`. Create no
+     remote: this scenario exercises the local-merge fallback, which
+     is the path ADR 0003 assigns to a repository with no host.
    - The scenario describes the smallest concrete behaviour the
      skill must eventually satisfy, not the whole of ADR 0003. Use
-     this slice: the agent is asked to write a new ADR (a markdown
-     decision artefact) in a fixture repository that has both a
-     local `dev` branch and a local `main`, whose primary checkout
-     is on trunk with a dirty working tree, and that contains a
-     `.claude/settings.local.json`.
-   - `criteria.json` is a `weighted_checklist`. Assertions must be
-     tight enough that a plausible-but-wrong skill body fails them.
-     Cover at least:
+     this slice: the agent is asked to write a new ADR — a markdown
+     decision artefact — in that repository.
+   - `criteria.json` is a `weighted_checklist`. **Assert git state
+     directly.** The scorer has shell access and inspects the
+     repository: a probe run on 2026-09-22 (eval run
+     `01a0c8b9-1659-7699-a63b-053f3f57efa5`) scored two true git facts
+     10/10, quoting real commit SHAs and parent SHAs from `git log`
+     and `git cat-file`, and scored two deliberately false facts 0/10,
+     reasoning from `git branch -a` and `git tag` that they did not
+     hold. Self-reporting through a `WORKFLOW.md` transcript, as
+     `evals/scenario-2` does, is therefore unnecessary and should not
+     be used — for this skill it would be circular.
+   - Write assertions against `solution/.git`, which is where the
+     scorer looked. Do not weaken a criterion with a conditional like
+     `evals/scenario-0`'s "If the agent committed its work"; the
+     scorer can determine whether it did.
+   - Assertions must be tight enough that a plausible-but-wrong skill
+     body fails them. Cover at least:
      - No commit lands directly on trunk; the ADR file does not
        appear in a commit on `dev` except through a merge.
      - The branch is named `adr-NNNN-<slug>` — the numbered form,
@@ -133,20 +212,29 @@ numbered artefacts.
      - The first commit on the ADR branch carries a `Derives-From`
        trailer naming the ADR's direct upstream or, where the ADR
        has no upstream, carries none.
+     - Because the fixture has no remote, integration takes the
+       local-merge fallback. The scenario must not require a pull
+       request, and a skill body that treats a pull request as
+       unconditional must fail this check.
    - **Author this by hand.** Do not use `tessl scenario generate` —
      it runs remotely against an uploaded plugin and cannot occupy
      the failing-test-before-body slot.
+   - Validate structure with `tessl eval lint evals/` before running
+     anything. It checks `task.md` and `criteria.json` shape and is
+     free; a malformed scenario otherwise fails only after a paid run.
    - The scenario is expected **not** to pass when written. That is
      the improvement queue, per `skill-forge`'s asymmetric exit
      criteria, and is not a defect.
    - Commit the scenario on its own (the red commit), before any
      substantive body exists.
    - Files changed: `evals/git-workflow-0/task.md`,
-     `evals/git-workflow-0/scenario.json`,
-     `evals/git-workflow-0/criteria.json` (all new).
+     `evals/git-workflow-0/criteria.json`,
+     `evals/git-workflow-0/setup.sh` (executable), and
+     `evals/git-workflow-0/scenario.json` if a `description` or
+     further fixture declarations are wanted (all new).
 
-4. **Write the `git-workflow` skill body until `tessl review run` is
-   green (skill-forge Phase 3).**
+4. **Write the `git-workflow` skill body until `tessl eval run` passes
+   the scenario (skill-forge Phase 3).**
 
    > **Directive for the implementer**: this step will author a new skill. Load the `skill-forge` skill before writing the `SKILL.md` (frontmatter → failing eval scenario → skill body).
 
@@ -207,13 +295,45 @@ numbered artefacts.
        `plan-0003-git-workflow`). `<type>-<slug>` where there is no
        number. Take the type token from the artefact noun in the
        governing-skill table.
-     - **Integration preserves structure.** Merge into the branch
-       you forked from, with `--no-ff`. Squashing is prohibited; a
-       fast-forward is also avoided. Where integration goes through
-       GitHub, state `gh pr merge --merge` explicitly and say why:
-       the platform's default action is a squash merge and would
-       silently reverse this decision. Give the local form
-       (`git merge --no-ff <branch>`) too.
+     - **Integration preserves structure.** State the required
+       outcome first, because it holds on every path: a merge commit
+       with two parents, into the branch forked from, never squashed
+       and never fast-forwarded. Give the local form
+       (`git merge --no-ff <branch>`).
+     - **A pull request is the default; a local merge is the
+       fallback.** Reproduce ADR 0003's ordering, not a choice between
+       equals: a branch is proposed and landed through the host's
+       pull-request mechanism whenever the repository has a remote
+       whose host provides one, and a local merge is what happens when
+       it does not. Give the availability check as a command — whether
+       a remote exists (`git remote`) — and state that, like the fork
+       point, this is derived and never read from per-repository
+       configuration.
+     - **The host is an implementation detail, and this skill does not
+       know it.** The body names the mechanism and not the tool. State
+       explicitly that the commands for a particular host belong to a
+       platform skill which does not yet exist, that `git-workflow`
+       therefore implements the fallback path only, and that the
+       platform-specific half is deferred rather than forgotten.
+       Reproduce ADR 0003's reason: naming a platform here repeats one
+       level up the error the ADR exists to correct.
+     - **State what a pull request does and does not buy.** It buys
+       enforcement — a platform can refuse a squash and refuse a
+       direct push to trunk — and it buys no review, because an agent
+       that opens a pull request and immediately merges it has been
+       reviewed by nobody. Say that the agent lands its own work until
+       a separate decision says otherwise. Do not let the body imply
+       human acceptance; ADR 0004's brake of that name does not exist
+       under agentic merge, and overstating it would hide the gap.
+     - **A plan merges when it is written.** Carry ADR 0003's
+       merge-on-creation rule: a plan's branch lands as soon as the
+       plan is written and reviewed, before implementation against it
+       begins, and is not held until the work is finished. Give both
+       reasons — ADR 0004's rule that revising an ADR revises the
+       plans *in the tree* cannot reach a plan on an unmerged branch,
+       and a plan abandoned before its branch merged leaves no
+       reachable record because `Abandons` has no removing commit to
+       attach to.
      - **Merging is not mandatory.** An experiment may remain
        unmerged; its branch and worktree are left in place and are
        **never** removed automatically.
@@ -287,32 +407,58 @@ numbered artefacts.
      `skills/skill-forge/SKILL.md`): what the skill governs,
      mandatory rules in order, a "Do not" / anti-patterns section, a
      "When you may deviate" section.
-   - Do not modify `evals/git-workflow-0/` to make review pass. The
+   - Do not modify `evals/git-workflow-0/` to make anything pass. The
      scenario is the contract.
-   - Run `tessl review run skills/git-workflow/` after each
-     substantive edit and iterate until green. Record the final
-     outcome in Progress notes.
-   - Commit the body on its own once review is green.
+   - **Two different commands, for two different jobs. Do not
+     substitute one for the other.**
+     - `tessl eval run` executes the scenario and is what "the
+       scenario is the contract" refers to. This is the gate.
+     - `tessl review run skills/git-workflow/` is an asynchronous
+       *quality* review of the skill text — it never runs the
+       scenario. Useful for prose and structure; it cannot tell you
+       whether the skill works.
+     An earlier form of this step gated only on `tessl review run`,
+     which meant the contract was never executed.
+   - Iterate with `tessl review run` and `tessl eval lint`, which are
+     cheap, and checkpoint with `tessl eval run`, which is not. A
+     single-scenario run cost 50 credits against a daily budget of
+     300, so roughly six runs a day: treat each as a deliberate
+     checkpoint rather than a save action. Pass `--agent`/`--model`
+     explicitly; the default model is not the one the skill will be
+     used with.
+   - Record the final `tessl eval run` identifier and outcome in the
+     commit message, not in Progress notes — Step 6 deletes this file.
+   - Commit the body on its own once the scenario passes.
    - Files changed: `skills/git-workflow/SKILL.md`.
 
 5. **Exercise the agreed naming defaults and the isolation path
    end-to-end.**
-   - **Depends on**: Steps 1 and 4. Step 1 because the worktree
-     directory must be ignored before a worktree is created here,
+   - **Depends on**: Step 1 landed, and Step 4 landed. Step 1 because
+     `.worktrees/` must be ignored before a worktree is created here,
      or the rehearsal dirties `git status` and invalidates the
-     contention check it is trying to demonstrate. Step 4 because
-     the procedure being rehearsed is the one the skill body
-     describes.
-   - Run the skill's own procedure against this repository and
-     record the verbatim command transcript in Progress notes.
-     Cover, at minimum:
+     contention check it is trying to demonstrate. Step 4 because the
+     procedure being rehearsed is the one the skill body describes.
+   - **Rehearse isolation as genuine parallelism, not as a dirty
+     tree.** Because each artefact lands as it completes, and landing
+     returns the primary checkout to trunk clean, a single-threaded
+     run of this plan never triggers the contention check at all —
+     ADR 0003's Consequences now records this. Creating a dirty tree
+     on purpose would rehearse a condition that does not arise. So
+     overlap the two artefacts deliberately: begin Step 2 while
+     `chore-gitignore-worktrees` is still open, so `skill-git-workflow`
+     meets a primary checkout that is genuinely occupied and isolates
+     for the real reason.
+   - Run the skill's own procedure against this repository. Cover, at
+     minimum:
      - Both branches produced by this plan named per the defaults
        that ADR 0003 agreed and nothing has yet used:
        `chore-gitignore-worktrees` and `skill-git-workflow`, both
        `<type>-<slug>` because neither artefact carries a number.
      - The contention check actually run — `git rev-parse
        --abbrev-ref HEAD` and `git status --porcelain` — with its
-       output, and the path it selected.
+       output, **for both arms**: once selecting the primary checkout
+       while it was on trunk and clean, and once selecting isolation
+       while the first artefact was in flight.
      - At least one worktree created at `.worktrees/<branch>` so the
        isolation path is exercised rather than assumed, with
        `git status --porcelain` afterwards showing a clean tree
@@ -320,47 +466,51 @@ numbered artefacts.
      - `.claude/` present inside that worktree after bootstrap;
        `.venv/`/`node_modules/` absent.
      - The fork point derivation run against this repository, and
-       which of the four rungs it landed on.
+       which of the four rungs it landed on. Expect the third:
+       there is no local `dev` or `develop`, and
+       `refs/remotes/origin/HEAD` resolves to `main`.
+     - The availability check for a pull request, and which path it
+       selected. This repository has a remote, so it selects the
+       pull-request path — meaning the local-merge fallback is *not*
+       exercised here and is covered only by the eval fixture, which
+       deliberately has no remote.
      - An unmerged branch and worktree left in place across at
        least one subsequent branching operation, confirming nothing
        removes them automatically.
+   - **Record the verbatim transcript in Step 6's commit message**,
+     not in Progress notes. Progress notes live in this file, which
+     Step 6 deletes, so evidence recorded there would be destroyed by
+     the act it is evidence for.
    - Files changed: none tracked. Git refs and ignored
      `.worktrees/` content only.
 
 6. **Remove this plan when its work is complete.**
    - **Depends on**: Step 5.
-   - Flip `status:` from `draft` to `in-progress` when Step 1 or
-     Step 2 begins.
    - There is no `done` status. Completion is expressed by deleting
-     this plan file: `git rm plans/0003-git-workflow.md` as the
-     final commit on the last implementation branch, immediately
-     preceding its merge in Step 7, so the removal rides with the
-     changes that make it true. The commit carries the trailer
-     `Completes: plans/0003-git-workflow.md` and a body saying, in
-     sentences, what the plan produced: the `.worktrees/` gitignore
-     entry and the `git-workflow` skill with its eval scenario
-     `evals/git-workflow-0/`.
-   - ADR 0003 is already `accepted` — there is no ADR status
-     transition in this plan, and the ADR must not be edited from
-     this plan's commits.
+     this plan file: `git rm plans/0003-git-workflow.md`.
+   - **This removal takes a branch of its own.** By ADR 0003's
+     bookkeeping test a change that has nothing to ride with has an
+     independent truth condition and is therefore work. Step 5
+     changes no tracked file, so there is no later substantive commit
+     for the removal to accompany — and riding it on Step 4's branch
+     instead would declare the plan complete before the rehearsal that
+     completes it. Branch `chore-complete-plan-0003`. This is how plan
+     0004 completed: `5f218ae`, a lone deletion on its own branch,
+     merged at `d46fb34`.
+   - The commit carries the trailer
+     `Completes: plans/0003-git-workflow.md` and a body that does two
+     things: says in sentences what the plan produced — the
+     `.worktrees/` gitignore entry, and the `git-workflow` skill with
+     its eval scenario `evals/git-workflow-0/` — and carries Step 5's
+     verbatim rehearsal transcript. The transcript is what makes this
+     commit substantive rather than empty bookkeeping, and this is the
+     only durable place it can live.
+   - ADR 0003 is `accepted` and must not be edited from this plan's
+     commits. Its revision to pull-requests-by-default was made
+     separately, on `adr-0003-git-workflow`, before this plan was
+     revised.
+   - Land this branch as the final integration. Nothing follows it.
    - Files changed: `plans/0003-git-workflow.md` (removed).
-
-7. **Integrate and clean up, per ADR 0003.**
-   - **Depends on**: Step 6.
-   - Merge each artefact branch into the branch it forked from with
-     `git merge --no-ff`. Never `--squash`. Do not allow a
-     fast-forward.
-   - Where integration goes through GitHub, use
-     `gh pr merge --merge` explicitly. The default action in the web
-     UI is a squash merge and would silently reverse the decision.
-   - Delete each merged branch. Remove each worktree that backed a
-     merged branch with `git worktree remove`, adding `--force`
-     where dependencies were installed into it.
-   - Return the primary checkout to trunk.
-   - Leave any deliberately unmerged experiment branch and worktree
-     alone.
-   - Files changed: none tracked. Git refs and ignored
-     `.worktrees/` content only.
 
 ## Dependencies and parallelisation
 
@@ -370,6 +520,16 @@ until the named step is complete — not that it merely reads better
 afterwards. This annotation is an extension beyond what
 `skills/plans/SKILL.md` currently specifies; the skill defines steps
 as a strictly ordered list with no dependency concept.
+
+**"Complete" now means "landed".** Because each artefact lands as it
+completes rather than being batched into a final integration step, a
+dependency on a step is a dependency on its output being on trunk,
+where anything branching afterwards can see it. That is a sharper
+definition than the one this plan started with, and a more useful one:
+under batching, "Step 5 depends on Step 1" was satisfiable in
+appearance while `.gitignore` was still sitting on an unmerged branch,
+which is precisely the cycle the review found. Worth carrying back
+into the `plans` skill if the dependency extension is made official.
 
 **Two tracks.**
 
@@ -383,11 +543,11 @@ as a strictly ordered list with no dependency concept.
   the scenario. No two of these three can run concurrently without
   abandoning the workflow ADR 0002 established.
 
-**Rejoin.** Step 5 is the join point: it requires both tracks. Steps
-5 → 6 → 7 are sequential thereafter.
+**Rejoin.** Step 5 is the join point: it requires both tracks landed.
+Steps 5 → 6 are sequential thereafter.
 
-**Critical path**: 2 → 3 → 4 → 5 → 6 → 7. Six of the seven steps.
-Track A removes one step from that path and nothing else.
+**Critical path**: 2 → 3 → 4 → 5 → 6. Five of the six steps. Track A
+removes one step from that path and nothing else.
 
 **Would parallel tracks mean separate artefacts here?** Yes. Under
 ADR 0003 the unit of work is the artefact, and Tracks A and B are
@@ -397,17 +557,33 @@ therefore means two branches — `chore-gitignore-worktrees` and
 `skill-git-workflow` — and, because the second strand meets a
 primary checkout that is no longer on trunk and clean, a worktree at
 `.worktrees/<branch>` for whichever strand starts second. Two
-branches, two merges.
+branches, two landings.
 
-**Honest verdict**: this plan is inherently close to sequential. The
-only genuinely independent work is a one-line `.gitignore` edit, and
-running it concurrently buys no wall-clock time worth the two
-branches and one worktree it costs. Concurrency here is worth doing
-for a different reason, not for speed: it is the cheapest available
-rehearsal of the contention path and the worktree bootstrap that
-Step 5 has to exercise anyway. Run Track A concurrently as a
-rehearsal if you want the isolation path exercised early; run it
-first, sequentially, if you do not.
+**Honest verdict, and it has changed.** This plan is inherently close
+to sequential; the only genuinely independent work is a one-line
+`.gitignore` edit, and running it concurrently buys no wall-clock time
+worth the branch and worktree it costs. But the concurrency is now
+**mandatory rather than optional**, for a reason that has nothing to
+do with speed.
+
+Landing each artefact as it completes returns the primary checkout to
+trunk clean, so a strictly sequential run never satisfies the
+contention check and never creates a worktree. Step 5 has to exercise
+the isolation path, and the only way it arises under merge-as-you-go is
+genuine overlap. So Track A must stay open while Track B begins — which
+is why Step 1 carries an explicit instruction not to land before Step 2
+has started. The earlier form of this plan offered concurrency as a
+choice ("run it first, sequentially, if you do not"); that option is
+withdrawn, because taking it would leave the isolation path unrehearsed.
+
+This is the more interesting result of the dependency prototype than
+the original one. The first pass concluded the work was sequential and
+that dependency analysis had mostly proved a negative. The second pass
+finds a dependency that runs the other way: a step needs another step
+*not yet* to have landed. A `Depends on` line cannot express that, and
+nor could any dependency graph of the usual kind — it is a mutual
+exclusion in time, not an ordering. If the `plans` skill takes on
+dependencies, that is the case that will break the schema.
 
 ## Non-goals
 
@@ -428,15 +604,24 @@ must not be added to it:
   whose `name` is `git-workflow` and whose `description` carries
   TRIGGER and SKIP clauses, the TRIGGER firing before the first edit
   and naming markdown decision artefacts explicitly.
-- `tessl review run skills/git-workflow/` exits clean.
+- `tessl eval run` on `evals/git-workflow-0/` passes. This is the
+  contract. `tessl review run skills/git-workflow/` also exits clean,
+  which is a separate check on prose quality and is not a substitute.
 - The skill body covers every decision enumerated in Step 4: branch
   before edit; one branch per artefact with "artefact" deferred to
   the governing skill and never defined by this skill; delegated
   commit cadence; the two-command contention check and the
   `.worktrees/<branch>` fallback; the four-rung fork-point
   derivation with no per-repository configuration; both naming
-  forms; `--no-ff` with squash prohibited and `gh pr merge --merge`
-  stated explicitly with its reason; merging not mandatory and
+  forms; the required integration outcome of a two-parent merge
+  commit, never squashed and never fast-forwarded; a pull request as
+  the default and a local merge as the fallback, with the
+  availability check given as a command; the host named nowhere and
+  the platform commands deferred to a skill that does not yet exist;
+  what a pull request buys (enforcement) and does not buy (review),
+  with the agent landing its own work until a separate decision says
+  otherwise; a plan merging when it is written, with both reasons;
+  merging not mandatory and
   unmerged work never auto-removed; split worktree bootstrap
   (`.claude/`, `.env`, `.mcp.json` copied; `.venv/`,
   `node_modules/` delegated); cleanup deleting the branch, removing
@@ -447,29 +632,39 @@ must not be added to it:
   first commit naming direct upstreams only, trailers for edges
   between artefacts only, the mandatory reason in the body, and a
   squash discarding trailers.
-- `evals/git-workflow-0/` contains `task.md`, `scenario.json` and
-  `criteria.json`. `scenario.json`'s `description` names the
-  `git-workflow` target. `criteria.json` is a `weighted_checklist`
-  covering the assertions listed in Step 3. The scenario was
-  hand-authored, not generated.
+- `evals/git-workflow-0/` contains `task.md`, `criteria.json` and an
+  executable `setup.sh`, plus `scenario.json` if a description is
+  wanted. `tessl eval lint evals/` reports the scenario valid.
+  `criteria.json` is a `weighted_checklist` covering the assertions
+  listed in Step 3, asserting git state against `solution/.git`
+  directly rather than through any agent-written transcript, and with
+  no criterion made conditional on whether the agent committed. The
+  fixture is built by `setup.sh` and not by instructions to the agent
+  in `task.md`. The scenario was hand-authored, not generated.
 - `git log --graph` on the trunk shows, for the skill artefact, a
   merge commit with two parents whose branch side carries three
   distinct commits in order: frontmatter, eval scenario, body. A
   single squashed commit fails this check.
-- The branches `chore-gitignore-worktrees` and `skill-git-workflow`
-  existed and are gone after merge; no `.worktrees/` directory
-  remains for either; the primary checkout is on trunk.
-- Progress notes record the verbatim transcript from Step 5,
-  including which rung the fork-point derivation landed on in this
-  repository.
-- No hook of any kind and no branch-protection configuration was
-  added. See Non-goals.
+- The branches `chore-gitignore-worktrees`, `skill-git-workflow` and
+  `chore-complete-plan-0003` existed and are gone after landing; no
+  `.worktrees/` directory remains for any of them; the primary
+  checkout is on trunk.
+- The three artefacts landed separately, in order, rather than in one
+  batch at the end: trunk carries three merge commits, not one.
+- Step 6's commit message contains the verbatim transcript from Step
+  5, including which rung the fork-point derivation landed on in this
+  repository and the output of the contention check for both arms.
+  Nothing relies on Progress notes, which are deleted with the file.
+- No hook of any kind was added, and this plan added no
+  branch-protection configuration. See Non-goals. The repository-level
+  disabling of squash and rebase merges on 2026-09-22 was done outside
+  this plan.
 - `docs/adr/0003-git-workflow.md` is unmodified by every commit this
-  plan produces.
-- `plans/0003-git-workflow.md` is absent from the tree after the
-  last merge. The final commit before that merge removes it,
-  carries `Completes: plans/0003-git-workflow.md`, and has a body
-  saying what the plan produced:
+  plan produces. Its revision to pull-requests-by-default was a
+  separate artefact on `adr-0003-git-workflow`.
+- `plans/0003-git-workflow.md` is absent from the tree after the last
+  landing. The commit that removes it carries
+  `Completes: plans/0003-git-workflow.md`:
   `git log --format='%(trailers:key=Completes,valueonly)' | grep -c plans/0003`
   is 1.
 
@@ -478,6 +673,21 @@ must not be added to it:
 - 2026-09-14: plan drafted against ADR 0003 (status `accepted`), on
   branch `plan-0003-git-workflow`, per the numbered-artefact naming
   rule the ADR agreed.
+- 2026-09-22: merged at `d3a992f` and revised. Merged first because
+  ADR 0004's rule that revising an ADR revises its plans reaches only
+  plans *in the tree*, and because an abandoned plan whose branch
+  never merged leaves no reachable record. Revised on
+  `adr-0003-git-workflow` alongside the ADR revision it follows from,
+  per ADR 0004's same-branch rule. Changes: merge-as-you-go replacing
+  the batched integration step, which removes the cycle an
+  independent review found; scope fixed at one skill with the
+  platform boundary stated but not implemented; Step 3 rebuilt around
+  `setup.sh` and direct assertions on `solution/.git` after a probe
+  established that the scorer inspects git state; Step 4's exit
+  criterion corrected from `tessl review run` to `tessl eval run`;
+  Step 6 given its own branch with Step 5's transcript as its commit
+  body; the status flip moved to Step 1; the dependency section
+  re-derived.
 - Open judgement calls carried into execution, to be resolved in the
   skill body and recorded here when they are:
   - ADR 0003 names no skill; `git-workflow` is taken from the eval
