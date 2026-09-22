@@ -133,7 +133,12 @@ A configuration change requires a restart. This is acceptable; it is
 also honest about what was already true.
 EOF
 
-git add -A
+# Stage explicit paths, never `git add -A`. The harness documents only
+# that setup.sh is "auto-run if present" and does not say what else shares
+# the directory it runs in. If task.md or criteria.json were colocated, a
+# wildcard add would commit the answer key into the agent's own repository
+# and every criterion below would become an instruction-following test.
+git add README.md .gitignore CONTRIBUTING.md docs
 git commit -q -m "Initial import of the orchard service"
 
 # ---------------------------------------------------------------------------
@@ -153,7 +158,7 @@ cat > RELEASE-NOTES.md <<'EOF'
 - Drop the legacy `/v1/ingest` endpoint.
 EOF
 
-git add -A
+git add RELEASE-NOTES.md
 git commit -q -m "Pin the release notes for 1.4"
 
 # ---------------------------------------------------------------------------
@@ -204,7 +209,7 @@ ingest-edge route is available now and is reversible.
 This note is finished. Someone needs to make the decision and record it.
 EOF
 
-git add -A
+git add docs/discovery/0001-event-volume.md
 git commit -q -m "Add discovery note on ingest event volume"
 
 # Anchors for the scorer. These tags mark where the fixture ended, so that
