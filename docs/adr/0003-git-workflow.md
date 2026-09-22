@@ -210,13 +210,14 @@ conventions it replaced hardcoded a `dev` trunk and `feature/*`
 naming that held in only a minority of repositories. Which command
 implements the mechanism belongs to whatever skill knows the host.
 
-Two properties of the mechanism are not negotiable, because platforms
-default against both. The merge must create a merge commit with two
-parents, and it must not squash. On GitHub the default action of the
-merge button is a squash, so the merge action has to be stated
-explicitly rather than accepted; and `--squash` and `--rebase` should
-be disabled at the repository level where the platform allows it, so
-that the prohibition is enforced rather than merely written down.
+Two properties of the mechanism are not negotiable, and hosts commonly
+default against both: the merge must create a merge commit with two
+parents, and it must not squash. Where a host's default merge action is
+a squash — as at least one major host's is — the action must be stated
+explicitly rather than accepted, and squash and rebase merges should be
+disabled at the repository level wherever the host allows it, so that
+the prohibition is enforced rather than merely written down. Which
+host, and which setting, is for the skill that knows the host.
 
 ### A plan merges when it is written
 
