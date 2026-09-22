@@ -1,12 +1,10 @@
 ---
-title: Skill-forge — test-first workflow for authoring skills
+title: How are new skills authored?
 status: accepted
 date: 2026-09-01
-supersedes: null
-superseded_by: null
 ---
 
-# Skill-forge — test-first workflow for authoring skills
+# How are new skills authored?
 
 > **Directive for the implementer**: when implementing this ADR, invoke the `plans` skill to produce the corresponding plan artifact. Do not begin implementation without a plan.
 

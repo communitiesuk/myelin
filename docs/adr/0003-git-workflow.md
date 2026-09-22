@@ -1,12 +1,10 @@
 ---
-title: Git workflow — branch per artefact
+title: Where does work happen, and how does it land?
 status: accepted
 date: 2026-09-04
-supersedes: null
-superseded_by: null
 ---
 
-# Git workflow — branch per artefact
+# Where does work happen, and how does it land?
 
 > **Directive for the implementer**: when implementing this ADR, invoke the `plans` skill to produce the corresponding plan artifact. Do not begin implementation without a plan.
 
