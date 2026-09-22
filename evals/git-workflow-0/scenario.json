@@ -1,0 +1,1 @@
+{ "description": "Writing a markdown decision artefact in a repository whose checkout is dirty and whose conventions file names the wrong trunk: branch before edit, isolate into a worktree, derive the fork point, land through a two-parent merge, clean up" }
