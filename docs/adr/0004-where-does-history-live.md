@@ -183,8 +183,8 @@ targets a decision that has changed under it.
 
 ### The bookkeeping exception is adopted as a revision to ADR 0003
 
-The decision proposed on branch `adr-0004-bookkeeping-not-an-artefact`
-stands on its merits: a change with no independent truth condition is
+The decision proposed at tag `rejected/adr-0004-bookkeeping` stands
+on its merits: a change with no independent truth condition is
 bookkeeping, needs no branch of its own, and rides with the change
 that makes it true. It is adopted, and recorded by revising ADR 0003
 in place. The `refines` and `refined_by` fields it proposed are not
@@ -305,9 +305,11 @@ question and is deferred to a separate ADR. Until it exists,
 - `docs/adr/0001-artifact-embedded-skill-directives.md` — the
   plugin's cost gradient from left to right, which this ADR
   protects.
-- Branch `adr-0004-bookkeeping-not-an-artefact` — the refining ADR
-  whose cost prompted this decision, and whose content is adopted
-  as a revision to ADR 0003.
+- Tag `rejected/adr-0004-bookkeeping` — the refining ADR whose cost
+  prompted this decision, and whose content is adopted as a revision
+  to ADR 0003. An annotated tag rather than a branch: the commit
+  stays reachable without appearing as work in flight, and the tag
+  object carries the reason the path was closed.
 - `docs/discovery/0001-history-skill.md` — open questions for the
   history skill.
 - `git-interpret-trailers(1)` — the trailer format and tooling.
