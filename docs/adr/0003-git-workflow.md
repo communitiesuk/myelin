@@ -97,13 +97,35 @@ paid only when isolation is the point.
 ### Fork point is derived, not configured
 
 The trunk to branch from is the first of: a local `dev` branch, a
-local `develop` branch, the branch named by
-`refs/remotes/origin/HEAD`, or — where that symbolic ref is unset —
-the repository's existing default branch. This reproduces the
-intended behaviour across every repository examined without any
-per-repository configuration: repositories carrying a `dev` trunk get
-the trunk workflow, and single-developer repositories branch from
-`main`, `master` or `develop` directly.
+local `develop` branch, or the branch named by
+`refs/remotes/origin/HEAD`. All three are refs that resolve. There is
+no fourth rung. This reproduces the intended behaviour across every
+repository examined without any per-repository configuration:
+repositories carrying a `dev` trunk get the trunk workflow, and the
+rest branch from whatever `origin/HEAD` names.
+
+**A repository in which none of the three resolves is not set up for
+this workflow, and the workflow stops rather than guessing.** Say what
+is missing and what would fix it; do not proceed on an assumption
+about which branch is the trunk.
+
+This is a precondition on the repository, not a branching model. It
+does not require a `dev` branch — `git remote set-head origin -a`
+satisfies it in one command for any repository with a remote, and the
+earlier version of this decision already depended on `origin/HEAD` for
+every repository that had no `dev`. What it removes is the fourth
+rung, which named "the repository's existing default branch" without
+saying how to find it. That rung had no method: git records a default
+branch in `init.defaultBranch`, which is configuration, and this
+section forbids reading the fork point from configuration. Any
+implementation therefore had to invent one, and the first one did —
+a hardcoded list of branch names, under a heading that says derived
+and never configured.
+
+Stopping is the right failure here because a wrong fork point is the
+one error in this workflow that is not visible when it is made. A
+branch cut from the wrong trunk looks correct until it is merged, and
+by then it carries commits that were never meant to be on it.
 
 ### Naming
 
@@ -125,7 +147,7 @@ to ride with the changes that justify them.
 
 A change is **bookkeeping** when it has no independent truth
 condition: it is true only because some other work is true. A plan's
-`status: done` is not true because it was typed; it is true because
+completion is not true because it was typed; it is true because
 the work it describes finished. A change that would still need to be
 made had the accompanying work not happened is **work**, whatever
 file it touches.
@@ -325,6 +347,19 @@ artefact rather than from trunk.
   derivation rule above reproduces the intended behaviour everywhere
   it was tested, and configuration that must be maintained per
   repository will not be.
+- **A fourth rung naming "the repository's existing default branch".**
+  The original form of this decision, removed above. It read as a
+  derivation but was not one: git records a default branch only in
+  `init.defaultBranch`, which this section forbids reading, so an
+  implementation had to invent a method. The first one invented a
+  hardcoded precedence over branch names — including `trunk`, a name
+  appearing nowhere in this ADR — which is the same shape of
+  hardcoding this decision exists to correct, one level along.
+- **Guessing the trunk where nothing resolves**, by taking the only
+  local branch or the first of a list. Rejected: it produces a silent
+  wrong answer in the one case where the error stays invisible until
+  merge, and a repository with no `dev`, no `develop` and no
+  `origin/HEAD` is a repository nobody has finished setting up.
 - **Adopting the conventions in `IFS_research/CLAUDE.md` directly.**
   These were the starting point for this decision, but they hardcode
   a `dev` trunk and `feature/*` naming that hold in only a minority
@@ -377,6 +412,14 @@ artefact rather than from trunk.
   those skills claim actually true.
 - The workflow carries no per-repository configuration and can be
   applied to a new repository without being told anything about it.
+- A repository with no remote and no `dev` or `develop` branch is now
+  out of scope until one is added. Across the 36 repositories examined
+  this is three, all of them scratch repositories with no remote at
+  all. The cost is one command; the alternative was a guess that fails
+  invisibly.
+- The fork-point ladder is three rungs of resolvable refs and has no
+  fallback, so an implementation of it can be read for correctness
+  rather than for plausibility. Any future rung must name a ref.
 - Landing now depends on the network and on the host being reachable,
   where before a merge was a local operation. A repository with no
   remote takes the fallback path and is unaffected; a repository whose
