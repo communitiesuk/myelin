@@ -702,10 +702,14 @@ must not be added to it:
     branch is not the derived fork point (a repository with both
     `main` and a local `dev`), the plan reads "on trunk" as "HEAD
     equals the derived fork point".
-  - The ADR says integration may go through GitHub but gives no rule
-    for choosing between a local `--no-ff` merge and a PR. The plan
-    treats the local merge as the default and the PR path as what
-    applies where the repository already works through PRs.
+  - ~~The ADR says integration may go through GitHub but gives no
+    rule for choosing between a local `--no-ff` merge and a PR.~~
+    *Resolved 2026-09-22 by the ADR revision, and resolved the other
+    way round:* a pull request is the default wherever the host
+    offers one and a local merge is the fallback, with the choice
+    made by a derived availability check rather than by whether the
+    repository "already works through PRs". The plan's earlier
+    reading is recorded in ADR 0003's Alternatives as a reversal.
   - The worktree bootstrap list is `.claude/`, `.env`, `.mcp.json`
     "and similar". The skill body should close this to an
     enumerated default list plus a stated heuristic rather than
