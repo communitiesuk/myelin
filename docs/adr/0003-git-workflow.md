@@ -47,7 +47,8 @@ must derive its targets rather than be told them.
 
 ## Decision
 
-Adopt a branch-per-artefact workflow, executed in a worktree, with
+Adopt a branch-per-artefact workflow, isolated on contention, landed
+through the host's pull-request mechanism where one exists, with
 integration that preserves commit structure.
 
 ### The unit of work is an artefact
@@ -168,14 +169,75 @@ auditability claim in `test-first-workflow` false, and it discards
 the individual commits' trailers, which ADR 0004 requires in order to
 record the artefact graph. A fast-forward is also avoided, because it
 keeps the individual commits but loses the record of which artefact
-they belonged to. Where integration goes through GitHub,
-`gh pr merge --merge` must be specified explicitly, since the
-platform's default action is a squash merge and would silently
-reverse this decision.
+they belonged to.
 
 Merging is not mandatory. An experiment may remain unmerged; its
 branch and worktree are left in place and are never removed
 automatically.
+
+### Integration goes through a pull request where the host offers one
+
+A branch is proposed and landed through the host's pull-request
+mechanism whenever the repository has a remote whose host provides
+one. A local merge is the **fallback**, used when there is no such
+remote — not an equal alternative chosen by preference.
+
+This reverses the original form of this decision, which treated a
+local merge as the normal path and a pull request as what happens
+"where integration goes through GitHub". The reason for the original
+was that a pull request is ceremony for a single-developer project.
+That is a cost model for a *human* — a web UI, a wait on a colleague,
+a context switch. An agent performing the same steps pays none of it,
+and this workflow is designed to be executed by an agent. What remains
+once the ceremony argument is removed is that a pull request is
+strictly stronger.
+
+What it is stronger at is **enforcement**, and only that. The
+platform can refuse a squash merge and refuse a direct push to trunk,
+so the rules above stop depending on an agent remembering them. It
+buys no review: an agent that opens a pull request and immediately
+merges it has been reviewed by nobody. Any claim that this provides
+human acceptance would be false, and the absence is the reason a
+separate decision is needed about when an agent may land its own work
+and when it must escalate. Until that decision exists, the agent
+lands its own work.
+
+**The host is an implementation detail.** This decision names the
+mechanism — a pull request, merged so as to preserve commit structure
+— and never the tool that performs it. Naming a platform here would
+repeat, one level up, the error this ADR exists to correct: the
+conventions it replaced hardcoded a `dev` trunk and `feature/*`
+naming that held in only a minority of repositories. Which command
+implements the mechanism belongs to whatever skill knows the host.
+
+Two properties of the mechanism are not negotiable, because platforms
+default against both. The merge must create a merge commit with two
+parents, and it must not squash. On GitHub the default action of the
+merge button is a squash, so the merge action has to be stated
+explicitly rather than accepted; and `--squash` and `--rebase` should
+be disabled at the repository level where the platform allows it, so
+that the prohibition is enforced rather than merely written down.
+
+### A plan merges when it is written
+
+A plan's branch is merged as soon as the plan is written and
+reviewed, before implementation against it begins. A plan is not held
+back until the work it describes is finished.
+
+Two things go wrong otherwise, both observed. ADR 0004 requires that
+revising an ADR revises every plan **in the tree** whose `adr:` field
+names it, on the same branch; a plan on an unmerged branch is outside
+the reach of that rule and cannot be edited from the ADR's branch at
+all. And a plan abandoned before its branch merged produces no
+removing commit on trunk, so the `Abandons` trailer has nothing to
+attach to and the plan leaves no reachable record — the file was
+never in the tree to be removed from it.
+
+Merging on creation makes ADR 0004's "in the tree" true by
+construction, so that rule needs no broadening. It also fixes the
+order of work: implementation branches fork from a trunk that already
+carries the plan, which is what allows the plan's own removal on
+completion to be a `git rm` of a file that is actually there.
 
 ### Worktree bootstrap is split
 
@@ -222,6 +284,31 @@ artefact rather than from trunk.
   reviewed as a decision.
 - **Squash merge.** Rejected: it is the direct cause of the problem
   in `1e7d948`.
+- **A local merge as the normal path, with a pull request only "where
+  integration goes through GitHub".** The original form of this
+  decision, reversed here. It rested on a pull request being ceremony
+  for a single-developer project, which is a cost model for a human
+  and not for the agent that executes this workflow. It also left the
+  condition untested: unlike the fork point, which is derived, and
+  contention, which is checked, "where integration goes through
+  GitHub" had no test attached — so on a protected trunk the workflow
+  would merge locally, succeed, and then fail to push, leaving trunk
+  diverged with the artefact apparently landed.
+- **Requiring a human to approve every pull request.** Rejected here
+  as the wrong default and deferred as a question in its own right.
+  Applied to everything it makes each cheap revision cost a review,
+  which is the friction that made local merges attractive in the
+  first place. What is wanted is that an agent lands its own work
+  when confidence has been earned and escalates when it has not, and
+  deciding how that confidence is established is a separate decision.
+- **Naming the platform tool in this decision.** Rejected: it repeats
+  one level up the error this ADR corrects. The mechanism is stable
+  across hosts; the command is not.
+- **Holding a plan's branch unmerged until its work is done.** What
+  was in fact done for plan 0003, and reversed above. It puts the plan
+  outside the reach of ADR 0004's rule that revising an ADR revises
+  its plans, and leaves an abandoned plan with no reachable record
+  because its file never entered the tree.
 - **Always work in a worktree, never in the primary checkout.** The
   original form of this decision, rejected on first contact with it:
   drafting this ADR at
@@ -289,6 +376,38 @@ artefact rather than from trunk.
   those skills claim actually true.
 - The workflow carries no per-repository configuration and can be
   applied to a new repository without being told anything about it.
+- Landing now depends on the network and on the host being reachable,
+  where before a merge was a local operation. A repository with no
+  remote takes the fallback path and is unaffected; a repository whose
+  host is unreachable cannot land an artefact at all.
+- Whether a pull request is available has to be established, not
+  assumed. It is the same shape of check as the contention check —
+  does a remote exist, and does its host offer the mechanism — and
+  like the fork point it must be derived rather than configured.
+- The content of this decision now splits across a boundary. The rules
+  that hold everywhere — branch before edit, one branch per artefact,
+  the bookkeeping test, fork-point derivation, contention, naming,
+  and the required *outcome* of integration — are separable from the
+  commands that realise integration on a particular host. Whether
+  that becomes two skills is a decision for whatever implements this,
+  but the boundary is now in the decision rather than latent in it.
+- A pull request merged by the agent that opened it records no human
+  acceptance. Anything that needs review has to say so and be
+  escalated deliberately, and until the escalation rule exists there
+  is nothing in this decision that stops an agent landing a bad
+  artefact. This is the single largest gap the revision opens.
+- Merging a plan on creation means a plan is public before the work
+  it describes has been attempted, so a plan found defective during
+  implementation is corrected by a revision commit on trunk rather
+  than by amending an unmerged branch. That is the intended
+  behaviour — a plan is an artefact of record, not a draft — but it
+  makes plan revisions visible and frequent.
+- Because a merge returns the primary checkout to trunk clean, a
+  single-threaded plan never triggers the contention check and never
+  creates a worktree. Isolation is exercised only by genuine
+  parallelism. Anything that sets out to demonstrate the isolation
+  path has to create real contention rather than rely on a dirty
+  tree.
 - More branches and more merges: a single piece of work that
   previously produced one commit now produces a discovery note, an
   ADR, a plan and an implementation, each with its own branch, merge
@@ -326,10 +445,15 @@ artefact rather than from trunk.
 
 - `docs/adr/0001-artifact-embedded-skill-directives.md`
 - `docs/adr/0002-skill-forge.md`
+- `docs/adr/0004-where-does-history-live.md` — the trailer vocabulary
+  the no-squash rule protects, and the rule that revising an ADR
+  revises its plans, which the merge-on-creation decision above makes
+  reachable for every plan.
 - `skills/test-first-workflow/SKILL.md` — red/green commit mandate
 - `skills/skill-forge/SKILL.md` — frontmatter/scenario/body commits
 - `skills/plans/SKILL.md` — status transitions ride with changes
 - `skills/adr/SKILL.md` — revision rules
-- Commit `1e7d948`, `plans/0002-skill-forge.md` — the squashed
-  execution that prompted this decision
+- Commit `1e7d948` — the squashed execution that prompted this
+  decision. The plan it executed, `plans/0002-skill-forge.md`, was
+  retired from the tree at `a552a82` and is reachable there.
 - `githooks(5)`, `post-checkout` — fires on `git worktree add`
