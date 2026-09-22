@@ -1,6 +1,6 @@
 ---
 title: Git workflow — branch per artefact
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-09-14
 deferred_reason: null
@@ -167,6 +167,33 @@ rule that a plan merges on creation.
      and with no `.worktrees/` entry in `.gitignore`. Create no
      remote: this scenario exercises the local-merge fallback, which
      is the path ADR 0003 assigns to a repository with no host.
+   - **Every element of the fixture exists to let some assertion
+     fail.** An assertion that cannot fail against the fixture is not
+     testing anything, and the fixture list above is not by itself
+     sufficient for the assertion list below. It must therefore also
+     create:
+     - `.venv/` and `node_modules/`, with real contents, in the base
+       checkout. Without them, "the git workflow did not create these
+       in the worktree" is vacuously true, because there was nothing
+       to copy. This is a defect that shipped in the first authoring
+       of this scenario and is the reason this paragraph exists.
+     - `.claude/` **gitignored**, not tracked. If it is tracked,
+       `git worktree add` materialises it and the bootstrap-copy rule
+       is never exercised.
+     - `main` positioned so that forking from it produces a
+       *different tree* from forking from `dev` — for example by
+       putting the artefact's upstream on `dev` only. If the two
+       produce identical trees, the fork-point assertion cannot
+       distinguish a correct derivation from a lucky guess.
+     - At least one **decoy naming the wrong trunk**, and preferably
+       two of different kinds: prose in a contributing or conventions
+       file, and a configuration value such as a local git config key.
+       ADR 0003 requires the fork point to be derived and never read
+       from configuration; without something plausible to be misled
+       by, that assertion is untestable.
+     - An **upstream artefact** for the ADR to derive from, such as a
+       discovery note, so that the `Derives-From` assertion below has
+       a definite value to name.
    - The scenario describes the smallest concrete behaviour the
      skill must eventually satisfy, not the whole of ADR 0003. Use
      this slice: the agent is asked to write a new ADR — a markdown
@@ -185,20 +212,45 @@ rule that a plan merges on creation.
      scorer looked. Do not weaken a criterion with a conditional like
      `evals/scenario-0`'s "If the agent committed its work"; the
      scorer can determine whether it did.
+   - **Assert only against capabilities that have been demonstrated.**
+     The probe established that the scorer can run git against the
+     solution directory. It established nothing else. In particular,
+     whether the scorer can read a transcript of the commands the
+     agent executed is **unverified**, so no criterion may depend on
+     it — an assertion resting on an untested harness capability is
+     worth no more than the capability turns out to be. If an
+     assertion cannot be made from git state and the working tree,
+     either find durable evidence for it or drop it and say why.
    - Assertions must be tight enough that a plausible-but-wrong skill
      body fails them. Cover at least:
      - No commit lands directly on trunk; the ADR file does not
        appear in a commit on `dev` except through a merge.
      - The branch is named `adr-NNNN-<slug>` — the numbered form,
        sharing the identifier of the ADR it produces.
-     - Because the checkout is dirty, the work is isolated: a
-       worktree exists at `.worktrees/adr-NNNN-<slug>`, and the
-       primary checkout's own files are untouched.
+     - Because the checkout is dirty, the work is isolated rather
+       than branched in place. **Assert this from evidence that
+       survives cleanup**, not from the worktree itself: the primary
+       checkout's reflog (`.git/logs/HEAD`) records no `checkout:
+       moving from <trunk>` entry, and a `.worktrees/` entry arrives
+       in `.gitignore`, which only a worktree created inside the
+       repository would require. Do **not** assert that a worktree
+       exists at `.worktrees/adr-NNNN-<slug>`: this plan also
+       requires the worktree to be removed on merge, and
+       `git worktree remove` deletes `.git/worktrees/<name>/` while
+       `git branch -d` deletes the branch reflog, so after correct
+       cleanup nothing in git records the path. An assertion whose
+       evidence another step destroys cannot be made.
+     - The primary checkout's own files are untouched: the
+       fixture's uncommitted modification and any untracked file
+       still exist, with their exact content, and appear in no
+       commit.
      - The fork point is the local `dev` branch, not `main`, and
-       not a value read from any configuration file.
-     - `.claude/` is present inside the new worktree; `.venv/` or
-       `node_modules/` are not created there by the git workflow
-       itself.
+       not a value read from any configuration file. The fixture's
+       decoys must have been ignored.
+     - `.venv/` and `node_modules/`, which the fixture places in the
+       base checkout, are **not** copied into the worktree and appear
+       in no commit; `.claude/` was copied rather than moved, so the
+       base checkout still has it.
      - Integration is a merge commit with two parents. A
        fast-forward or a squashed single commit fails this check.
      - After merge the branch is gone, the worktree directory is
@@ -210,8 +262,12 @@ rule that a plan merges on creation.
        0003's "Bookkeeping is not an artefact" table classifies
        exactly that entry as bookkeeping.
      - The first commit on the ADR branch carries a `Derives-From`
-       trailer naming the ADR's direct upstream or, where the ADR
-       has no upstream, carries none.
+       trailer naming the upstream artefact the fixture supplies,
+       as an exact repository-relative path. State the definite case
+       only: "names its upstream, **or** carries none where there is
+       no upstream" is a disjunction a body with no trailer logic
+       satisfies by the second branch, which is why the fixture is
+       required above to supply an upstream.
      - Because the fixture has no remote, integration takes the
        local-merge fallback. The scenario must not require a pull
        request, and a skill body that treats a pull request as
