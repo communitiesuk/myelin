@@ -43,5 +43,6 @@ Produce, in the repository in the current working directory:
   and state the consequence that liveness detection now depends on a
   sampled signal.
 
-The ADR is the whole of the deliverable. Nothing else about how you work
-is specified here; use your judgement.
+Record it the way this repository's work is normally recorded, so that a
+colleague picking the repository up afterwards finds the decision in its
+history and finds nothing of theirs disturbed.

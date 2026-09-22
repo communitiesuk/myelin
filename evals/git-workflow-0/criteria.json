@@ -39,7 +39,7 @@
     },
     {
       "name": "Cleanup on merge",
-      "description": "`git branch --list 'adr-*'` is empty and `git branch` lists only `dev` and `main`; `git worktree list` shows only the primary checkout; `solution/.worktrees/` is absent or an empty directory (an empty leftover parent is acceptable — `git worktree remove` does not delete it — a populated one is not); and `git rev-parse --abbrev-ref HEAD` is `dev`, so the primary checkout is back on trunk and the next artefact would branch from trunk rather than from this one. FAILS IF: the branch still exists after merging; or a populated worktree remains under `.worktrees/`; or HEAD is left on the artefact branch or on `main`.",
+      "description": "PRECONDITION: this criterion scores 0 unless the artefact actually landed — `git rev-list --first-parent fixture-base-dev..dev` must list exactly one commit and it must be a merge. An agent that created no branch and no worktree has nothing to clean up and scores 0 here, not full marks: the checks below distinguish tidying up after yourself from never having made a mess. Given the artefact landed: `git branch --list 'adr-*'` is empty and `git branch` lists only `dev` and `main`; `git worktree list` shows only the primary checkout; `solution/.worktrees/` is absent or an empty directory (an empty leftover parent is acceptable, a populated one is not); and `git rev-parse --abbrev-ref HEAD` is `dev`. FAILS IF: nothing landed; or the branch still exists after merging; or a populated worktree remains; or HEAD is left on the artefact branch or on `main`.",
       "max_score": 8
     },
     {
@@ -54,7 +54,7 @@
     },
     {
       "name": "Local-merge fallback taken, no remote invented",
-      "description": "The fixture repository has no remote, so ADR 0003's pull-request default does not apply and the local-merge fallback is the path. `git remote -v` in the solution directory prints nothing and `git for-each-ref refs/remotes` lists nothing: no `origin` was added, no remote was invented to satisfy CONTRIBUTING.md's instruction to open a GitHub pull request, and nothing was pushed. Integration was the local merge scored above. FAILS IF: a remote was added; or `refs/remotes/` refs exist; or the artefact was left unlanded on `dev` because a pull request could not be opened, which is what a body that treats a pull request as unconditional would produce.",
+      "description": "PRECONDITION: scores 0 unless the artefact landed as the two-parent merge described elsewhere — a body that never integrated has not demonstrated the fallback, it has simply not integrated. Given it landed: `git remote -v` prints nothing and `git for-each-ref refs/remotes` lists nothing, so no remote was invented to satisfy CONTRIBUTING.md's instruction to open a GitHub pull request, and nothing was pushed. FAILS IF: nothing landed; or a remote was added; or refs under `refs/remotes/` exist; or the artefact was left unlanded because a pull request could not be opened, which is what a body treating a pull request as unconditional produces.",
       "max_score": 6
     }
   ]
