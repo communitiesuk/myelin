@@ -441,14 +441,23 @@ rule that a plan merges on creation.
    - Iterate with `tessl review run` and `tessl eval lint`, which are
      cheap, and spend `tessl eval run` only on the three checkpoints.
      A single-scenario run cost 50 credits against a daily budget of
-     300. Point it at the one scenario — `tessl eval run
-     evals/git-workflow-0` — rather than at the plugin directory: a
-     single scenario directory is accepted as a source
-     (`tessl eval lint evals/scenario-0` reports one scenario valid),
-     so running the whole of `evals/` would cost six times as much per
-     checkpoint for no extra signal on this skill. Pass
-     `--agent`/`--model` explicitly; the default model is not the one
-     the skill will be used with.
+     300.
+   - **At the first checkpoint, try `tessl eval run
+     evals/git-workflow-0` and check the scenario count it reports
+     before it charges.** If it finds one scenario, use that form for
+     all three checkpoints; running the whole of `evals/` would
+     otherwise cost six times as much per checkpoint for no extra
+     signal on this skill. This is worth a moment's attention because
+     it is *unverified*: `tessl eval lint` does accept a single
+     scenario directory (`tessl eval lint evals/` reports six valid,
+     `tessl eval lint evals/scenario-0` reports one), and the `run`
+     help says a non-plugin path "is treated as a scenarios
+     directory", but `run` has only been observed against a directory
+     *containing* scenario directories. It prints its count and cost
+     estimate before charging, so the check is free. If it finds
+     nothing, fall back to `tessl eval run .` and accept the cost.
+   - Pass `--agent`/`--model` explicitly; the default model is not the
+     one the skill will be used with.
    - Note for `skill-forge` itself, not to be fixed from this plan:
      it twice gives "`tessl eval run` has no scenario-selection flag"
      as the reason every run picks the new scenario up. Literally true
