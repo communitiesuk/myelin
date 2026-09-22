@@ -1,6 +1,6 @@
 ---
 title: Git workflow — branch per artefact
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-09-14
 deferred_reason: null
