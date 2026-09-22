@@ -1,12 +1,10 @@
 ---
-title: Artifact-embedded skill directives for stage handoffs
+title: How do downstream skills get loaded at the right moment?
 status: accepted
 date: 2026-08-27
-supersedes: null
-superseded_by: null
 ---
 
-# Artifact-embedded skill directives for stage handoffs
+# How do downstream skills get loaded at the right moment?
 
 > **Directive for the implementer**: when implementing this ADR, invoke the `plans` skill to produce the corresponding plan artifact. Do not begin implementation without a plan.
 

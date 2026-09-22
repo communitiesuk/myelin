@@ -1,12 +1,10 @@
 ---
-title: Git workflow — branch per artefact
+title: Where does work happen, and how does it land?
 status: accepted
 date: 2026-09-04
-supersedes: null
-superseded_by: null
 ---
 
-# Git workflow — branch per artefact
+# Where does work happen, and how does it land?
 
 > **Directive for the implementer**: when implementing this ADR, invoke the `plans` skill to produce the corresponding plan artifact. Do not begin implementation without a plan.
 
@@ -27,11 +25,9 @@ already written into the plugin depend on that not happening:
   green code commit, on the stated grounds that this "makes the
   contract auditable in git history". A squash merge removes exactly
   that evidence from the base branch.
-- The `adr` skill forbids amending or editing a *merged* ADR, and
-  requires superseding instead. That language presupposes an ADR that
-  is merged as its own unit, with a before and an after. ADR 0002
-  arrived on `main` in the same commit as the implementation it
-  authorised, so no such moment existed.
+- The `adr` skill's prohibition on editing a *merged* ADR was the
+  second reason when this was written; ADR 0004 withdraws that rule,
+  and it no longer bears on this decision.
 
 Both rules were written for right-hand implementation work and are
 not being applied to left-hand decision work. Decision artefacts —
@@ -124,14 +120,55 @@ and the skills deliberately disagree with one another —
 `skill-forge` three in another, `plans` requires status transitions
 to ride with the changes that justify them.
 
+### Bookkeeping is not an artefact
+
+A change is **bookkeeping** when it has no independent truth
+condition: it is true only because some other work is true. A plan's
+`status: done` is not true because it was typed; it is true because
+the work it describes finished. A change that would still need to be
+made had the accompanying work not happened is **work**, whatever
+file it touches.
+
+Bookkeeping does not get its own branch. It rides with the change
+that makes it true, on that change's branch. Bookkeeping that has
+nothing to ride on is not bookkeeping: if no accompanying work makes
+it true, it has an independent truth condition, and it is work.
+
+Classification is relational. Whether a change is bookkeeping is a
+property of the relationship between the change and the work in hand,
+never of the file it touches, and never of a designated section
+within a file. The same line in the same file classifies both ways:
+
+| Change | Classification | Why |
+| --- | --- | --- |
+| Adding `.worktrees/` to this repository's `.gitignore` as a deliverable implementing this ADR | work | Independently true; independently verifiable by `git check-ignore`. It is the point of the change, not a record of another. |
+| The git workflow adding `.worktrees/` to a target repository's `.gitignore` while creating a worktree | bookkeeping | Incidental to producing some other artefact. Has no truth of its own. |
+| `weeknotes/` in `.gitignore` (`055f637`) | work | Nothing else made it true. It should have had a branch. |
+
+This exception governs the branch-per-artefact rule and nothing else.
+Bookkeeping is exempt from needing its own branch. It is not exempt
+from anything else: it is committed, reviewed and merged like any
+other change, and the governing skill's commit cadence continues to
+decide what a commit holds.
+
+"It is only bookkeeping" would otherwise justify editing trunk
+directly for anything inconvenient to branch. The truth-condition
+test is what forecloses that, and it is part of this decision rather
+than its rationale. Applying it requires asking what makes the change
+true, which is answerable without judgement about effort or
+convenience.
+
 ### Integration preserves structure
 
 A branch is merged into the branch it forked from, with `--no-ff`.
-Squashing is prohibited: it is what removed the red/green sequence
-from `main` in `1e7d948`, and it would leave the auditability claim
-in `test-first-workflow` false. A fast-forward is also avoided,
-because it keeps the individual commits but loses the record of which
-artefact they belonged to. Where integration goes through GitHub,
+The no-fast-forward merge is what brackets the commits belonging to
+one artefact. Squashing is prohibited: it is what removed the
+red/green sequence from `main` in `1e7d948`, it would leave the
+auditability claim in `test-first-workflow` false, and it discards
+the individual commits' trailers, which ADR 0004 requires in order to
+record the artefact graph. A fast-forward is also avoided, because it
+keeps the individual commits but loses the record of which artefact
+they belonged to. Where integration goes through GitHub,
 `gh pr merge --merge` must be specified explicitly, since the
 platform's default action is a squash merge and would silently
 reverse this decision.
@@ -179,10 +216,10 @@ artefact rather than from trunk.
 
 - **One branch per decision, spanning ADR to implementation.** Tidier
   — one identifier for a whole chain of work, and what was in fact
-  done for ADR 0002. Rejected because the ADR is then only ever
-  merged alongside the thing it authorised, which is precisely the
-  condition that makes the `adr` skill's lifecycle rules
-  unenforceable.
+  done for ADR 0002. Rejected because the ADR would only ever be
+  merged alongside the thing it authorised, so it would have no
+  `Revises` history of its own and no moment at which it could be
+  reviewed as a decision.
 - **Squash merge.** Rejected: it is the direct cause of the problem
   in `1e7d948`.
 - **Always work in a worktree, never in the primary checkout.** The
@@ -208,6 +245,25 @@ artefact rather than from trunk.
   cases too small to warrant an artefact, such as a typo. Rejected
   because amending after a push rewrites published history; trivial
   work takes a short-lived branch like anything else.
+- **Enumerating which files or sections are bookkeeping** — for
+  example, frontmatter is bookkeeping and body is work. Rejected:
+  `.gitignore` has no sections, and the same line in it classifies
+  both ways depending on why it is being written. A file-based or
+  section-based rule gives the wrong answer in the case that prompted
+  the exception.
+- **Treating all work governed by no skill as bookkeeping.**
+  Rejected: far too broad, and it reverses the deliberate decision
+  above that ungoverned work is still an artefact. It would exempt
+  most one-off changes from branching altogether.
+- **Leaving bookkeeping to each plan to judge case by case.**
+  Rejected: a plan may only implement what was decided. A plan
+  introducing this category would be a new architectural commitment
+  smuggled in as detail, and the resulting skill would carry a rule
+  with no ADR behind it.
+- **Requiring bookkeeping to be a separate commit on the accompanying
+  branch.** Rejected: commit cadence belongs to the governing skill
+  under the delegation above, and the exception does not take back a
+  delegation made deliberately.
 - **Enforcing the workflow with a `PreToolUse` hook.** A hook is
   executed by the harness and could refuse edits made on a trunk
   branch through the tools its matcher names, which a skill cannot
@@ -218,8 +274,16 @@ artefact rather than from trunk.
 
 ## Consequences
 
-- The `adr` skill's prohibition on editing a merged ADR becomes
-  meaningful, because an ADR now has a merge of its own.
+- "Branch before edit" acquires a bounded exception, which weakens
+  it. The truth-condition test is the whole of what bounds that
+  exception, so the test must appear in the skill body as a rule,
+  not as commentary.
+- Classification as bookkeeping or work is performed per change
+  rather than looked up. This is a judgement the workflow did not
+  previously require, mitigated by the test being a single question
+  with a factual answer.
+- An eval scenario should cover a bookkeeping change, or the rule is
+  asserted in the skill body and tested nowhere.
 - The red/green commit sequence mandated by `test-first-workflow` and
   `skill-forge` survives on the base branch, making the auditability
   those skills claim actually true.
@@ -265,7 +329,7 @@ artefact rather than from trunk.
 - `skills/test-first-workflow/SKILL.md` — red/green commit mandate
 - `skills/skill-forge/SKILL.md` — frontmatter/scenario/body commits
 - `skills/plans/SKILL.md` — status transitions ride with changes
-- `skills/adr/SKILL.md` — merged-ADR lifecycle rules
+- `skills/adr/SKILL.md` — revision rules
 - Commit `1e7d948`, `plans/0002-skill-forge.md` — the squashed
   execution that prompted this decision
 - `githooks(5)`, `post-checkout` — fires on `git worktree add`

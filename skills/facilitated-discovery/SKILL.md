@@ -96,7 +96,7 @@ If the human agrees, proceed to Phase 6B.
 
 Once confirmed ready:
 
-1. Invoke the `adr` skill to write the Architecture Decision Record. The ADR should reflect what emerged from the conversation: the problem (Context), the chosen approach (Decision), the alternatives considered with reasons for rejection, and the consequences.
+1. Invoke the `adr` skill to write the Architecture Decision Record. The ADR should reflect what emerged from the conversation: the problem (Context), the chosen approach (Decision), the alternatives considered with reasons for rejection, and the consequences. Where a discovery note informed the conversation, the first commit on the ADR's branch carries `Derives-From` naming that note, as the `adr` skill now states.
 2. Invoke the `plans` skill to write the Plan that implements the decision.
 
 ### 6B. Discovery note
@@ -123,6 +123,14 @@ date: YYYY-MM-DD
 4. **Next steps** — concrete things the human should do or find out before the next session. If relevant, note who to talk to or what to look up.
 
 When the human is ready to continue, they can return to this note and invoke `/facilitated-discovery` again — pick up from where the note leaves off rather than starting over.
+
+The note leaves the tree when the ADR it informed is accepted. It is deleted on that ADR's branch, and the deleting commit carries this trailer, copied exactly:
+
+```
+Consumed-By: docs/adr/NNNN-<slug>.md
+```
+
+The value is the repository-relative path of the ADR. The note's text stays in git history; the tree holds only current intention.
 
 ## What to avoid
 

@@ -9,13 +9,18 @@
     },
     {
       "name": "ADR frontmatter completeness",
-      "description": "The ADR file's YAML frontmatter contains all five required fields: title, status, date, supersedes, and superseded_by",
+      "description": "The ADR file's YAML frontmatter contains exactly three fields: title, status, and date — and no others",
       "max_score": 8
     },
     {
       "name": "ADR status validity",
-      "description": "The ADR's status field is set to exactly one of the allowed values: proposed, accepted, or superseded",
+      "description": "The ADR's status field is set to exactly one of the allowed values: proposed or accepted",
       "max_score": 7
+    },
+    {
+      "name": "ADR title is a question",
+      "description": "The ADR's title field and its H1 are phrased as the question the record answers, ending in a question mark (e.g. 'How is the API rate limited?'), and the two match. A statement such as 'Token bucket rate limiting' does not satisfy this",
+      "max_score": 6
     },
     {
       "name": "ADR body sections",
