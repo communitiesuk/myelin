@@ -233,8 +233,7 @@ rule that a plan merges on creation.
      `evals/git-workflow-0/scenario.json` if a `description` or
      further fixture declarations are wanted (all new).
 
-4. **Write the `git-workflow` skill body until `tessl eval run` passes
-   the scenario (skill-forge Phase 3).**
+4. **Write the `git-workflow` skill body (skill-forge Phase 3).**
 
    > **Directive for the implementer**: this step will author a new skill. Load the `skill-forge` skill before writing the `SKILL.md` (frontmatter → failing eval scenario → skill body).
 
@@ -411,24 +410,54 @@ rule that a plan merges on creation.
      scenario is the contract.
    - **Two different commands, for two different jobs. Do not
      substitute one for the other.**
-     - `tessl eval run` executes the scenario and is what "the
-       scenario is the contract" refers to. This is the gate.
      - `tessl review run skills/git-workflow/` is an asynchronous
-       *quality* review of the skill text — it never runs the
-       scenario. Useful for prose and structure; it cannot tell you
-       whether the skill works.
-     An earlier form of this step gated only on `tessl review run`,
-     which meant the contract was never executed.
+       *quality* review of the skill text. It never runs the scenario.
+       It is cheap, and `skill-forge` makes it the structural sanity
+       gate: frontmatter well-formed, trigger phrasing coherent, body
+       plausible enough to be worth running.
+     - `tessl eval run` executes the scenario. It is the only thing
+       that tells you whether the skill works, and it is not cheap.
+   - **Exit on `skill-forge`'s criteria, which are asymmetric.** Its
+     Exit criteria section is explicit: `tessl review run` must pass,
+     and the eval scenario *must exist but need not pass*, because the
+     failing scenario is itself the improvement queue. Blocking the
+     caller on making a scenario pass is listed there as an
+     anti-pattern. This step does not override that.
+   - **But aim higher than the floor, deliberately.** `skill-forge`'s
+     asymmetry exists so that an agent which invoked it mid-task is
+     not blocked — there, the skill is a means to some enclosing work.
+     Here the skill *is* this plan's deliverable and no caller is
+     waiting, so the reason for the exemption does not apply and the
+     scenario should be made to pass. Treat that as this plan's aim,
+     not as a redefinition of `skill-forge`'s gate.
+   - **The escape, so this step cannot grind.** Budget three
+     `tessl eval run` checkpoints. If the scenario still fails after
+     the third, stop: record the run identifier, the score and what
+     failed in the commit message, and proceed to Step 5 on
+     `skill-forge`'s floor. A failing scenario left behind is
+     `skill-forge`'s improvement queue working as designed, and is not
+     a reason to hold the plan open. What would be a defect is
+     silently editing the scenario to make it pass.
    - Iterate with `tessl review run` and `tessl eval lint`, which are
-     cheap, and checkpoint with `tessl eval run`, which is not. A
-     single-scenario run cost 50 credits against a daily budget of
-     300, so roughly six runs a day: treat each as a deliberate
-     checkpoint rather than a save action. Pass `--agent`/`--model`
-     explicitly; the default model is not the one the skill will be
-     used with.
+     cheap, and spend `tessl eval run` only on the three checkpoints.
+     A single-scenario run cost 50 credits against a daily budget of
+     300. Point it at the one scenario — `tessl eval run
+     evals/git-workflow-0` — rather than at the plugin directory: a
+     single scenario directory is accepted as a source
+     (`tessl eval lint evals/scenario-0` reports one scenario valid),
+     so running the whole of `evals/` would cost six times as much per
+     checkpoint for no extra signal on this skill. Pass
+     `--agent`/`--model` explicitly; the default model is not the one
+     the skill will be used with.
+   - Note for `skill-forge` itself, not to be fixed from this plan:
+     it twice gives "`tessl eval run` has no scenario-selection flag"
+     as the reason every run picks the new scenario up. Literally true
+     — there is no flag — but selection by path works, so the stated
+     reason is weaker than the conclusion it supports. The conclusion
+     still holds when the plugin directory is the source.
    - Record the final `tessl eval run` identifier and outcome in the
      commit message, not in Progress notes — Step 6 deletes this file.
-   - Commit the body on its own once the scenario passes.
+   - Commit the body on its own once `tessl review run` is green.
    - Files changed: `skills/git-workflow/SKILL.md`.
 
 5. **Exercise the agreed naming defaults and the isolation path
@@ -604,9 +633,14 @@ must not be added to it:
   whose `name` is `git-workflow` and whose `description` carries
   TRIGGER and SKIP clauses, the TRIGGER firing before the first edit
   and naming markdown decision artefacts explicitly.
-- `tessl eval run` on `evals/git-workflow-0/` passes. This is the
-  contract. `tessl review run skills/git-workflow/` also exits clean,
-  which is a separate check on prose quality and is not a substitute.
+- `tessl review run skills/git-workflow/` exits clean, which is
+  `skill-forge`'s gate. `evals/git-workflow-0/` exists and has been
+  executed by `tessl eval run` at least once, with the run identifier
+  and outcome recorded in a commit message. Per `skill-forge`'s
+  asymmetric exit criteria the scenario need not pass; where it does
+  not, the failing assertions are recorded and left as the improvement
+  queue, and the scenario has not been edited to make the body look
+  complete.
 - The skill body covers every decision enumerated in Step 4: branch
   before edit; one branch per artefact with "artefact" deferred to
   the governing skill and never defined by this skill; delegated
