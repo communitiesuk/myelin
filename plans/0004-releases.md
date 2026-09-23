@@ -1,6 +1,6 @@
 ---
 title: Release the plugin as aaai/myelin
-status: draft
+status: in-progress
 adr: 0005
 date: 2026-09-23
 deferred_reason: null
@@ -279,6 +279,16 @@ whenever that happens.
   after Step 3 (widened); and the ADR called its release branch
   `release-<version>`, a token ADR 0003 does not allow, while
   claiming ADR 0003 unchanged (fixed in the ADR before acceptance).
+- 2026-09-23 — Step 1 done from `main` at `36feb66`: `dev` created and
+  pushed, made the host default, `origin/HEAD` follows it, protection
+  set on both branches and read back, and a fresh clone checks out
+  `dev`. Step 2: manifest renamed and zeroed. The dry run confirmed
+  workspace `aaai` exists but refused publish permission for the
+  account ("upgrade your role to publisher or above"), which is a
+  workspace role the org admin grants; it must be granted before
+  Step 5 and the dry run repeated then. `tessl.json`'s `name` is the
+  eval project link, separate from the plugin name; eval runs still
+  resolve it, so no rename or repair.
 - Judgement calls at authoring:
   - This plan's branch is based on the ADR's branch rather than on
     `main`, because the ADR was not yet on trunk when the plan was
