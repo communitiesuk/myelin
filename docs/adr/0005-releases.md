@@ -1,6 +1,6 @@
 ---
 title: How is the plugin released?
-status: proposed
+status: accepted
 date: 2026-09-23
 ---
 
@@ -192,10 +192,13 @@ and no `main` to move.
   copies that directory for its untracked files, and is unaffected.
 - The eval runner can score any git ref, so an old release can be
   re-scored later against a new scorer without rebuilding it.
-- Registry administration is a precondition, not a consequence:
-  publishing as `aaai/myelin` needs publish permission in that
-  workspace, and whether a private plugin is installable by
-  organisation members is unverified until the first install.
+- Registry administration is a precondition, not a consequence.
+  The publisher is an administrator of the `aaai` workspace, every
+  organisation member down to the consumer role can browse and
+  install its plugins, and `private` means only that the plugin is
+  absent from the public registry listing. So private is enough for
+  the team, and nothing about visibility is left to find out at the
+  first install.
 
 ## References
 
