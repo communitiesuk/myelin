@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# hosts/github — the GitHub module for the git-workflow script.
+#
+# Usage:
+#   bash hosts/github propose <branch> <trunk>   open a pull request from the
+#                                                pushed branch onto the trunk;
+#                                                prints its URL
+#   bash hosts/github merge <branch> <trunk>     merge that pull request with a
+#                                                merge commit, never a squash
+#                                                or a rebase, and delete the
+#                                                remote branch
+#   bash hosts/github settings                   print squash=<true|false>
+#                                                rebase=<true|false> as the
+#                                                repository allows them
+#
+# Depends on gh. Exit 0 done; 1 the host refused or the command failed;
+# 127 gh is not on PATH.
+set -u
+echo "hosts/github: not implemented yet" >&2
+exit 2

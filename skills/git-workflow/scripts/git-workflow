@@ -196,6 +196,34 @@ cmd_begin() {
   fi
   printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$wt"
 }
+# land — integrate the artefact branch, or stop and say why.
+#
+# Run from inside the artefact's checkout, primary or worktree. In order:
+#   1. Refuses (exit 2) when HEAD is the trunk, the working tree is dirty,
+#      there is nothing since the fork point, the first commit since the
+#      fork point carries no Derives-From trailer, or that trailer's value
+#      is not repository-relative (starts with / or ./).
+#   2. Decides whether the branch is a decision: a commit since the fork
+#      point carries Revises, or the diff against the trunk adds a file
+#      under docs/adr/. A decision is pushed and proposed through the host
+#      module, then exit 3 with a report naming the pull request: a human
+#      merges it. With no remote a decision cannot be proposed: exit 3,
+#      branch left in place.
+#   3. Otherwise, by host. none: from the primary checkout with the trunk
+#      checked out (switching to it first when the work was in place),
+#      git merge --no-ff. A host module: push, propose, then merge, both
+#      from the primary checkout; afterwards fetch and fast-forward the
+#      local trunk. unknown host: push, exit 1. A missing host command, or
+#      one that fails or refuses: push if not yet pushed, exit 1 with a
+#      report giving the pull request if one was opened, the command, the
+#      state left behind and the permission hint Bash(gh pr merge *).
+#      Before a host merge, the module's settings are read and a squash
+#      or rebase allowance is reported, not changed.
+#   4. On a merge only: remove the worktree (--force), delete the branch,
+#      and confirm by reading HEAD that the primary checkout is on the
+#      trunk. Where the work was in place the checkout was switched in 3.
+#      Where the primary checkout is on neither the trunk nor the branch,
+#      no merge can run there: exit 1 with a report.
 cmd_land()  { die 2 "land is not implemented yet"; }
 
 main() {
