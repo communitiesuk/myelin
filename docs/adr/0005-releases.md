@@ -106,14 +106,15 @@ and `main` does not move.
 
 1. **Structure.** `tessl plugin publish --dry-run` passes.
 2. **Scenarios.** `tessl eval lint` over the plugin passes.
-3. **Behaviour.** One eval run over every scenario with two
-   comparison arms: the previous published version, and the
-   candidate. No scenario may score lower on the candidate than on
-   the previous release by more than run-to-run variation. The
-   threshold, and the number of repeats needed to know the
-   variation, are found empirically and recorded by the plan, not
-   fixed here. The first release has no previous version, so its
-   run records the baseline and cannot fail this gate.
+3. **Behaviour.** One eval run over every scenario against the
+   candidate, with the agent and model pinned, compared with the run
+   the previous release recorded in its tag message. No scenario may
+   score lower on the candidate than on the previous release by more
+   than run-to-run variation. The threshold, and the number of
+   repeats needed to know the variation, are found empirically and
+   recorded by the plan, not fixed here. The first release has no
+   previous run, so its own run is the record and cannot fail this
+   gate.
 4. **Documentation.** The `README.md` names exactly the skills in
    the package, and no statement in it contradicts the tree. The
    first half is mechanical; the second is a read.
@@ -163,6 +164,13 @@ and no `main` to move.
 - **The release skill inside `skills/`.** Rejected because it would
   ship to every installer. If it later proves general to tessl
   plugins, extraction is a separate decision.
+- **Two comparison arms in one eval run, previous version against
+  candidate.** The original form of gate 3, reversed on the first
+  release. The runner's arms vary the agent, the model, whether the
+  context is included and the fixtures, all against one context
+  source per run, so a second plugin version cannot be an arm. The
+  previous release's own recorded run serves instead, at no extra
+  cost, provided agent and model are pinned so the runs compare.
 - **Blocking merges into `dev` on the full eval run.** Rejected. ADR
   0002 deliberately lets a skill merge with a failing scenario as
   its improvement queue. The full run belongs at release, where a
@@ -180,9 +188,11 @@ and no `main` to move.
   repository-level notes about settings on `main` are what move.
 - The first release cannot fail the behaviour gate. Its value is the
   baseline every later release is compared against.
-- Each release costs a full eval run with two arms, about twice the
-  single-run cost across all scenarios, plus repeats if variation
-  turns out to need them. Accepted at a weekly cadence.
+- Each release costs one full eval run across all scenarios; the
+  comparison reuses the previous release's recorded run and adds
+  nothing. Calibrating the variation is a one-off cost of repeats.
+  Accepted at a weekly cadence. The comparison holds only while
+  agent and model stay pinned; changing either resets the record.
 - Release notes are the first mechanical consumer of ADR 0004's
   trailers. Until the history skill exists they are a `git log`
   between two tags; when it exists it can take the job over.
@@ -215,5 +225,7 @@ and no `main` to move.
   stale files in the tree that rules out a changelog, and the
   trailer table this decision leaves unchanged.
 - `tessl plugin publish --help`, `tessl eval run --help` — the
-  `--dry-run`, `--context`, `--context-commit` and `--arms-json`
-  flags the gates rely on.
+  `--dry-run`, `--context`, `--agent` and `--model` flags the gates
+  rely on. `--arms-json` varies agent, model and context inclusion
+  within one source, not the source, which is why the comparison is
+  across runs rather than within one.
