@@ -1,6 +1,6 @@
 ---
 title: Ship git-workflow's mechanics as a script
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-09-23
 deferred_reason: null
