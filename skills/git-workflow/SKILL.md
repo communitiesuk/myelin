@@ -153,7 +153,7 @@ Propose and land **through the host's pull-request mechanism whenever the reposi
 
 **No host tooling is not the no-remote case.** The fallback is selected by one fact, `git remote` printing nothing, and by nothing else. Where a remote exists but the session has no command that can open a pull request — no `gh`, no host API, or one that fails for want of credentials — push the branch, then stop and report exactly as for a refusal, naming the command that was missing or failed. The pushed branch is what the human opens the pull request from; a local merge into trunk is not a substitute for it, and neither is cleaning up as if something had merged.
 
-**A pull request buys enforcement, and only that.** The platform can refuse a squash and refuse a direct push to trunk. It buys **no review**: an agent that opens a pull request and immediately merges it has been reviewed by nobody. Do not describe such a merge as approved, accepted or signed off. The agent lands its own work until a separate decision says otherwise.
+**A pull request buys enforcement, and only that.** The platform can refuse a squash and refuse a direct push to trunk. It buys **no review**: an agent that opens a pull request and immediately merges it has been reviewed by nobody. Do not describe such a merge as approved, accepted or signed off. **A decision is landed by a human.** If the branch adds a file under `docs/adr/` or any of its commits carries a `Revises` trailer, push, open the pull request, stop and report, exactly as for a refused merge; do not merge it. Every other artefact the agent lands itself.
 
 ## Rule 12 — A plan merges when it is written
 
