@@ -138,8 +138,9 @@ The body carries, in order, with the exact commands:
 6. **Gate 3, behaviour.** `tessl eval run . --wait --json` over every
    scenario. Save the run id and per-scenario scores to a scratch
    file for gate 5. Until Step 6 calibrates the comparison, a
-   completed run passes; Step 6 replaces this item with the two-arm
-   comparison and its threshold.
+   completed run passes; Step 6 replaces this item with the
+   comparison against the previous release's recorded run and its
+   threshold.
 7. **Gate 4, documentation.** Step 3's skill-list check prints
    nothing, and the README is read once for statements the tree
    contradicts.
@@ -209,26 +210,27 @@ Exit criteria:
 
 ### Step 6 — Calibrate the behaviour gate
 
-Branch `chore-release-comparison`. Two empirical answers, then a
-skill edit.
+Branch `chore-release-comparison`. One empirical answer, then a
+skill edit. The arms question is settled: an arm carries `label`,
+`agent`, `model`, `includeContext`, `forceContextActivation` and
+`fixtureNames`, against one context source per run, so the
+comparison is across runs (ADR 0005, revised).
 
-1. Find the shape `--arms-json` expects, from `tessl eval run --help`,
-   an invalid value's error text, or a minimal run; the candidate arm
-   is most likely named with `--context-commit`. Record it.
-2. Measure run-to-run variation:
-   `tessl eval run . -n 3 --skip-baseline --context myelin/myelin@0.1.0 --wait --json`,
+1. Measure run-to-run variation:
+   `tessl eval run . -n 3 --skip-baseline --context myelin/myelin@0.1.0 --agent claude --model deepseek-v4-flash --wait --json`,
    then read the per-scenario spread with
-   `tessl eval view <id> --full`. Expect 21 scenario executions of
+   `tessl eval view <id> --full`. Expect 24 scenario executions of
    credit.
-3. Replace gate 3 in the skill with the two-arm run, previous version
-   against candidate, and a threshold set from the measured spread:
-   a scenario fails the gate when the candidate's score is below the
-   previous release's by more than that spread.
+2. Replace gate 3 in the skill: pin the agent and model to the values
+   above, read the previous release's per-scenario scores from its
+   tag message, and fail a scenario when the candidate's score is
+   below the previous release's by more than the measured spread.
 
 Exit criteria:
 
-- The skill's gate 3 names the arms invocation and a numeric
-  threshold, and the calibration run id sits beside it.
+- The skill's gate 3 names the pinned agent and model, the tag
+  message as the comparison source, and a numeric threshold with the
+  calibration run id beside it.
 - `tessl eval view <calibration-id> --full` returns the distribution
   the threshold was read from.
 
@@ -323,6 +325,12 @@ whenever that happens.
   the 30-line first-release list surfaced a numbering collision, two
   plans called 0004, because the plans skill counts the tree and the
   tree empties under ADR 0004. Both are queued outside this plan.
+- 2026-09-23 — Step 6's first question answered by probe run
+  `01a0cddd-e9c5-72dd-9def-9e13298dca4f` (one scenario, two arms
+  that came back identical) and by the CLI's own source: arms cannot
+  name a second plugin version. ADR 0005 revised on this branch to
+  compare across runs; Step 6 rewritten to match. The probe's two
+  identical arms double as variation data for `skill-forge-0`.
 - Judgement calls at authoring:
   - This plan's branch is based on the ADR's branch rather than on
     `main`, because the ADR was not yet on trunk when the plan was
