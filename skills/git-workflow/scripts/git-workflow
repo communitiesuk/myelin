@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# git-workflow — the mechanical half of the git-workflow skill.
+#
+# Usage:
+#   bash git-workflow check
+#   bash git-workflow begin <artefact-path> [--slug <slug>]
+#   bash git-workflow land
+#   bash git-workflow --help
+#
+# Subcommands
+#   check   Derive and print the facts the workflow acts on, changing
+#           nothing: trunk=<ref>, remote=<name|none>,
+#           host=<none|github|unknown:<url>>, contention=<in-place|worktree>.
+#   begin   Name the artefact branch from its path, then branch in place
+#           or into .worktrees/<branch> from the trunk, copy the small
+#           configuration files into a worktree, and print trunk=, branch=
+#           and dir=. Never stages, stashes, reverts or deletes anything in
+#           the primary checkout.
+#   land    From the artefact's checkout: refuse unless the first commit
+#           since the fork point carries Derives-From; hand a decision (a
+#           new file under docs/adr/, or a Revises trailer) to a human via
+#           the host's pull request; otherwise merge with two parents,
+#           locally where there is no remote and through hosts/<name>
+#           otherwise; then clean up and leave the primary checkout on the
+#           trunk.
+#
+# Host modules live in hosts/<name> beside this script. Each is an
+# executable taking one of:
+#   propose <branch>    open a pull request for the pushed branch
+#   merge <branch>      merge it with a merge commit, never squash or rebase
+#   settings            print whether the host allows squash and rebase merges
+#
+# Exit codes
+#   0  done: the facts were printed, the branch was begun, or the artefact
+#      merged and was cleaned up
+#   1  stopped with a report: a host command was missing, failed or refused;
+#      the branch is pushed and everything else is left as it was
+#   2  usage or a precondition failed: nothing was changed
+#   3  stopped by design: the branch is a decision; it is pushed and
+#      proposed, and a human merges it
+#
+# Depends on git, and on the host's command-line tool where a host is
+# involved, and on nothing else.
+
+set -u
+
+usage() {
+  sed -n '2,/^# Depends/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+}
+
+die() {
+  local code="$1"; shift
+  printf 'git-workflow: %s\n' "$*" >&2
+  exit "$code"
+}
+
+cmd_check() { die 2 "check is not implemented yet"; }
+cmd_begin() { die 2 "begin is not implemented yet"; }
+cmd_land()  { die 2 "land is not implemented yet"; }
+
+main() {
+  case "${1:-}" in
+    -h|--help|help) usage; exit 0 ;;
+    check) shift; cmd_check "$@" ;;
+    begin) shift; cmd_begin "$@" ;;
+    land)  shift; cmd_land "$@" ;;
+    "") usage >&2; exit 2 ;;
+    *) printf 'git-workflow: unknown subcommand %s\n\n' "$1" >&2; usage >&2; exit 2 ;;
+  esac
+}
+
+main "$@"
