@@ -66,10 +66,20 @@ Must print nothing. Then read the README once, looking for any statement the tre
 ## 8. Gate 5 — notes
 
 ```sh
-git log --first-parent --merges <prev>..HEAD --format='- %b' > <scratch>/notes.md   # omit "<prev>.." on the first release
+git log --first-parent --merges <prev>..HEAD --format='%x1e%s%x1f%b' | python3 -c '
+import sys
+for rec in sys.stdin.read().split("\x1e"):
+    if not rec.strip(): continue
+    subj,_,body=rec.partition("\x1f"); subj=subj.strip()
+    if subj.startswith("Merge pull request"):
+        line=next((l for l in body.splitlines() if l.strip() and ":" not in l.split(" ")[0]), "")
+    else:
+        line=subj.removeprefix("Merge ")
+    print("- "+line.strip())
+' > <scratch>/notes-body.md   # omit "<prev>.." on the first release
 ```
 
-Each line is a merge commit's body, which for a pull request merged on the host is the pull request's title. A blank line means a merge with no recorded meaning: write its meaning into the notes by hand before continuing, and say so in the release. Then append a `## Eval` section with gate 3's run id and per-scenario scores. Keep the file outside the tree.
+One line per merge on the first-parent line. A pull request merged on the host has the generic subject and carries the pull request's title as the first body line; a merge made locally carries its meaning in the subject and only trailers in the body, so the script takes whichever holds the meaning. A line that comes out as a bare `-` is a merge with no recorded meaning: write its meaning in by hand before continuing, and say so in the release. Then wrap the list in a heading and an install line, and append a `## Eval` section with gate 3's run id and per-scenario scores, as `<scratch>/notes.md`. Keep both files outside the tree.
 
 ## 9. Land
 
