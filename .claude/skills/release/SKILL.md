@@ -49,15 +49,15 @@ tessl eval lint .        # every scenario valid
 ## 6. Gate 3 — behaviour
 
 ```sh
-tessl eval run . -n 3 --skip-baseline --agent claude --model deepseek-v4-flash --label "release <version> gate 3" --wait --json --yes > <scratch>/eval.json
+tessl eval run . -n 3 --skip-baseline --agent claude --model claude-sonnet-5 --label "release <version> gate 3" --wait --json --yes > <scratch>/eval.json
 tessl eval view <run-id> --full
 ```
 
-Three repeats of every scenario against the release branch, plugin injected, no baseline arm, agent and model pinned so that runs compare across releases. For each scenario take the **median** of the scored repeats; a scenario with fewer than two scored repeats is re-run before continuing (a run whose status is "failed" for one lost repeat is otherwise usable). Compare each median with the previous release's median, read from the `## Eval` table in its tag message: `git tag -l --format='%(contents)' <prev>`.
+Three repeats of every scenario against the release branch, plugin injected, no baseline arm, agent and model pinned so that runs compare across releases. The model is the floor `git-workflow` declares in its frontmatter; if that declaration changes, this pin changes with it. **When the pinned model changes, the record resets:** the first release on the new model records its medians and cannot fail this gate, exactly as a first release cannot. For each scenario take the **median** of the scored repeats; a scenario with fewer than two scored repeats is re-run before continuing (a run whose status is "failed" for one lost repeat is otherwise usable). Compare each median with the previous release's median, read from the `## Eval` table in its tag message: `git tag -l --format='%(contents)' <prev>`.
 
 **A scenario fails the gate when its median is more than 10 points below the previous release's median.** A single repeat under 50 on a scenario whose median is above 90 is an instrument finding to report alongside the release, not a gate failure. Save the run id and the medians for gate 5.
 
-Calibration, 2026-09-23, run `01a0cde0-ed00-7335-8084-f7eff8b070e3`, three repeats of the 0.1.0 content: six scenarios at 97–100 with spread ≤ 3; `git-workflow-1` (23, 96, 100) and `scenario-0` (48, 100, 100) each collapsed once, which is why single runs are not compared and medians of three are the sample. The threshold is twice the largest spread among the stable scenarios. Because `v0.1.0`'s tag carries single-run scores, the record to compare the next release against is the calibration medians: git-workflow-0 96, git-workflow-1 96, scenario-0 100, scenario-1 100, scenario-2 100, scenario-3 100, scenario-4 100, skill-forge-0 100.
+Calibration history. 2026-09-23, run `01a0cde0-ed00-7335-8084-f7eff8b070e3` on deepseek-v4-flash, three repeats of the 0.1.0 content: six scenarios at 97–100 with spread ≤ 3, `git-workflow-1` (23, 96, 100) and `scenario-0` (48, 100, 100) each collapsed once; medians of three and a 10-point threshold were set from it. The same day, `git-workflow-1` on an unchanged body scored 18/0/0 on deepseek and 94/100/100 on claude-sonnet-5 (runs `01a0ce24-dd76-729a-ab72-dd5ac616799d`, `01a0ce3b-3077-71da-be14-fec3e4e0b710`), so the pin moved to sonnet and the deepseek record retired with 0.1.0. The threshold stays at 10 until three releases on sonnet give a measured spread.
 
 ## 7. Gate 4 — documentation
 
