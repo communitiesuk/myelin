@@ -37,9 +37,11 @@ Three facts about the platform shape the decision.
 Two further facts bear on the name. The manifest names the plugin
 `majerr/myelin`, a personal workspace from before the team's
 organisation existed. The organisation is now named `aaai`, but
-registry names are workspaces, not organisations, and the
-organisation's shared workspace is `myelin`. The repository on GitHub
-is public. Sharing is meant to be easy within the team first.
+registry names are workspaces, not organisations, workspace names are
+unique across the whole registry, and `aaai` is held by someone
+else. The organisation's workspace for its plugins is `mhclg-aaai`.
+The repository on GitHub is public. Sharing is meant to be easy
+within the team first.
 
 ## Decision
 
@@ -74,9 +76,9 @@ artefacts, so ADR 0004's trailer table is unchanged by this decision.
 - **Version.** Semantic versioning, `0.x` while the plugin is early.
   The version lives in the manifest and nowhere else, and the human
   who releases chooses the bump.
-- **Identity.** The plugin is published as `myelin/myelin`, in the
-  organisation's `myelin` workspace; the manifest is renamed to
-  match. It stays private to the
+- **Identity.** The plugin is published as `mhclg-aaai/myelin`, in
+  the organisation's `mhclg-aaai` workspace, beside the team's other
+  plugins; the manifest is renamed to match. It stays private to the
   organisation until a separate choice makes it public; the
   repository being public does not decide this.
 - **Contents.** What the packer includes, plus the eval scenarios
@@ -205,10 +207,13 @@ and no `main` to move.
 - The eval runner can score any git ref, so an old release can be
   re-scored later against a new scorer without rebuilding it.
 - Registry administration is a precondition, not a consequence.
-  The publisher owns the `myelin` workspace in the `aaai`
+  The publisher owns the `mhclg-aaai` workspace in the `aaai`
   organisation, every organisation member down to the consumer role
   can browse and install its plugins, and `private` means only that
-  the plugin is absent from the public registry listing. So private is enough for
+  the plugin is absent from the public registry listing. The first
+  version went out as `myelin/myelin@0.1.0` before the workspace
+  existed; it is archived once its successor is published under the
+  new name, and installers move with one uninstall and one install. So private is enough for
   the team, and nothing about visibility is left to find out at the
   first install.
 
