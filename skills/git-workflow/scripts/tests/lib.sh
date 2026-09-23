@@ -26,6 +26,10 @@
 
 set -u
 
+# The script under test commits in worktrees; give it an identity.
+export GIT_AUTHOR_NAME=fixture GIT_AUTHOR_EMAIL=fixture@example.invalid
+export GIT_COMMITTER_NAME=fixture GIT_COMMITTER_EMAIL=fixture@example.invalid
+
 SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/git-workflow}"
 TESTS_RUN=0
 TESTS_FAILED=0

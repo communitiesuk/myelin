@@ -117,6 +117,26 @@ cmd_check() {
   host="$(derive_host "$remote")"
   printf 'trunk=%s\nremote=%s\nhost=%s\ncontention=%s\n' "$trunk" "$remote" "$host" "$(derive_contention "$trunk")"
 }
+# begin <artefact-path> [--slug <slug>] — start the artefact's branch.
+#
+# Names the branch from the path: docs/adr/NNNN-slug.md -> adr-NNNN-slug,
+# plans/NNNN-slug.md -> plan-NNNN-slug, docs/discovery/NNNN-slug.md ->
+# discovery-NNNN-slug, skills/<name>/SKILL.md -> skill-<name>; any other
+# path is ungoverned work and needs --slug, giving chore-<slug>. The file
+# need not exist yet.
+#
+# Runs check. When contention is in-place, creates the branch from the
+# trunk in the primary checkout and switches to it. Otherwise creates
+# .worktrees/<branch> from the trunk, copies .claude/, .env and .mcp.json
+# into it where they exist and never .venv/ or node_modules/, and, when
+# the repository ignores no .worktrees/, appends that line to the
+# worktree's .gitignore and commits it there — the one commit this script
+# makes. Never stages, stashes, reverts or deletes anything in the
+# primary checkout.
+#
+# Prints trunk=<ref>, branch=<name> and dir=<absolute path to work in>.
+# Exits 2 when the branch already exists, when the path is ungoverned and
+# --slug is missing, or when check would.
 cmd_begin() { die 2 "begin is not implemented yet"; }
 cmd_land()  { die 2 "land is not implemented yet"; }
 
