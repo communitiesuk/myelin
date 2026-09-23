@@ -289,6 +289,16 @@ whenever that happens.
   Step 5 and the dry run repeated then. `tessl.json`'s `name` is the
   eval project link, separate from the plugin name; eval runs still
   resolve it, so no rename or repair.
+- 2026-09-23 — Step 3 landed at `db0cbb3`. The skill-list check ran
+  against `ls skills/` because the dry run stops at the permission
+  refusal before printing its pack list; `tessl plugin pack` needs no
+  permission and lists the archive, so the release skill uses that
+  for the file list and keeps the dry run for the permission and
+  version checks. Step 4: skill written at
+  `.claude/skills/release/SKILL.md`, 127 lines; the packed archive
+  contains nothing under `.claude/`, `docs/` or `plans/`. Step 5 is
+  blocked until the account holds the publisher role on workspace
+  `aaai`; gate 1 cannot pass without it.
 - Judgement calls at authoring:
   - This plan's branch is based on the ADR's branch rather than on
     `main`, because the ADR was not yet on trunk when the plan was
