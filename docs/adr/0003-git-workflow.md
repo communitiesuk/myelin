@@ -49,7 +49,9 @@ must derive its targets rather than be told them.
 
 Adopt a branch-per-artefact workflow, isolated on contention, landed
 through the host's pull-request mechanism where one exists, with
-integration that preserves commit structure.
+integration that preserves commit structure. The workflow's mechanics
+are a script shipped with the skill; the skill body says when to run
+it and what only a model can decide.
 
 ### The unit of work is an artefact
 
@@ -241,6 +243,47 @@ disabled at the repository level wherever the host allows it, so that
 the prohibition is enforced rather than merely written down. Which
 host, and which setting, is for the skill that knows the host.
 
+### The mechanics are a script; the model decides what and when
+
+The rules above split into two kinds. Mechanical rules have a factual
+answer that git can give: which ref is the trunk, whether the primary
+checkout is on it and clean, what a branch is called given the
+artefact's path, whether a remote exists and which host it names,
+whether a merge happened. Judgement rules do not: what the artefact
+is, what it derives from, and what a commit contains, all of which
+this decision already delegates to the governing skill.
+
+The mechanical rules are implemented as a script shipped in the
+skill's `scripts/` directory, and the skill body is reduced to naming
+the moments at which the model runs it: before the first edit, and to
+land. The script is written in Bash and depends on git and on the
+host's command-line tool where a host is involved, and on nothing
+else.
+
+The host is derived the way the trunk is, then executed. `git remote`
+printing nothing selects the local merge. A remote whose URL names a
+host the script knows selects that host's module, which opens and
+merges the pull request. A host the script does not know, a host
+command missing from the session, or a merge refused by the host or
+by the harness's permission layer, ends the procedure at landing: the
+branch is pushed, the worktree kept, the primary checkout left where
+it is, and the script reports what was missing or refused. The local
+merge is for a repository with no remote and for nothing else. The
+platform skill anticipated below is therefore a host module of this
+script, and supporting a host is adding a module.
+
+Landing enforces one rule of ADR 0004 mechanically: the script
+refuses to land a branch whose first commit carries no `Derives-From`
+trailer. The trailer is written by whoever commits, under the
+governing skill; the script checks that it is there.
+
+The script is invoked by the model at the moments the skill body
+names. Running it without the model, by a hook or an orchestrator, is
+harness-shaped, was parked by ADR 0001, and belongs with the decision
+about when an agent may land its own work. This decision does not
+promise enforcement of the moment; it removes the judgement from what
+happens at the moment.
+
 ### A plan merges when it is written
 
 A plan's branch is merged as soon as the plan is written and
@@ -298,6 +341,18 @@ merge. Without this, the next artefact branches from the previous
 artefact rather than from trunk.
 
 ## Alternatives considered
+
+- **The rules as instructions in the skill body, followed by the
+  model.** The original form of this decision, reversed on
+  2026-09-23. Measured on an unchanged body and fixture, three
+  repeats each: claude-sonnet-5 scored 94, 100, 100 on the
+  refused-merge scenario and deepseek-v4-flash 18, 0, 0, merging into
+  trunk against the rules or never branching. Asking a model to be
+  deterministic about facts git can state is what failed; the skill
+  had grown to 196 lines saying so more emphatically. The rules that
+  needed emphasis are exactly the mechanical ones, and those are now
+  code. Discovery note 0002 records the measurements and the tests
+  the change must pass.
 
 - **One branch per decision, spanning ADR to implementation.** Tidier
   — one identifier for a whole chain of work, and what was in fact
@@ -396,6 +451,31 @@ artefact rather than from trunk.
   enforcement.
 
 ## Consequences
+
+- The change holds only if measured, and the implementing plan must
+  show it: the two git-workflow scenarios run on deepseek-v4-flash,
+  three repeats each, before and after the script, with the before
+  already recorded at 18, 0, 0 on the refused-merge scenario; the
+  per-repeat activation record and scorer reasoning read after the
+  script, so that what remains is "never invoked" and not "merged
+  wrongly"; shell tests for every mechanical rule the script owns,
+  including host derivation; and the skill's declared model floor
+  removed, with the release gate's pin following, if the weak model
+  comes within the gate's threshold of the strong one, or kept with
+  the evals saying why.
+- The skill body shrinks to the moments and the judgement, and comes
+  back under the skills specification's 5,000-token guideline, which
+  it currently exceeds.
+- Until the measurement above is made, `git-workflow` declares a
+  sonnet-class model floor in its frontmatter and the release gate
+  runs on that model.
+- The trigger problem is unchanged: a model that does not run the
+  script at the right moment produces the same loss as one that did
+  not read the rules. That loss is now measurable on its own, because
+  every other loss has been removed.
+- The prohibition on the local-merge fallback where a remote exists
+  is now enforced by the script rather than stated, as is the stop on
+  a refused merge or a missing host command.
 
 - "Branch before edit" acquires a bounded exception, which weakens
   it. The truth-condition test is the whole of what bounds that
