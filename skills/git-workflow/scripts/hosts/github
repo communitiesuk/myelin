@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# hosts/github — the GitHub module for the git-workflow script.
+#
+# Usage:
+#   bash hosts/github propose <branch> <trunk>   open a pull request from the
+#                                                pushed branch onto the trunk;
+#                                                prints its URL
+#   bash hosts/github merge <branch> <trunk>     merge that pull request with a
+#                                                merge commit, never a squash
+#                                                or a rebase, and delete the
+#                                                remote branch
+#   bash hosts/github settings                   print squash=<true|false>
+#                                                rebase=<true|false> as the
+#                                                repository allows them
+#
+# Depends on gh. Exit 0 done; 1 the host refused or the command failed;
+# 127 gh is not on PATH.
+set -u
+command -v gh >/dev/null 2>&1 || exit 127
+case "${1:-}" in
+  propose)
+    [ $# -ge 3 ] || { echo "usage: propose <branch> <trunk>" >&2; exit 2; }
+    gh pr create --head "$2" --base "$3" --fill || exit 1 ;;
+  merge)
+    [ $# -ge 3 ] || { echo "usage: merge <branch> <trunk>" >&2; exit 2; }
+    gh pr merge "$2" --merge --delete-branch || exit 1 ;;
+  settings)
+    out="$(gh repo view --json squashMergeAllowed,rebaseMergeAllowed)" || exit 1
+    sq=false; rb=false
+    printf '%s' "$out" | grep -qE '"squashMergeAllowed":[[:space:]]*true' && sq=true
+    printf '%s' "$out" | grep -qE '"rebaseMergeAllowed":[[:space:]]*true' && rb=true
+    printf 'squash=%s rebase=%s\n' "$sq" "$rb" ;;
+  *) echo "usage: hosts/github propose|merge|settings" >&2; exit 2 ;;
+esac

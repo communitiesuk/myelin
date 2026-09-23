@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# A stand-in for gh used by land.sh. Records every invocation to
+# $GH_STUB_LOG. "pr create" prints a URL. "pr merge" refuses when
+# GH_STUB_MERGE=refuse, otherwise performs a real merge commit in the bare
+# origin at $GH_STUB_BARE onto $GH_STUB_TRUNK and deletes the remote
+# branch, as the host would. "repo view" reports merge settings from
+# GH_STUB_SQUASH.
+set -u
+printf '%s\n' "$*" >> "${GH_STUB_LOG:?}"
+case "${1:-} ${2:-}" in
+  "auth status") echo "Logged in"; exit 0 ;;
+  "pr create") echo "https://github.com/example/repo/pull/7"; exit 0 ;;
+  "pr merge")
+    if [ "${GH_STUB_MERGE:-ok}" = refuse ]; then
+      echo "Permission for this action was denied by the session's permission classifier. Reason: [Merge Without Review]." >&2
+      exit 1
+    fi
+    branch="${3:?}"; tmp="$(mktemp -d)"
+    git clone -q "${GH_STUB_BARE:?}" "$tmp/c" \
+      && git -C "$tmp/c" switch -q "${GH_STUB_TRUNK:?}" \
+      && git -C "$tmp/c" merge -q --no-ff -m "Merge pull request #7 from example/$branch" "origin/$branch" \
+      && git -C "$tmp/c" push -q origin "$GH_STUB_TRUNK" \
+      && git -C "$tmp/c" push -q origin --delete "$branch"
+    rc=$?; rm -rf "$tmp"; exit $rc ;;
+  "repo view") printf '{"squashMergeAllowed":%s,"rebaseMergeAllowed":false}\n' "${GH_STUB_SQUASH:-false}"; exit 0 ;;
+  *) echo "stub gh: unsupported: $*" >&2; exit 1 ;;
+esac
