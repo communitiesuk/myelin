@@ -1,11 +1,11 @@
 ---
 name: release
-description: Releases this plugin as a published aaai/myelin version. TRIGGER when asked to release, cut a version, publish the plugin, or tag a release of myelin. SKIP for releasing any other project, and for ordinary artefact work, which git-workflow governs.
+description: Releases this plugin as a published myelin/myelin version. TRIGGER when asked to release, cut a version, publish the plugin, or tag a release of myelin. SKIP for releasing any other project, and for ordinary artefact work, which git-workflow governs.
 ---
 
 # Release
 
-Releases myelin: bump the version on its own branch, run five gates, land the branch in `dev`, fast-forward `main` to that merge, tag it, publish the tag's commit to the tessl registry as `aaai/myelin`. Rationale is in `docs/adr/0005-releases.md`. This skill is a project skill of this repository and is never packaged.
+Releases myelin: bump the version on its own branch, run five gates, land the branch in `dev`, fast-forward `main` to that merge, tag it, publish the tag's commit to the tessl registry as `myelin/myelin`. Rationale is in `docs/adr/0005-releases.md`. This skill is a project skill of this repository and is never packaged.
 
 Every branch, commit and pull request below follows `skills/git-workflow/SKILL.md`. The release branch is work governed by no packaged skill, so it takes the `chore` token. Any gate failing stops the release: nothing is published and `main` does not move.
 
@@ -105,7 +105,7 @@ Then publish from a checkout whose HEAD is `$MERGE`: the primary checkout if `gi
 
 ```sh
 tessl plugin publish
-tessl plugin info aaai/myelin@<version>          # the release is complete only when this reports <version>
+tessl plugin info myelin/myelin@<version>          # the release is complete only when this reports <version>
 ```
 
 Publish may run its own scenario check and take time; record what it did in the reply. If it fails, the tag and the host release stand, because they name the commit; fix the cause and retry publish. Do not move the tag.
@@ -117,7 +117,7 @@ git branch -d chore-release-<version> 2>/dev/null || true
 git rev-parse --abbrev-ref HEAD                  # dev
 ```
 
-Report the version, the tag, the merge commit, the eval run id, and the install command: `tessl install aaai/myelin`.
+Report the version, the tag, the merge commit, the eval run id, and the install command: `tessl install myelin/myelin`.
 
 ## Do not
 
