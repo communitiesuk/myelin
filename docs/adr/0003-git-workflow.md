@@ -221,10 +221,10 @@ platform can refuse a squash merge and refuse a direct push to trunk,
 so the rules above stop depending on an agent remembering them. It
 buys no review: an agent that opens a pull request and immediately
 merges it has been reviewed by nobody. Any claim that this provides
-human acceptance would be false, and the absence is the reason a
-separate decision is needed about when an agent may land its own work
-and when it must escalate. Until that decision exists, the agent
-lands its own work.
+human acceptance would be false. Which artefacts an agent may land
+itself and which a human must merge is decided below; how an agent
+earns the confidence to land anything more than that remains a
+separate decision.
 
 **The host is an implementation detail.** This decision names the
 mechanism — a pull request, merged so as to preserve commit structure
@@ -283,6 +283,27 @@ harness-shaped, was parked by ADR 0001, and belongs with the decision
 about when an agent may land its own work. This decision does not
 promise enforcement of the moment; it removes the judgement from what
 happens at the moment.
+
+### A decision lands only when a human merges it
+
+An artefact branch that adds a file under `docs/adr/`, or whose
+commits carry a `Revises` trailer, is landed by a human and never by
+the agent. The agent's job ends where it does for a refused merge:
+push the branch, open the pull request, stop, and report. Every other
+artefact — a discovery note, a plan, a skill, code, a release — the
+agent lands itself.
+
+The line is drawn by what can check the artefact. A plan is reviewed
+against its ADR, a skill against its eval scenarios, code against its
+tests; each has a check other than a person reading it. An ADR is the
+thing those checks are made against, and nothing checks it but a
+human reading the text. On 2026-09-23 an agent opened and merged a
+revision of this ADR within the same minute and then removed the
+discovery note it derived from, on the strength of an acceptance that
+had not happened; the text turned out to be fine, which is not the
+point. Both facts that select this rule are readable from the branch
+without judgement, so the script that lands enforces it, and until
+that script exists the skill body states it.
 
 ### A plan merges when it is written
 
@@ -516,10 +537,11 @@ artefact rather than from trunk.
   that becomes two skills is a decision for whatever implements this,
   but the boundary is now in the decision rather than latent in it.
 - A pull request merged by the agent that opened it records no human
-  acceptance. Anything that needs review has to say so and be
-  escalated deliberately, and until the escalation rule exists there
-  is nothing in this decision that stops an agent landing a bad
-  artefact. This is the single largest gap the revision opens.
+  acceptance. For an ADR that is now prevented: the agent stops at
+  the pull request and a human merges. For every other artefact the
+  agent still lands its own work, and the rule for when it should
+  instead escalate on earned confidence remains open. The gap is
+  narrower than it was and is still the largest this decision leaves.
 - Merging a plan on creation means a plan is public before the work
   it describes has been attempted, so a plan found defective during
   implementation is corrected by a revision commit on trunk rather
