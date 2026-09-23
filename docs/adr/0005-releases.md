@@ -190,11 +190,12 @@ and no `main` to move.
   repository-level notes about settings on `main` are what move.
 - The first release cannot fail the behaviour gate. Its value is the
   baseline every later release is compared against.
-- Each release costs one full eval run across all scenarios; the
-  comparison reuses the previous release's recorded run and adds
-  nothing. Calibrating the variation is a one-off cost of repeats.
-  Accepted at a weekly cadence. The comparison holds only while
-  agent and model stay pinned; changing either resets the record.
+- Each release costs as many full eval runs as the plan's calibration
+  found necessary to suppress run-to-run collapses, three at the time
+  of writing; the comparison reuses the previous release's recorded
+  medians and adds nothing. Accepted at a weekly cadence. The
+  comparison holds only while agent and model stay pinned; changing
+  either resets the record.
 - Release notes are the first mechanical consumer of ADR 0004's
   trailers. Until the history skill exists they are a `git log`
   between two tags; when it exists it can take the job over.
