@@ -7,7 +7,7 @@ description: Releases this plugin as a published mhclg-aaai/myelin version. TRIG
 
 Releases myelin: bump the version on its own branch, run five gates, land the branch in `dev`, fast-forward `main` to that merge, tag it, publish the tag's commit to the tessl registry as `mhclg-aaai/myelin`. Rationale is in `docs/adr/0005-releases.md`. This skill is a project skill of this repository and is never packaged.
 
-Every branch, commit and pull request below follows `skills/git-workflow/SKILL.md`. The release branch is work governed by no packaged skill, so it takes the `chore` token. Any gate failing stops the release: nothing is published and `main` does not move.
+Every branch, commit and pull request below follows `skills/git-workflow/SKILL.md`, except that the release branch lands with the commands in this skill rather than the script's `land`: a version bump carries no `Derives-From` trailer by ADR 0005's design, and `land` refuses a branch without one. The release branch is work governed by no packaged skill, so it takes the `chore` token. Any gate failing stops the release: nothing is published and `main` does not move.
 
 ## 1. Preconditions
 
