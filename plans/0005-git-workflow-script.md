@@ -373,6 +373,22 @@ work rather than being closed here.
   forced context activation stays on in Step 6 for comparability,
   so `activatedSkills` there measures forced loading, and the
   trigger question stays with the landing-gate work.
+- 2026-09-23 — Steps 1 to 5 landed the same evening, each red then
+  green: contract and harness (PR 35, 1 test), `check` (PR 36, 13
+  tests), `begin` (PR 37, 14 tests, three tightened after passing
+  against the stub and two corrected with reasons), `land` and the
+  github module (PR 38, 20 tests, five corrected with reasons: the
+  helper's default artefact was itself a decision, the fake host URL
+  blocked transport, the helper left the local trunk ahead of origin,
+  a reflog count included the helper's own switch, and a stray
+  assertion could only fail silently). `land` reads dirtiness from
+  tracked files only, since untracked files are not the artefact and
+  Rule 14 expects them at landing; it reads the host from the
+  remote's configured URL, not the rewritten one. Step 5: body 196 →
+  122 lines around the two moments and the judgement, rules'
+  rationale in `references/RULES.md`, review 88, lint clean, the
+  release skill's sentence amended. Step 6 waits for the credit
+  renewal on 2026-09-28; about 50 credits remained at close.
 - Judgement calls at authoring:
   - Steps 1 to 4 are `code-` branches under `test-first-workflow`:
     Rule 7 gives `code` for a working code change. Step 5 is a body
