@@ -17,7 +17,7 @@ Mandatory and ordered — do not skip, do not merge, do not reorder. Steps 1–4
 4. Create the branch — and, where isolating, the worktree — and bootstrap its configuration (Rule 8).
 5. **Now edit.**
 6. Commit. The branch's first commit carries `Derives-From:` (Rule 9).
-7. Land it: a pull request where the repository has a remote whose host offers one, `git merge --no-ff` where it does not (Rules 10–11). A two-parent merge commit either way.
+7. Land it: a pull request where the repository has a remote whose host offers one, `git merge --no-ff` where it does not (Rules 10–11). A two-parent merge commit either way. If the merge is refused, stop here and report (Rule 11); step 8 runs only on merge.
 8. Clean up: delete the branch, remove the worktree, return the primary checkout to trunk (Rule 14).
 
 If you are at step 5 and cannot name the branch you are on, stop and go back to step 1. An artefact that was written but never committed and merged has not been produced.
@@ -147,6 +147,8 @@ Propose and land **through the host's pull-request mechanism whenever the reposi
 
 **The host is an implementation detail this skill does not know.** The commands for a particular host belong to a **platform skill, which does not yet exist**; until it does, `git-workflow` implements the fallback path only. Where a remote exists, use whatever host tooling the session already provides and hold it to Rule 10's outcome: state the merge action explicitly rather than accepting a default (at least one major host squashes by default), and disable squash and rebase merges at the repository level wherever the host allows it, so the prohibition is enforced rather than merely written down.
 
+**A refused merge ends the procedure at step 7.** When the pull request is open and its merge is refused — by the host, or by the harness's permission layer — stop and report: the pull request URL, the exact command that was refused, and the state left behind (branch pushed, worktree kept, primary checkout not returned to trunk, because Rule 14 runs on merge and nothing merged). Say that allowing the merge command in the harness's permission settings, for example `Bash(gh pr merge *)`, lets future artefacts land unattended. Do **not** take the local-merge fallback: it exists for a repository with no remote, and here it would bypass whoever refused. Do not describe the artefact as landed. A remote whose host tooling is missing from the session is the same case, not the no-remote case.
+
 **A pull request buys enforcement, and only that.** The platform can refuse a squash and refuse a direct push to trunk. It buys **no review**: an agent that opens a pull request and immediately merges it has been reviewed by nobody. Do not describe such a merge as approved, accepted or signed off. The agent lands its own work until a separate decision says otherwise.
 
 ## Rule 12 — A plan merges when it is written
@@ -175,6 +177,7 @@ git branch -d <branch>
 - Do not run `git add -A` or `git commit -a` in a checkout whose dirty state is not yours, and do not `git stash` a checkout to get it clean enough to branch in. That is what the worktree is for.
 - Do not copy `.venv/`, `node_modules/` or any other built dependency into a worktree or commit one; do not *move* `.claude/`, `.env` or `.mcp.json` into one — copy them, the base checkout still needs them.
 - Do not add a remote or push to satisfy an instruction to open a pull request in a repository that has no remote, and do not leave an artefact unlanded because the host's mechanism was unavailable. Take the fallback.
+- Do not merge locally, or push a local merge to trunk, because a pull-request merge was refused or the host tooling was missing. A remote exists, so the fallback does not apply; stop and report (Rule 11).
 - Do not write a relationship between artefacts as a sentence and call it recorded. It goes in a trailer.
 - Do not define "artefact" here, adjust an artefact's boundary to suit the branching, or specify what a commit contains. Rules 2 and 3 defer all three to the governing skill.
 - Do not remove somebody else's branch or worktree.
