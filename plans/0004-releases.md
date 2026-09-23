@@ -305,6 +305,24 @@ whenever that happens.
   shared workspace is `myelin`, and the account owns it, so the dry
   run passes there. ADR 0005 revised on this branch; Step 5 is
   unblocked.
+- 2026-09-23 — Step 5 done: `v0.1.0` at `3e55045`, the merge of
+  `chore-release-0.1.0` into `dev` (PR 17); `main` fast-forwarded to
+  it; GitHub release created; published as `myelin/myelin@0.1.0`,
+  moderation and security passed. Gate 3 run
+  `01a0cdd0-dbfe-77e6-a881-5ba84435c21f`: mean 99 with the plugin, 40
+  baseline, all eight scenarios; the table is in the tag message.
+  Publish uploaded 8 scenarios and started its own run,
+  `01a0cdd9-c86e-7078-b0ea-f56051da24a1`, without blocking. A scratch
+  project installed it and listed six skills, none of them `release`.
+  Still to record: one organisation member other than the publisher
+  installing it.
+  Two findings for the skill: gate 5's `%b` gives only trailers for
+  merges made locally before the pull-request era, whose meaning is
+  in the subject — the first release took the PR title for host
+  merges and the subject otherwise, and the skill should say so; and
+  the 30-line first-release list surfaced a numbering collision, two
+  plans called 0004, because the plans skill counts the tree and the
+  tree empties under ADR 0004. Both are queued outside this plan.
 - Judgement calls at authoring:
   - This plan's branch is based on the ADR's branch rather than on
     `main`, because the ADR was not yet on trunk when the plan was
