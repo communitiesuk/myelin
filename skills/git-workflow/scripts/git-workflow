@@ -93,7 +93,7 @@ derive_remote() {
 derive_host() {
   local remote="$1" url
   [ "$remote" = none ] && { echo none; return 0; }
-  url="$(git remote get-url "$remote")"
+  url="$(git config --get "remote.$remote.url")"   # the configured URL names the host; url.*.insteadOf rewrites are transport
   case "$url" in
     https://github.com/*|http://github.com/*|git@github.com:*|ssh://git@github.com/*|github.com:*) echo github ;;
     *) echo "unknown:$url" ;;
@@ -199,7 +199,9 @@ cmd_begin() {
 # land — integrate the artefact branch, or stop and say why.
 #
 # Run from inside the artefact's checkout, primary or worktree. In order:
-#   1. Refuses (exit 2) when HEAD is the trunk, the working tree is dirty,
+#   1. Refuses (exit 2) when HEAD is the trunk, tracked files have
+#      uncommitted changes (untracked files are not the artefact and may
+#      be a worktree's installed dependencies),
 #      there is nothing since the fork point, the first commit since the
 #      fork point carries no Derives-From trailer, or that trailer's value
 #      is not repository-relative (starts with / or ./).
@@ -224,7 +226,110 @@ cmd_begin() {
 #      trunk. Where the work was in place the checkout was switched in 3.
 #      Where the primary checkout is on neither the trunk nor the branch,
 #      no merge can run there: exit 1 with a report.
-cmd_land()  { die 2 "land is not implemented yet"; }
+script_dir() { cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P; }
+physical() { (cd "$1" 2>/dev/null && pwd -P); }
+
+# stop CODE SUMMARY URL COMMAND BRANCH REMOTE PRIMARY WT — report and exit
+stop() {
+  local code="$1" summary="$2" url="$3" command="$4" branch="$5" remote="$6" primary="$7" wt="$8"
+  printf 'git-workflow: stopped: %s\n' "$summary"
+  [ -n "$url" ] && printf '  pull request: %s\n' "$url"
+  [ -n "$command" ] && printf '  command: %s\n' "$command"
+  local pushed="not pushed"
+  if [ "$remote" != none ] && git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1; then pushed="pushed to $remote at $(git rev-parse --short "$branch")"; fi
+  printf '  state: branch %s %s; %s; primary checkout on %s; nothing merged, nothing cleaned up.\n' \
+    "$branch" "$pushed" "$([ -n "$wt" ] && echo "worktree $wt kept" || echo "no worktree")" "$(git -C "$primary" rev-parse --abbrev-ref HEAD)"
+  if [ "$code" = 3 ]; then
+    printf '  this branch is a decision: a human merges it.\n'
+  else
+    printf '  to let future artefacts land unattended, allow the merge command in the harness permission settings, for example Bash(gh pr merge *).\n'
+  fi
+  exit "$code"
+}
+
+cleanup_after_merge() {
+  local primary="$1" wt="$2" branch="$3" trunk="$4"
+  if [ -n "$wt" ]; then git -C "$primary" worktree remove --force "$wt" || printf 'git-workflow: note: could not remove worktree %s\n' "$wt"; fi
+  git -C "$primary" branch -d "$branch" >/dev/null 2>&1 || git -C "$primary" branch -D "$branch" >/dev/null 2>&1 || true
+  local head; head="$(git -C "$primary" rev-parse --abbrev-ref HEAD)"
+  [ "$head" = "$trunk" ] || printf 'git-workflow: note: primary checkout is on %s, not the trunk %s\n' "$head" "$trunk"
+  return 0
+}
+
+cmd_land() {
+  git rev-parse --git-dir >/dev/null 2>&1 || die 2 "not inside a git repository"
+  local trunk remote host branch
+  trunk="$(derive_trunk)" || die 2 "no trunk resolves: looked for refs/heads/dev, refs/heads/develop and the branch named by refs/remotes/origin/HEAD"
+  remote="$(derive_remote)" || die 2 "more than one remote and none named origin: $(git remote | tr '\n' ' ')"
+  host="$(derive_host "$remote")"
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  [ "$branch" != "$trunk" ] || die 2 "HEAD is the trunk ($trunk): land runs from the artefact branch"
+  [ -z "$(git status --porcelain --untracked-files=no)" ] || die 2 "working tree is dirty: tracked files have uncommitted changes; commit or discard before landing"
+  local first
+  first="$(git rev-list --reverse "$trunk..HEAD" | head -1)"
+  [ -n "$first" ] || die 2 "nothing to land: no commits since the fork point from $trunk"
+  local trailer
+  trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
+  [ -n "$trailer" ] || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
+  printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
+
+  local decision=0
+  [ -n "$(git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD" | sed '/^$/d')" ] && decision=1
+  git diff --name-status "$trunk...HEAD" | grep -qE '^A[[:space:]]+docs/adr/' && decision=1
+
+  local primary here inplace=0 wt=""
+  primary="$(physical "$(git worktree list --porcelain | awk 'NR==1 && $1=="worktree"{print $2}')")"
+  here="$(physical "$(git rev-parse --show-toplevel)")"
+  if [ "$here" = "$primary" ]; then inplace=1; else wt="$here"; fi
+
+  local module="" url=""
+  case "$host" in github) module="$(script_dir)/hosts/$host" ;; esac
+
+  # A remote means the pull-request path: push first, whatever follows.
+  if [ "$remote" != none ]; then
+    git push -q -u "$remote" "$branch" 2>/dev/null || stop 1 "could not push $branch to $remote" "" "git push -u $remote $branch" "$branch" "$remote" "$primary" "$wt"
+  fi
+
+  if [ "$decision" -eq 1 ]; then
+    [ "$remote" != none ] || stop 3 "this branch is a decision and there is no remote to propose it on" "" "" "$branch" "$remote" "$primary" "$wt"
+    [ -n "$module" ] || stop 1 "no host module for $host: the branch is pushed; propose it by hand" "" "" "$branch" "$remote" "$primary" "$wt"
+    url="$(bash "$module" propose "$branch" "$trunk")" || {
+      rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request could not be opened" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"
+      stop 1 "the host refused to open the pull request" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"; }
+    stop 3 "decision proposed; a human merges it" "$url" "" "$branch" "$remote" "$primary" "$wt"
+  fi
+
+  if [ "$host" = none ]; then
+    if [ "$inplace" -eq 1 ]; then
+      git switch -q "$trunk" || die 2 "could not switch the primary checkout to $trunk"
+    else
+      [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ] || stop 1 "the primary checkout is on $(git -C "$primary" rev-parse --abbrev-ref HEAD), not the trunk $trunk, so the local merge cannot run there" "" "" "$branch" "$remote" "$primary" "$wt"
+    fi
+    git -C "$primary" merge -q --no-ff -m "Merge $branch" "$branch" || die 1 "merge of $branch into $trunk failed; resolve it in the primary checkout"
+    cleanup_after_merge "$primary" "$wt" "$branch" "$trunk"
+    printf 'landed %s into %s as %s\n' "$branch" "$trunk" "$(git -C "$primary" rev-parse --short "$trunk")"
+    return 0
+  fi
+
+  [ -n "$module" ] || stop 1 "no host module for $host: the branch is pushed; open and merge the pull request by hand" "" "" "$branch" "$remote" "$primary" "$wt"
+
+  local settings
+  if settings="$(bash "$module" settings 2>/dev/null)"; then
+    case "$settings" in *squash=true*|*rebase=true*) printf 'git-workflow: warning: the host allows what the workflow forbids (%s); disable squash and rebase merges at the repository level\n' "$settings" ;; esac
+  fi
+  url="$(bash "$module" propose "$branch" "$trunk")" || {
+    rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request could not be opened" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"
+    stop 1 "the host refused to open the pull request" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"; }
+  if [ "$inplace" -eq 1 ]; then git switch -q "$trunk" || die 2 "could not switch the primary checkout to $trunk"; fi
+  (cd "$primary" && bash "$module" merge "$branch" "$trunk") || {
+    rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"
+    stop 1 "the merge was refused; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"; }
+  if [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ]; then
+    git -C "$primary" fetch -q "$remote" && git -C "$primary" merge -q --ff-only "$remote/$trunk" || printf 'git-workflow: note: could not fast-forward %s to %s/%s\n' "$trunk" "$remote" "$trunk"
+  fi
+  cleanup_after_merge "$primary" "$wt" "$branch" "$trunk"
+  printf 'landed %s into %s via %s as %s\n' "$branch" "$trunk" "$host" "$(git -C "$primary" rev-parse --short "$trunk")"
+}
 
 main() {
   case "${1:-}" in
