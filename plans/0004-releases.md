@@ -338,6 +338,20 @@ whenever that happens.
   new name and the old plugin is archived after it. The eval project
   link in `tessl.json` moves to the new workspace after Step 6, so
   that today's runs stay together under the old project.
+- 2026-09-23 — Step 6 done. Calibration run
+  `01a0cde0-ed00-7335-8084-f7eff8b070e3`, three repeats of 0.1.0 over
+  eight scenarios, status "failed" for one lost repeat of
+  `scenario-4`, 23 of 24 scored. Six scenarios at 97–100, spread
+  ≤ 3. `git-workflow-1` scored 23/96/100 and `scenario-0` 48/100/100:
+  one collapse each, so a single-run comparison cannot work on them.
+  Gate 3 now runs three repeats, compares per-scenario medians with
+  the previous tag's table, threshold 10 points, agent and model
+  pinned; a repeat under 50 against a median above 90 is reported as
+  an instrument finding. Cost is three full runs per release, about
+  240 credits at today's rate; ADR 0005's cost consequence corrected
+  at `2887fb3`. The two collapses want a look at what the agent did
+  in those repeats: a fixture that fails one run in three on its own
+  passing body is measuring something other than the skill.
 - Judgement calls at authoring:
   - This plan's branch is based on the ADR's branch rather than on
     `main`, because the ADR was not yet on trunk when the plan was
