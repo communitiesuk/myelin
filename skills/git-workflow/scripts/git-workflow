@@ -71,7 +71,52 @@ die() {
 # more than one remote and none is origin. Reads configuration keys and
 # prose from nowhere: a workflow.trunk key or a CONTRIBUTING.md changes
 # nothing.
-cmd_check() { die 2 "check is not implemented yet"; }
+derive_trunk() {
+  if git rev-parse --verify --quiet refs/heads/dev >/dev/null; then echo dev; return 0; fi
+  if git rev-parse --verify --quiet refs/heads/develop >/dev/null; then echo develop; return 0; fi
+  local head
+  if head="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+    echo "${head#origin/}"; return 0
+  fi
+  return 1
+}
+
+derive_remote() {
+  local remotes
+  remotes="$(git remote)"
+  [ -z "$remotes" ] && { echo none; return 0; }
+  if printf '%s\n' "$remotes" | grep -qx origin; then echo origin; return 0; fi
+  if [ "$(printf '%s\n' "$remotes" | wc -l | tr -d ' ')" = "1" ]; then echo "$remotes"; return 0; fi
+  return 1
+}
+
+derive_host() {
+  local remote="$1" url
+  [ "$remote" = none ] && { echo none; return 0; }
+  url="$(git remote get-url "$remote")"
+  case "$url" in
+    https://github.com/*|http://github.com/*|git@github.com:*|ssh://git@github.com/*|github.com:*) echo github ;;
+    *) echo "unknown:$url" ;;
+  esac
+}
+
+derive_contention() {
+  local trunk="$1"
+  if [ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" = "$trunk" ] && [ -z "$(git status --porcelain)" ]; then
+    echo in-place
+  else
+    echo worktree
+  fi
+}
+
+cmd_check() {
+  git rev-parse --git-dir >/dev/null 2>&1 || die 2 "not inside a git repository"
+  local trunk remote host
+  trunk="$(derive_trunk)" || die 2 "no trunk resolves: looked for refs/heads/dev, refs/heads/develop and the branch named by refs/remotes/origin/HEAD; this repository is not set up for the workflow (git remote set-head origin -a satisfies it where a remote exists)"
+  remote="$(derive_remote)" || die 2 "more than one remote and none named origin: $(git remote | tr '\n' ' ')— say which by naming it origin"
+  host="$(derive_host "$remote")"
+  printf 'trunk=%s\nremote=%s\nhost=%s\ncontention=%s\n' "$trunk" "$remote" "$host" "$(derive_contention "$trunk")"
+}
 cmd_begin() { die 2 "begin is not implemented yet"; }
 cmd_land()  { die 2 "land is not implemented yet"; }
 
