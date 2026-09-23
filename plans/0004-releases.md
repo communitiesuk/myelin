@@ -16,9 +16,10 @@ plans are in the tree.
 
 ## Preconditions
 
-- ADR 0005 is `accepted` and on `main`. Its pull request merges
-  before this plan's, which is based on the ADR's branch so that the
-  order is enforced by the host rather than remembered.
+- ADR 0005 is `accepted` (it is, since bd5705d) and on `main`. Its
+  pull request merges before this plan's, which is based on the
+  ADR's branch so that the order is enforced by the host rather than
+  remembered.
 - Step 1 runs from `main` once both have merged. Every later step
   forks from `dev`.
 
@@ -200,10 +201,11 @@ Exit criteria:
   names them. This is also the only observation of the package
   contents.
 - `tessl eval view <baseline-id>` returns the run.
-- A human check that cannot be automated here: an organisation
-  member who is not the publisher runs `tessl install aaai/myelin`
-  successfully. Record who and when in Progress notes. If it fails,
-  the fix is registry visibility, not this plan.
+- One organisation member who is not the publisher runs
+  `tessl install aaai/myelin` successfully, and Progress notes
+  record who and when. Every member role can install a private
+  plugin, so this confirms the release rather than tests
+  visibility.
 
 ### Step 6 — Calibrate the behaviour gate
 
