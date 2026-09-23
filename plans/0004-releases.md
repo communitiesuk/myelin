@@ -1,12 +1,12 @@
 ---
-title: Release the plugin as aaai/myelin
+title: Release the plugin as myelin/myelin
 status: in-progress
 adr: 0005
 date: 2026-09-23
 deferred_reason: null
 ---
 
-# Release the plugin as aaai/myelin
+# Release the plugin as myelin/myelin
 
 ## Reference
 
@@ -61,20 +61,20 @@ Exit criteria:
 - A fresh clone checks out `dev`: `git clone` into a scratch
   directory, then `git rev-parse --abbrev-ref HEAD` prints `dev`.
 
-### Step 2 — Rename the plugin to `aaai/myelin` and zero the version
+### Step 2 — Rename the plugin to `myelin/myelin` and zero the version
 
 Branch `chore-manifest-aaai`. In `.tessl-plugin/plugin.json` set
-`name` to `aaai/myelin` and `version` to `0.0.0`, so that the first
+`name` to `myelin/myelin` and `version` to `0.0.0`, so that the first
 release's bump to `0.1.0` is a real change. Leave `private` at
 `true`. Check whether `tessl.json` needs the same name or a
 `tessl project repair`, and record the answer in Progress notes.
 
 Exit criteria:
 
-- `grep -c '"aaai/myelin"' .tessl-plugin/plugin.json` prints 1 and
+- `grep -c '"myelin/myelin"' .tessl-plugin/plugin.json` prints 1 and
   `grep -c '"0.0.0"'` prints 1.
 - At the time, `tessl plugin publish --dry-run` prints that workspace
-  `aaai` exists and that the user has publish permission there. The
+  `myelin` exists and that the user has publish permission there. The
   version line it prints is transient and is not a criterion.
 - `tessl eval lint .` still reports 7 scenarios valid.
 
@@ -90,7 +90,7 @@ repository releases.
 2. Reword the roadmap's opening sentence, which says only its first
    item has a decision behind it; the history skill has ADR 0004 and
    releases have ADR 0005.
-3. Add an install section: `tessl install aaai/myelin`, and that the
+3. Add an install section: `tessl install myelin/myelin`, and that the
    plugin is private to the organisation.
 4. Under "How this repo records its own work", state that `dev` is
    the trunk, `main` holds only releases, and each release is a tag
@@ -111,7 +111,7 @@ Exit criteria:
   `> git-workflow`, so it discriminates.
 - `grep -c 'pending revision' README.md` prints 0 and
   `grep -c 'In progress' README.md` prints 0.
-- `grep -c 'tessl install aaai/myelin' README.md` prints 1.
+- `grep -c 'tessl install myelin/myelin' README.md` prints 1.
 
 ### Step 4 — Author the release skill
 
@@ -164,7 +164,7 @@ The body carries, in order, with the exact commands:
     time; record what it did. If it fails, the tag and host release
     stand, because they name the commit, and publish is retried;
     the release is complete only when
-    `tessl plugin info aaai/myelin@<version>` reports the version.
+    `tessl plugin info myelin/myelin@<version>` reports the version.
 12. **Clean up.** Delete `chore-release-<version>`, confirm the
     primary checkout is on `dev` with `git rev-parse --abbrev-ref HEAD`.
 
@@ -190,19 +190,19 @@ Exit criteria:
 - `git cat-file -p v0.1.0` shows an annotated tag whose message is
   the release notes, including the baseline eval run id.
 - `gh release view v0.1.0` succeeds.
-- `tessl plugin info aaai/myelin@0.1.0 --json` reports version
+- `tessl plugin info myelin/myelin@0.1.0 --json` reports version
   `0.1.0`.
 - The registry holds the 7 scenarios for `0.1.0`. `plugin info`
   exposes no file list, so record in Progress notes which
   observation established this: the publish output, the registry
-  page, or an eval run with `--context aaai/myelin@0.1.0`.
+  page, or an eval run with `--context myelin/myelin@0.1.0`.
 - In a scratch directory outside this repository, `tessl init` then
-  `tessl install aaai/myelin` installs six skills, and `tessl list`
+  `tessl install myelin/myelin` installs six skills, and `tessl list`
   names them. This is also the only observation of the package
   contents.
 - `tessl eval view <baseline-id>` returns the run.
 - One organisation member who is not the publisher runs
-  `tessl install aaai/myelin` successfully, and Progress notes
+  `tessl install myelin/myelin` successfully, and Progress notes
   record who and when. Every member role can install a private
   plugin, so this confirms the release rather than tests
   visibility.
@@ -216,7 +216,7 @@ skill edit.
    an invalid value's error text, or a minimal run; the candidate arm
    is most likely named with `--context-commit`. Record it.
 2. Measure run-to-run variation:
-   `tessl eval run . -n 3 --skip-baseline --context aaai/myelin@0.1.0 --wait --json`,
+   `tessl eval run . -n 3 --skip-baseline --context myelin/myelin@0.1.0 --wait --json`,
    then read the per-scenario spread with
    `tessl eval view <id> --full`. Expect 21 scenario executions of
    credit.
@@ -249,7 +249,7 @@ plus the registry and the host:
    commit is a merge on `dev`'s first-parent line:
    `git log --first-parent --format=%H origin/dev | grep -c $(git rev-parse origin/main)`
    prints 1.
-3. `tessl plugin info aaai/myelin --json` reports `0.1.0`, and the
+3. `tessl plugin info myelin/myelin --json` reports `0.1.0`, and the
    scratch install in Step 5 listed six skills.
 4. `git ls-files .claude/skills/release/SKILL.md` prints the path and
    the dry-run pack list does not.
@@ -299,6 +299,12 @@ whenever that happens.
   contains nothing under `.claude/`, `docs/` or `plans/`. Step 5 is
   blocked until the account holds the publisher role on workspace
   `aaai`; gate 1 cannot pass without it.
+- 2026-09-23 — Identity corrected to `myelin/myelin`. The `aaai`
+  workspace the dry run found belongs to someone outside the
+  organisation; registry names are workspaces, the organisation's
+  shared workspace is `myelin`, and the account owns it, so the dry
+  run passes there. ADR 0005 revised on this branch; Step 5 is
+  unblocked.
 - Judgement calls at authoring:
   - This plan's branch is based on the ADR's branch rather than on
     `main`, because the ADR was not yet on trunk when the plan was
