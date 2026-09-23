@@ -89,9 +89,13 @@ artefacts, so ADR 0004's trailer table is unchanged by this decision.
 
 Bumping the version has an independent truth condition, so under ADR
 0003 it is work, not bookkeeping. It is made on a branch named
-`release-<version>` cut from `dev`, and lands in `dev` by pull
+`chore-release-<version>` cut from `dev`, and lands in `dev` by pull
 request like anything else. `main` then fast-forwards to that merge
-commit. The release skill is the governing skill for this artefact.
+commit. The release skill directs the work, but it is not in the
+plugin's governing-skill table and is not packaged, so from ADR
+0003's side the release is work governed by no skill: it takes the
+`chore` token, and ADR 0003's table and naming rule stay as they
+are.
 
 ### Gates run on the release branch, before it merges
 
@@ -169,9 +173,9 @@ and no `main` to move.
   pull request required, no approvals required, linear history not
   required. `main` can be protected more simply, since it accepts
   nothing but a fast-forward from the release.
-- ADR 0003 and the `git-workflow` skill are unchanged, since both
-  derive the trunk. The repository-level notes about settings on
-  `main` are what move.
+- ADR 0003 and the `git-workflow` skill are unchanged: both derive
+  the trunk, and the release branch takes an existing type token. The
+  repository-level notes about settings on `main` are what move.
 - The first release cannot fail the behaviour gate. Its value is the
   baseline every later release is compared against.
 - Each release costs a full eval run with two arms, about twice the
