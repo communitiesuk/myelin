@@ -1,1 +1,3 @@
-{ "description": "Writing a markdown decision artefact in a repository that has a remote and a host CLI whose pull-request merge is refused: branch before edit, isolate because the checkout is not on trunk, derive the fork point, push and open the pull request, then stop and report when the merge is refused — never fall back to a local merge into trunk, never clean up" }
+{
+  "description": "Writing a markdown decision artefact in a repository that has a remote but no host CLI in the session, so no pull request can be opened: branch before edit, isolate because the checkout is not on trunk, derive the fork point, push the branch, then stop and report that the pull request could not be opened \u2014 never fall back to a local merge into trunk, never clean up as if something had merged. The report itself is not scorable from git state and is left untested."
+}
