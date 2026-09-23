@@ -1,0 +1,1 @@
+{ "description": "Writing a markdown decision artefact in a repository that has a remote and a host CLI whose pull-request merge is refused: branch before edit, isolate because the checkout is not on trunk, derive the fork point, push and open the pull request, then stop and report when the merge is refused — never fall back to a local merge into trunk, never clean up" }
