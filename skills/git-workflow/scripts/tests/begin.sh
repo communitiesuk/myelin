@@ -45,7 +45,7 @@ t "in place: on the trunk and clean, the primary checkout moves to the new branc
 
 t "worktree: on another branch, the worktree forks from the trunk, not from HEAD"
   fixture "$R/w1" --trunk dev --branch topic --config >/dev/null
-  (cd "$R/w1" && g switch -q topic)
+  (cd "$R/w1" && printf '.worktrees/\n' >> .gitignore && g add .gitignore && g commit -q -m "ignore worktrees" && g switch -q topic)
   out="$(begin "$R/w1" docs/adr/0002-x.md)"
   wt="$R/w1/.worktrees/adr-0002-x"
   assert_eq "dir=$(cd "$R/w1" && pwd -P)/.worktrees/adr-0002-x" "$(line "$out" dir)" "$out"
@@ -91,7 +91,7 @@ t "bookkeeping: the .worktrees/ line is committed inside the worktree when missi
   (cd "$R/w4" && g switch -q topic)
   begin "$R/w4" docs/adr/0002-x.md >/dev/null
   wt="$R/w4/.worktrees/adr-0002-x"
-  (cd "$wt" && git check-ignore -q .worktrees) || fail ".worktrees/ not ignored in the worktree"
+  (cd "$wt" && git check-ignore -q .worktrees/probe) || fail ".worktrees/ not ignored in the worktree"
   assert_eq "1" "$(cd "$wt" && git rev-list --count dev..HEAD)" "exactly one bookkeeping commit on the branch"
   assert_eq "" "$(cd "$wt" && git status --porcelain)" "worktree must be clean after the commit"
   assert_eq "0" "$(cd "$R/w4" && grep -c '^\.worktrees/$' .gitignore)" "primary checkout's .gitignore must be untouched"
