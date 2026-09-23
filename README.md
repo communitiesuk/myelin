@@ -5,7 +5,7 @@ A plugin of skills that front-load the human thinking effort at the earliest sta
 ## Installing
 
 ```sh
-tessl install myelin/myelin
+tessl install mhclg-aaai/myelin
 ```
 
 The plugin is private to the `aaai` organisation on tessl: it does not appear in the public registry, and every member of the organisation can install it.
