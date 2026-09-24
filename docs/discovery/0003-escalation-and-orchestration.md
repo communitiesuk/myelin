@@ -181,7 +181,15 @@ Larger and not yet decidable:
   2026-09-23 and allowed it on 2026-09-24 with no valid explicit
   permission. A myelin blast-radius guard would be a second layer over
   an unreliable one. Whether myelin replaces, wraps, or defers to the
-  harness gate is open.
+  harness gate is open. A **second** harness gate is now confirmed by
+  observation: editing `.claude/settings.local.json` to grant the
+  landing permission was refused as `[Self-Modification]` (2026-09-24).
+  So the permission decision is irreducibly the human's — the agent
+  cannot grant itself the right to land, whatever the orchestration
+  design. Any observer/hook machinery must therefore operate *within* a
+  permission boundary it cannot alter, and escalation-to-human is not
+  merely a policy myelin chooses but a harness-enforced floor it builds
+  on top of.
 
 ## Next steps
 
