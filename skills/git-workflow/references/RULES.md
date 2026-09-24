@@ -22,19 +22,19 @@ When you isolate, work inside `.worktrees/<branch>` and do not touch the primary
 
 ## Rule 6 — Fork point is derived, never configured
 
-The trunk to branch from is the first of these that exists:
+The trunk to branch from is the first of these that exists. All three are refs that resolve; **there is no fourth rung**:
 
 1. a local `dev` branch,
 2. a local `develop` branch,
-3. the branch named by `refs/remotes/origin/HEAD`,
-4. where that symbolic ref is unset, the repository's existing default branch — in practice the first of `main`, `master` or `trunk` that exists locally, or the only branch there is.
+3. the branch named by `refs/remotes/origin/HEAD`.
 
 ```sh
 git rev-parse --verify --quiet refs/heads/dev
 git rev-parse --verify --quiet refs/heads/develop
 git symbolic-ref --quiet --short refs/remotes/origin/HEAD
-git branch --list main master trunk
 ```
+
+**A repository in which none of the three resolves is not set up for this workflow, and the workflow stops rather than guessing.** Say what is missing and what would fix it — `git remote set-head origin -a` sets `origin/HEAD` in one command for any repository with a remote — and do not proceed on an assumption about which branch is the trunk. This is a precondition on the repository, not a branching model: a wrong fork point is the one error here that is invisible when it is made, since a branch cut from the wrong trunk looks correct until it is merged. The removed fourth rung named "the repository's existing default branch" without saying how to find it, and git records that only in `init.defaultBranch`, which is configuration — so any implementation had to invent a hardcoded branch list under a heading that says derived and never configured.
 
 Never from configuration — not `init.defaultBranch`, not a `workflow.trunk`-style key, not any other value — and never from prose in a `CONTRIBUTING.md`, a README or a house style guide. A repository that carries a local `dev` gets `dev` even where every document in it says `main`. The same holds for branch naming and for the integration path: derive them, do not look them up.
 
