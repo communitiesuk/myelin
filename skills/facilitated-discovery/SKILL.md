@@ -33,6 +33,10 @@ Invite the human to describe what they're trying to do and why now. Use a single
 
 Let them speak. Don't rush to the next phase.
 
+**Starting from a seed.** Where the project's agent instructions (`AGENTS.md` / `CLAUDE.md`) say where the human keeps *seeds* — undeveloped ideas noted for later — read the relevant seed first and open the conversation from it, rather than asking the human to restate what they already wrote down. A seed is a starting point, not a brief.
+
+**The seed store is read-only.** Read a human's seed store for context; never write to or edit it. Anything worth keeping from the conversation becomes a discovery note (Phase 6B), not an entry in the human's store. See `docs/adr/0006-where-do-captured-ideas-live.md`.
+
 ### 2. Exploration
 
 Probe what you don't yet understand. Cover these themes in whatever order feels natural — not as a checklist:
@@ -104,6 +108,8 @@ Once confirmed ready:
 Write a discovery note to capture thinking in progress. Save it to `docs/discovery/NNNN-kebab-slug.md` (create the directory if it doesn't exist; `NNNN` is the next unused number by `ls docs/discovery/ | sort | tail -1`).
 
 The note is not a decision — it is a record of thinking so far, so the human can return to it and continue without starting over.
+
+**A discovery note has two entry points.** The usual one is the end of a Path B conversation, above. The other is a *developed capture* made mid-work: while doing something else, you or the human spot a direction worth keeping that is more than a one-line seed but is not the output of a full session. Write it as a discovery note too, in the same shape. In this version such a capture is made only with the human present and gating it — not written unattended — so that parked notes do not accumulate faster than anyone reviews them. See `docs/adr/0006-where-do-captured-ideas-live.md`.
 
 **Frontmatter:**
 
