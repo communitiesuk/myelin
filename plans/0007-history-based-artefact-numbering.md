@@ -1,9 +1,13 @@
 ---
 title: Number plans and discovery notes from history, not the tree
-status: in-progress
+status: deferred
 adr: 0004
 date: 2026-09-25
-deferred_reason: null
+deferred_reason: >-
+  Steps 1-2 landed (skill bodies fixed, eval scenario authored). Step 3
+  runs plan-numbering-0 through tessl eval run to show the criterion
+  discriminates, which costs credits. Paused until the tessl credit
+  renewal (week of 2026-09-28). Unblocks by running Step 3.
 ---
 
 # Number plans and discovery notes from history, not the tree
@@ -129,7 +133,7 @@ complete.
 - 2026-09-25: Plan written. Rename question confirmed already decided
   in commit `8e67377`; no step needed for it. Steps 1–2 to be executed
   now (no credits); Step 3 deferred to the credit renewal, so the plan
-  lands `in-progress` and stays in the tree until Step 3 passes.
+  is set `deferred` and stays in the tree until Step 3 passes.
 - 2026-09-25: Step 1 done — both skills now read the next number from
   history; `skills/adr/SKILL.md` left counting the tree, as intended.
   Verified by hand: the command prints `plans/0006`→next `0007`

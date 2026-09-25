@@ -1,9 +1,12 @@
 ---
 title: Ship git-workflow's mechanics as a script
-status: in-progress
+status: deferred
 adr: 0003
 date: 2026-09-23
-deferred_reason: null
+deferred_reason: >-
+  Steps 1-5 landed; Steps 6-7 run and judge the git-workflow evals,
+  which cost credits. Paused until the tessl credit renewal (week of
+  2026-09-28). Unblocks by running Step 6's eval batch.
 ---
 
 # Ship git-workflow's mechanics as a script
