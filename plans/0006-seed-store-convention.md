@@ -13,9 +13,18 @@ deferred_reason: null
 Implements `docs/adr/0006-where-do-captured-ideas-live.md`. That ADR's
 Consequences state the only buildable piece is documentation and
 convention: there is no new skill and no new store. This plan therefore
-edits existing skill and documentation prose only. Related: the roadmap
-item to surface what myelin requires and is opinionated about, which the
-README step below advances.
+edits existing skill prose only.
+
+Scope note: the ADR's buildable piece has two halves — the agent
+*behaviour* (read a seed, never write a human's store; the developed
+capture path) and the user-facing *documentation* of the seed-pointer
+convention. This plan implements the first half in
+`facilitated-discovery`. The second half is deferred to the roadmap
+item "surface what myelin requires and is opinionated about", where the
+seed-store convention is now captured as an opinion to state, rather
+than placed in the README here and relocated when that section is
+built. So this plan does not fully discharge the ADR alone; the
+user-facing documentation rides with that later work.
 
 ## Steps
 
@@ -41,23 +50,19 @@ README step below advances.
    Verify: the entry path is stated; it does not contradict the existing
    Path A / Path B split; `tessl review run` still passes.
 
-3. **Surface the seed-store convention in the README.** Add a short
-   entry to `README.md` (under the opinions/prerequisites material) that
-   a project may record, in one line in its `AGENTS.md`/`CLAUDE.md`,
-   where its seeds live — an org file, a `seeds.md`, host issues, or
-   several — so an agent need not be told each session; that the pointer
-   is optional and the store may move; and that agents read that store
-   but never write a human's private one.
-   Verify: the README names the convention and the read-not-write rule;
-   no statement in it contradicts ADR 0006 or the tree; the skills list
-   in the README is unchanged (this adds prose, not a skill).
+The user-facing documentation of the seed-pointer convention (a project
+recording where its seeds live) is **not** a step here — it is deferred
+to the README opinions/prerequisites roadmap item, per the Reference
+scope note.
 
 ## Verification
 
-- The seed-pointer convention and the read-not-write rule appear in both
-  `skills/facilitated-discovery/SKILL.md` (as agent behaviour) and
-  `README.md` (as a project-setup opinion), and neither contradicts
-  `docs/adr/0006-where-do-captured-ideas-live.md`.
+- The read-a-named-seed behaviour, the read-not-write rule, and the
+  developed-capture entry path appear in
+  `skills/facilitated-discovery/SKILL.md`, and none contradicts
+  `docs/adr/0006-where-do-captured-ideas-live.md`. (The user-facing
+  documentation of the seed-pointer convention is out of scope here and
+  is verified by the deferred README work, not this plan.)
 - `tessl review run skills/facilitated-discovery` passes after the edits.
 - `git diff` shows the skill's `description` field unchanged, confirming
   no new trigger contract and so no skill-forge pass required.
@@ -69,6 +74,14 @@ README step below advances.
 - 2026-09-25: ADR 0006 accepted separately (PR #44, `e7650d0`); the
   accept status-flip did not ride with this plan's branch, per the
   `plans` rule against editing an ADR from a plan's commits.
+- 2026-09-25: revised after an independent review against ADR 0006. The
+  review confirmed complete coverage, no contradictions, and no
+  unauthorised additions; its findings were minor README-placement nits.
+  Following those and a scoping decision, the README step was dropped and
+  the seed-pointer convention captured into the README opinions/
+  prerequisites roadmap item instead, so it is documented there rather
+  than placed here and relocated. This plan now covers only the
+  `facilitated-discovery` behaviour.
 - Open for the implementer of Step 1/2: these are skill-*body* edits that
   add behaviour, and the standing question of whether a body edit that
   adds behaviour needs an eval scenario that fails without it is
