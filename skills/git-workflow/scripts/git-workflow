@@ -215,17 +215,24 @@ cmd_begin() {
 #      checked out (switching to it first when the work was in place),
 #      git merge --no-ff. A host module: push, propose, then merge, both
 #      from the primary checkout; afterwards fetch and fast-forward the
-#      local trunk. unknown host: push, exit 1. A missing host command, or
-#      one that fails or refuses: push if not yet pushed, exit 1 with a
-#      report giving the pull request if one was opened, the command, the
-#      state left behind and the permission hint Bash(gh pr merge *).
-#      Before a host merge, the module's settings are read and a squash
-#      or rebase allowance is reported, not changed.
-#   4. On a merge only: remove the worktree (--force), delete the branch,
-#      and confirm by reading HEAD that the primary checkout is on the
-#      trunk. Where the work was in place the checkout was switched in 3.
-#      Where the primary checkout is on neither the trunk nor the branch,
-#      no merge can run there: exit 1 with a report.
+#      local trunk. The host module only merges — it never deletes a
+#      branch, so it cannot trip over the artefact's worktree; all
+#      teardown belongs to step 4. unknown host: push, exit 1. A missing
+#      host command, or one that fails or refuses: push if not yet
+#      pushed, exit 1 with a report giving the pull request if one was
+#      opened, the command, the state left behind and the permission hint
+#      Bash(gh pr merge *). Before a host merge, the module's settings are
+#      read and a squash or rebase allowance is reported, not changed.
+#   4. On a merge only, and owned entirely by this script rather than the
+#      host: from the primary checkout (chdir there first, so removing a
+#      worktree never pulls the running process's own directory away),
+#      remove the worktree (--force, because it holds the untracked config
+#      files begin copied in), delete the local branch, delete the remote
+#      branch where a remote exists, and confirm by reading HEAD that the
+#      primary checkout is on the trunk. Where the work was in place the
+#      checkout was switched in 3. Where the primary checkout is on
+#      neither the trunk nor the branch, no merge can run there: exit 1
+#      with a report.
 script_dir() { cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P; }
 physical() { (cd "$1" 2>/dev/null && pwd -P); }
 

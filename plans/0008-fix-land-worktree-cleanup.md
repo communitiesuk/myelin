@@ -1,6 +1,6 @@
 ---
 title: Fix land's worktree cleanup so the host merges and the script cleans up
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-09-25
 deferred_reason: null
