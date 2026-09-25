@@ -1,6 +1,6 @@
 ---
 title: Number plans and discovery notes from history, not the tree
-status: draft
+status: in-progress
 adr: 0004
 date: 2026-09-25
 deferred_reason: null
@@ -130,3 +130,13 @@ complete.
   in commit `8e67377`; no step needed for it. Steps 1–2 to be executed
   now (no credits); Step 3 deferred to the credit renewal, so the plan
   lands `in-progress` and stays in the tree until Step 3 passes.
+- 2026-09-25: Step 1 done — both skills now read the next number from
+  history; `skills/adr/SKILL.md` left counting the tree, as intended.
+  Verified by hand: the command prints `plans/0006`→next `0007`
+  before this plan landed, `docs/discovery/0003`→next `0004`.
+- 2026-09-25: Step 2 done — added scenario `evals/plan-numbering-0`.
+  Its fixture leaves `plans/` empty in the tree with plans 0001–0006
+  in history, so counting the tree gives 0001, matching the ADR gives
+  0004, and only reading history gives the correct 0007. Fixture
+  test-run confirms the empty tree and the `plans/0006` history max.
+  Not yet run through `tessl eval run` (Step 3, deferred to credits).

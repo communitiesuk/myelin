@@ -1,0 +1,26 @@
+{
+  "context": "Tests whether the agent numbers a new plan from history rather than from the current tree. The fixture's plans/ directory is empty in the working tree, but git history holds six plans that were added and later removed (plans/0001 through plans/0006). The correct next number is 0007. Counting the empty tree yields 0001; matching the ADR being implemented yields 0004. The scorer inspects the repository state after the agent has run, including git history.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "A plan was written for the decision",
+      "description": "A new plan file exists under plans/ (in the working tree or added in the agent's commits) with a name matching NNNN-kebab-slug.md, whose frontmatter adr: field names 0004, implementing docs/adr/0004-forecast-source.md",
+      "max_score": 20
+    },
+    {
+      "name": "The plan number is derived from history",
+      "description": "The new plan's four-digit number is 0007 — exactly one greater than 0006, the highest plan number ever added under plans/ in git history (inspect with `git log --all --diff-filter=A --name-only --format= -- plans/`). The new plan is not numbered 0001, which is what counting the empty plans/ directory in the working tree would give.",
+      "max_score": 50
+    },
+    {
+      "name": "The plan number does not merely copy the ADR number",
+      "description": "The new plan's number is not 0004. The plan sequence is independent of the ADR sequence, so numbering the plan 0004 to match docs/adr/0004-forecast-source.md is wrong even though it is distinct from the empty-tree answer.",
+      "max_score": 20
+    },
+    {
+      "name": "The plan does not renumber or disturb history",
+      "description": "The agent did not resurrect, rename, or renumber any of the retired plans plans/0001 through plans/0006, and did not alter the existing ADRs. Only a single new plan file was added.",
+      "max_score": 10
+    }
+  ]
+}
