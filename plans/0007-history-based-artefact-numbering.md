@@ -1,6 +1,6 @@
 ---
 title: Number plans and discovery notes from history, not the tree
-status: draft
+status: in-progress
 adr: 0004
 date: 2026-09-25
 deferred_reason: null

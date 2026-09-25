@@ -105,7 +105,14 @@ Once confirmed ready:
 
 ### 6B. Discovery note
 
-Write a discovery note to capture thinking in progress. Save it to `docs/discovery/NNNN-kebab-slug.md` (create the directory if it doesn't exist; `NNNN` is the next unused number by `ls docs/discovery/ | sort | tail -1`).
+Write a discovery note to capture thinking in progress. Save it to `docs/discovery/NNNN-kebab-slug.md` (create the directory if it doesn't exist). Take `NNNN` from history, not from the tree: a discovery note leaves `docs/discovery/` when the ADR it informed is accepted, so counting the directory repeats numbers. The next `NNNN` is one greater than the highest ever added under `docs/discovery/`:
+
+```sh
+git log --all --diff-filter=A --name-only --format= -- docs/discovery/ \
+  | grep -oE 'docs/discovery/[0-9]{4}' | sort | tail -1
+```
+
+(The `adr` skill counts `ls docs/adr/` instead, and correctly, because ADRs stay in the tree.)
 
 The note is not a decision — it is a record of thinking so far, so the human can return to it and continue without starting over.
 

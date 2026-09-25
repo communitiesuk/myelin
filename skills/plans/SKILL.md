@@ -25,7 +25,14 @@ This rule is not stylistic — it enforces that decisions get recorded *before* 
 ## Location and naming
 
 - **Directory**: `plans/` at the project root.
-- **Filename**: `NNNN-kebab-slug.md`. Monotonic sequence independent of the ADR sequence — one ADR can spawn multiple plans (phased rollout, follow-up work).
+- **Filename**: `NNNN-kebab-slug.md`. Monotonic sequence independent of the ADR sequence — one ADR can spawn multiple plans (phased rollout, follow-up work). Take the next number from history, not from the tree: plans leave `plans/` on completion or abandonment, so counting the directory repeats numbers. The next `NNNN` is one greater than the highest ever added under `plans/`:
+
+  ```sh
+  git log --all --diff-filter=A --name-only --format= -- plans/ \
+    | grep -oE 'plans/[0-9]{4}' | sort | tail -1
+  ```
+
+  (The `adr` skill counts `ls docs/adr/` instead, and correctly, because ADRs stay in the tree.)
 - **Cross-link**: frontmatter `adr:` field points to the ADR. The slug does not need to match the ADR's slug, though matching often reads well.
 
 ## Frontmatter
