@@ -24,9 +24,27 @@ case "${1:-} ${2:-}" in
     git clone -q "${GH_STUB_BARE:?}" "$tmp/c" \
       && git -C "$tmp/c" switch -q "${GH_STUB_TRUNK:?}" \
       && git -C "$tmp/c" merge -q --no-ff -m "Merge pull request #7 from example/$branch" "origin/$branch" \
-      && git -C "$tmp/c" push -q origin "$GH_STUB_TRUNK" \
-      && git -C "$tmp/c" push -q origin --delete "$branch"
-    rc=$?; rm -rf "$tmp"; exit $rc ;;
+      && git -C "$tmp/c" push -q origin "$GH_STUB_TRUNK"
+    rc=$?; rm -rf "$tmp"
+    [ "$rc" -eq 0 ] || exit "$rc"
+    # The host module merges only; the remote branch is the caller's to
+    # delete, so the stub no longer does it. But if a caller still passes
+    # --delete-branch, emulate real gh's local side-effects: gh removes the
+    # branch's worktree without --force and, on failure, prints this warning
+    # and skips the local branch delete. Exit 0 regardless — the merge
+    # succeeded — exactly as real gh does.
+    case " $* " in
+      *" --delete-branch "*)
+        wt="$(git worktree list --porcelain | awk -v b="refs/heads/$branch" '
+          $1=="worktree"{p=$2} $1=="branch" && $2==b {print p}')"
+        if [ -n "$wt" ]; then
+          git worktree remove "$wt" 2>/dev/null \
+            || echo "! Could not remove worktree $wt; skipping local branch delete: failed to run git: fatal: '$wt' contains modified or untracked files, use --force to delete it" >&2
+        else
+          git branch -d "$branch" >/dev/null 2>&1 || true
+        fi ;;
+    esac
+    exit 0 ;;
   "repo view") printf '{"squashMergeAllowed":%s,"rebaseMergeAllowed":false}\n' "${GH_STUB_SQUASH:-false}"; exit 0 ;;
   *) echo "stub gh: unsupported: $*" >&2; exit 1 ;;
 esac
