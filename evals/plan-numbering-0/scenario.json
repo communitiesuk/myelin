@@ -1,0 +1,1 @@
+{ "description": "Numbering a new plan in a mature project whose plans/ directory is empty in the tree but whose history holds six retired plans: the next number is derived from history, not from counting the tree, and not from the ADR's own number" }
