@@ -255,10 +255,19 @@ stop() {
 }
 
 cleanup_after_merge() {
-  local primary="$1" wt="$2" branch="$3" trunk="$4"
-  if [ -n "$wt" ]; then git -C "$primary" worktree remove --force "$wt" || printf 'git-workflow: note: could not remove worktree %s\n' "$wt"; fi
-  git -C "$primary" branch -d "$branch" >/dev/null 2>&1 || git -C "$primary" branch -D "$branch" >/dev/null 2>&1 || true
-  local head; head="$(git -C "$primary" rev-parse --abbrev-ref HEAD)"
+  local primary="$1" wt="$2" branch="$3" trunk="$4" remote="${5:-none}"
+  # chdir into the primary checkout first: removing $wt must not pull the
+  # running process's own working directory out from under it, which is what
+  # happens when land was invoked from inside the worktree it is removing.
+  cd "$primary" || return 0
+  if [ -n "$wt" ]; then git worktree remove --force "$wt" || printf 'git-workflow: note: could not remove worktree %s\n' "$wt"; fi
+  git branch -d "$branch" >/dev/null 2>&1 || git branch -D "$branch" >/dev/null 2>&1 || true
+  # The host module merges only; deleting the remote branch is ours, so gh
+  # never has to touch — and trip over — the artefact's worktree.
+  if [ "$remote" != none ]; then
+    git push -q "$remote" --delete "$branch" >/dev/null 2>&1 || printf 'git-workflow: note: could not delete the remote branch %s on %s\n' "$branch" "$remote"
+  fi
+  local head; head="$(git rev-parse --abbrev-ref HEAD)"
   [ "$head" = "$trunk" ] || printf 'git-workflow: note: primary checkout is on %s, not the trunk %s\n' "$head" "$trunk"
   return 0
 }
@@ -313,7 +322,7 @@ cmd_land() {
       [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ] || stop 1 "the primary checkout is on $(git -C "$primary" rev-parse --abbrev-ref HEAD), not the trunk $trunk, so the local merge cannot run there" "" "" "$branch" "$remote" "$primary" "$wt"
     fi
     git -C "$primary" merge -q --no-ff -m "Merge $branch" "$branch" || die 1 "merge of $branch into $trunk failed; resolve it in the primary checkout"
-    cleanup_after_merge "$primary" "$wt" "$branch" "$trunk"
+    cleanup_after_merge "$primary" "$wt" "$branch" "$trunk" "$remote"
     printf 'landed %s into %s as %s\n' "$branch" "$trunk" "$(git -C "$primary" rev-parse --short "$trunk")"
     return 0
   fi
@@ -334,7 +343,7 @@ cmd_land() {
   if [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ]; then
     git -C "$primary" fetch -q "$remote" && git -C "$primary" merge -q --ff-only "$remote/$trunk" || printf 'git-workflow: note: could not fast-forward %s to %s/%s\n' "$trunk" "$remote" "$trunk"
   fi
-  cleanup_after_merge "$primary" "$wt" "$branch" "$trunk"
+  cleanup_after_merge "$primary" "$wt" "$branch" "$trunk" "$remote"
   printf 'landed %s into %s via %s as %s\n' "$branch" "$trunk" "$host" "$(git -C "$primary" rev-parse --short "$trunk")"
 }
 

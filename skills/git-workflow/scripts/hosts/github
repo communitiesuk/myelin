@@ -26,7 +26,7 @@ case "${1:-}" in
     gh pr create --head "$2" --base "$3" --fill || exit 1 ;;
   merge)
     [ $# -ge 3 ] || { echo "usage: merge <branch> <trunk>" >&2; exit 2; }
-    gh pr merge "$2" --merge --delete-branch || exit 1 ;;
+    gh pr merge "$2" --merge || exit 1 ;;
   settings)
     out="$(gh repo view --json squashMergeAllowed,rebaseMergeAllowed)" || exit 1
     sq=false; rb=false

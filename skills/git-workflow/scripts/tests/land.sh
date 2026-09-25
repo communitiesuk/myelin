@@ -216,4 +216,6 @@ t "github: land from inside the worktree with untracked files, primary on trunk 
 t "github: land deletes the remote branch itself, not the host module"
   wd="$(artefact "$R/wc3" --remote origin --where in-place)"; githubify "$R/wc3"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
-  assert_eq "" "$(bare_tip "$R/wc3" discovery-0002-x)" "remote branch not deleted"
+  # show-ref, not bare_tip: `git rev-parse <missing-ref>` echoes the name back
+  # rather than printing nothing, so it cannot test for absence.
+  git --git-dir="$R/wc3/.origin/repo.git" show-ref --verify --quiet refs/heads/discovery-0002-x && fail "remote branch not deleted"
