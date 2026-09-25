@@ -190,3 +190,32 @@ t "github: the pull request is opened against the derived trunk"
   wd="$(artefact "$R/g4" --remote origin --where in-place)"; githubify "$R/g4"; : > "$GH_STUB_LOG"
   assert_eq "0" "$(land_rc "$wd")"
   assert_contains "$(grep 'pr create' "$GH_STUB_LOG")" "--base dev"
+
+t "github: land from inside the worktree with untracked files, primary off-trunk -> clean, no gh worktree warning (issue #46)"
+  wd="$(artefact "$R/wc1" --remote origin --where worktree)"; githubify "$R/wc1"; : > "$GH_STUB_LOG"
+  printf 'x\n' > "$wd/untracked-note.txt"   # a non-ignored untracked file, so a non-force worktree remove would refuse, as begin's copied .claude/ did in the wild
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  case "$out" in *"could not remove worktree"*|*"contains modified"*) fail "gh's non-force worktree cleanup leaked into land's output" ;; esac
+  [ -d "$R/wc1/.worktrees/discovery-0002-x" ] && fail "worktree not removed"
+  assert_eq "0" "$(cd "$R/wc1" && git for-each-ref refs/heads/discovery-0002-x | wc -l | tr -d ' ')"
+  assert_eq "2" "$(git --git-dir="$R/wc1/.origin/repo.git" log -1 --format=%P dev | wc -w | tr -d ' ')" "origin trunk is not a two-parent merge"
+
+t "github: land from inside the worktree with untracked files, primary on trunk but dirty -> clean, dirt untouched (PR #52)"
+  wd="$(artefact "$R/wc2" --remote origin --where worktree)"; githubify "$R/wc2"
+  (cd "$R/wc2" && git switch -q dev && printf 'dirt\n' >> README.md)   # primary on trunk, dirty
+  : > "$GH_STUB_LOG"
+  printf 'x\n' > "$wd/untracked-note.txt"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  case "$out" in *"could not remove worktree"*|*"contains modified"*) fail "gh's non-force worktree cleanup leaked into land's output" ;; esac
+  [ -d "$R/wc2/.worktrees/discovery-0002-x" ] && fail "worktree not removed"
+  assert_eq "dev" "$(cd "$R/wc2" && git rev-parse --abbrev-ref HEAD)"
+  assert_contains "$(cd "$R/wc2" && git status --porcelain)" " M README.md"
+
+t "github: land deletes the remote branch itself, not the host module"
+  wd="$(artefact "$R/wc3" --remote origin --where in-place)"; githubify "$R/wc3"; : > "$GH_STUB_LOG"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
+  # show-ref, not bare_tip: `git rev-parse <missing-ref>` echoes the name back
+  # rather than printing nothing, so it cannot test for absence.
+  git --git-dir="$R/wc3/.origin/repo.git" show-ref --verify --quiet refs/heads/discovery-0002-x && fail "remote branch not deleted"
