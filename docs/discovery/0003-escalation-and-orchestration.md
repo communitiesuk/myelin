@@ -133,6 +133,33 @@ a set of skills a single agent loads:
 The real weight of the landing-gate work is that it makes the
 orchestrator question concrete and forces it.
 
+### [2026-09-25] Inherited from ADR 0006: the ticket store's deferred half
+
+`docs/adr/0006-where-do-captured-ideas-live.md` (proposed) answered the
+`Ticket skill` roadmap item with a deliberately small v1: seeds live in a
+user-owned store located by an optional pointer, agents read but never
+write that store, and a *developed* capture is a discovery note rather
+than a new object. It did **not** build a ticket system, and it named
+this note as where the rest belongs. Three capabilities were deferred
+into this question, each with the trigger that revives it:
+
+- **Escalate-don't-thrash** — the defined route for an agent that hits a
+  human-needs-to-decide wall. This *is* the escalation queue above (the
+  "same object as [[Ticket skill]]"), and the block-as-first-class-object
+  the interlocutor/worker/observer picture is reaching for. Trigger: plans
+  parallelising, so subagents run with less supervision than the present
+  human provides.
+- **Pick-up and triage** — an agent reading the next item and deciding
+  ready-to-implement versus needs-a-conversation. Same era.
+- **A platform-abstraction module** — routing tickets to org / host
+  issues / JIRA by type, the same shape as ADR 0003's git host module,
+  not a new subsystem.
+
+So the ticket work does not compete with this note; its deferred half
+*is* this note's escalation/orchestration question, and the eventual ADR
+here should discharge it rather than treat it as separate. ADR 0006
+carries a `Derives-From` to this note for that reason.
+
 ## Open questions
 
 Two are decisive and directly **probeable** on the current harness;
