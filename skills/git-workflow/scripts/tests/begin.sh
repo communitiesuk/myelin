@@ -86,22 +86,41 @@ t "bootstrap: config files copied, built dependencies left behind, base checkout
   [ -d "$R/w3/node_modules" ] || fail "node_modules missing from base checkout"
   true
 
-t "bookkeeping: the .worktrees/ line is committed inside the worktree when missing"
-  fixture "$R/w4" --trunk dev --branch topic >/dev/null
-  (cd "$R/w4" && g switch -q topic)
-  begin "$R/w4" docs/adr/0002-x.md >/dev/null
+t "bookkeeping: the .worktrees/ line is left uncommitted in the worktree when missing"
+  fixture "$R/w4" --trunk dev --dirty >/dev/null
+  before="$(cd "$R/w4" && git status --porcelain | sort)"
+  out="$(begin "$R/w4" docs/adr/0002-x.md)"
   wt="$R/w4/.worktrees/adr-0002-x"
   (cd "$wt" && git check-ignore -q .worktrees/probe) || fail ".worktrees/ not ignored in the worktree"
-  assert_eq "1" "$(cd "$wt" && git rev-list --count dev..HEAD)" "exactly one bookkeeping commit on the branch"
-  assert_eq "" "$(cd "$wt" && git status --porcelain)" "worktree must be clean after the commit"
+  assert_eq "1" "$(cd "$wt" && grep -c '^\.worktrees/$' .gitignore)" "the worktree's .gitignore must carry the line once"
+  assert_eq "0" "$(cd "$wt" && git rev-list --count dev..HEAD)" "begin must make no commit"
+  assert_eq " M .gitignore" "$(cd "$wt" && git status --porcelain)" "the line must be an uncommitted change and the only one"
+  assert_eq "include=.gitignore" "$(line "$out" include)" "$out"
   assert_eq "0" "$(cd "$R/w4" && grep -c '^\.worktrees/$' .gitignore)" "primary checkout's .gitignore must be untouched"
+  assert_eq "$before" "$(cd "$R/w4" && git status --porcelain | grep -v worktrees | sort)" "primary dirt must be exactly as it was"
   assert_eq "$(tip "$R/w4" dev)" "$(cd "$R/w4" && git rev-parse dev)" "trunk must not move"
 
 t "bookkeeping: no commit when the line already exists"
   fixture "$R/w5" --trunk dev --branch topic >/dev/null
   (cd "$R/w5" && printf '.worktrees/\n' >> .gitignore && g add .gitignore && g commit -q -m "ignore worktrees" && g switch -q topic)
-  begin "$R/w5" docs/adr/0002-x.md >/dev/null
+  out="$(begin "$R/w5" docs/adr/0002-x.md)"
   assert_eq "0" "$(cd "$R/w5/.worktrees/adr-0002-x" && git rev-list --count dev..HEAD)"
+  assert_eq "" "$(line "$out" include)" "no include= line when nothing was added: $out"
+  assert_eq "" "$(cd "$R/w5/.worktrees/adr-0002-x" && git status --porcelain)" "worktree must be clean"
+
+t "bootstrap: a tracked .claude/ is filled in with untracked files, not nested, and tracked files are not overwritten"
+  fixture "$R/w6" --trunk dev --ignored >/dev/null
+  (cd "$R/w6" && printf '.worktrees/\n' >> .gitignore && mkdir -p .claude/skills && printf 'tracked\n' > .claude/skills/x.md \
+    && g add .gitignore && g add -f .claude/skills/x.md && g commit -q -m "track a project skill" \
+    && printf 'local edit\n' > .claude/skills/x.md)
+  begin "$R/w6" docs/adr/0002-x.md >/dev/null
+  wt="$R/w6/.worktrees/adr-0002-x"
+  [ -f "$wt/.claude/settings.local.json" ] || fail ".claude/settings.local.json not at its own path in the worktree"
+  assert_eq "$(cat "$R/w6/.claude/settings.local.json")" "$(cat "$wt/.claude/settings.local.json" 2>/dev/null)" "settings copied with different content"
+  [ -e "$wt/.claude/.claude" ] && fail ".claude copied inside itself"
+  assert_eq "tracked" "$(cat "$wt/.claude/skills/x.md" 2>/dev/null)" "tracked file overwritten by the primary's edit"
+  assert_eq "" "$(cd "$wt" && git status --porcelain)" "worktree must be clean after bootstrap"
+  true
 
 t "refusal: the branch already exists"
   fixture "$R/r1" --trunk dev --branch adr-0002-x >/dev/null

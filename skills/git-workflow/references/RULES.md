@@ -18,7 +18,7 @@ git worktree add .worktrees/<branch> -b <branch> <trunk>   # if either check fai
 
 When you isolate, work inside `.worktrees/<branch>` and do not touch the primary checkout's files at all: its dirty state belongs to somebody else's work in progress. Never `git add -A` there, never stash it, never revert or delete a file to make it clean.
 
-**`.worktrees/` must be gitignored.** Where the repository's `.gitignore` lacks the entry, add it *inside the new worktree* and commit it there, so it rides on the artefact's branch under Rule 4 — not in the primary checkout, which would put it on trunk.
+**`.worktrees/` must be gitignored.** Where the repository's `.gitignore` lacks the entry, add it *inside the new worktree* and leave it uncommitted: it goes into the artefact's first commit, so it rides on the artefact's branch under Rule 4 and the first commit still carries the trailer. Not in the primary checkout, which would put it on trunk, and not in a commit of its own, which records nothing.
 
 ## Rule 6 — Fork point is derived, never configured
 

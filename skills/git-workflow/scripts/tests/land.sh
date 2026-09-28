@@ -3,17 +3,15 @@
 # host cannot, and clean up only after a merge.
 #
 # Coverage of the eval scenarios' FAILS IF conditions (criteria.json):
-#   git-workflow-0 #1 commit straight onto trunk / non-merge on trunk -> "refusal: on the trunk", merges assert two parents
-#   git-workflow-0 #2 branch naming                                    -> begin.sh naming tests
-#   git-workflow-0 #3 in-place branching, no worktree                  -> begin.sh worktree tests
-#   git-workflow-0 #4 primary files staged/stashed/reverted            -> "no remote: merge from a worktree ... dirt untouched"
+#   git-workflow-0 #1 dev or main moved: the agent merged a decision -> "decision: with no remote it cannot be proposed, exit 3, branch kept"
+#   git-workflow-0 #2 branch kept, numbered name                      -> the same decision test; begin.sh naming tests
+#   git-workflow-0 #3 in-place branching, worktree removed            -> begin.sh worktree tests; decision tests keep the worktree
+#   git-workflow-0 #4 primary files staged/stashed/reverted            -> begin.sh "on the trunk but dirty" test
 #   git-workflow-0 #5 fork point                                       -> begin.sh fork-point test
-#   git-workflow-0 #6 config moved, deps copied                        -> begin.sh bootstrap test
-#   git-workflow-0 #7 squash / fast-forward / rebase                   -> two-parent assertions; "github: merge ... --merge"
-#   git-workflow-0 #8 cleanup: branch left, worktree left, HEAD wrong  -> the merge tests' cleanup assertions
-#   git-workflow-0 #9 .worktrees/ line uncommitted / on trunk          -> begin.sh bookkeeping tests
-#   git-workflow-0 #10 trailer missing / not repo-relative / later     -> the trailer refusals
-#   git-workflow-0 #11 a remote invented                               -> "no remote: ... git remote still empty"
+#   git-workflow-0 #6 config not copied / nested, deps carried         -> begin.sh bootstrap tests
+#   git-workflow-0 #7 .worktrees/ line uncommitted / on trunk          -> begin.sh bookkeeping tests; "the first worktree artefact ... lands"
+#   git-workflow-0 #8 trailer missing / not repo-relative / later      -> the trailer refusals
+#   git-workflow-0 #9 a remote invented                                -> the no-remote tests: "git remote still empty"
 #   git-workflow-1 #1 trunk moved locally or on origin                 -> decision and stop tests
 #   git-workflow-1 #2 branch deleted after no merge                    -> stop tests assert the branch exists
 #   git-workflow-1 #3 never pushed / origin behind                     -> "pushed at the same SHA" assertions
@@ -50,6 +48,20 @@ artefact() {
 # url.insteadOf rewrite in the repository's config sends every fetch and push
 # to the bare repository instead, so git and the stub host share one origin.
 githubify() { (cd "$1" && git remote set-url origin https://github.com/example/repo.git && git config "url.$(pwd)/.origin/repo.git.insteadOf" https://github.com/example/repo.git); export GH_STUB_BARE="$1/.origin/repo.git" GH_STUB_TRUNK=dev; }
+
+t "no remote: the first worktree artefact in a repository lands when its first commit includes begin's ignore line"
+  fixture "$R/f1" --trunk dev --dirty >/dev/null
+  out="$(cd "$R/f1" && bash "$SCRIPT" begin plans/0002-x.md 2>&1)"
+  wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  assert_contains "$out" "include=.gitignore"
+  (cd "$wd" && mkdir -p plans && printf -- '---\ntitle: x\n---\n' > plans/0002-x.md && g add plans/0002-x.md .gitignore \
+    && g commit -q -m "$(printf 'Add plan\n\nDerives-From: docs/adr/0001-one.md\n')")
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "2" "$(parents "$R/f1" dev)" "dev must end in a two-parent merge: $out"
+  assert_eq "1" "$(cd "$R/f1" && git show dev:.gitignore | grep -c '^\.worktrees/$')" "the ignore line must reach dev through the merge"
+  [ -d "$wd" ] && fail "worktree left behind: $out"
+  true
 
 t "refusal: on the trunk"
   fixture "$R/r1" --trunk dev >/dev/null
