@@ -26,7 +26,7 @@ It needs git, and the host's command-line tool (`gh` for GitHub) where the repos
 bash "$SKILL_DIR/scripts/git-workflow" begin <artefact-path>          # or --slug <slug> for work no skill governs
 ```
 
-It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It derives the trunk, isolates into a worktree when the checkout is not on the trunk or is dirty, names the branch from the path, copies the small configuration files, and ignores `.worktrees/`. You have not begun the deliverable until it has run; if you are editing and cannot name the branch you are on, stop and run it.
+It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It derives the trunk, isolates into a worktree when the checkout is not on the trunk or is dirty, names the branch from the path, copies the small configuration files, and ignores `.worktrees/`. When it prints `include=<file>`, it has left that file changed and uncommitted: include it in the artefact's first commit. You have not begun the deliverable until it has run; if you are editing and cannot name the branch you are on, stop and run it.
 
 **When the governing skill says the artefact is complete**, from inside `dir=`, with everything committed:
 
