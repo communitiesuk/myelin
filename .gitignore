@@ -7,3 +7,7 @@
 **/.mcp.json
 weeknotes/
 .worktrees/
+
+# Org-mode seed files and their Emacs backups/autosaves (*.org~, *.org.~N~, #*.org#)
+# — todo/agenda source, symlinked from ~/todo; see ADR 0005 in ~/.emacs.d
+*.org*
