@@ -404,3 +404,33 @@ work rather than being closed here.
   - `begin` does not take the upstream path. The `Derives-From`
     trailer stays with whoever commits, and `land` checks that it is
     there.
+- 2026-09-28 — Step 6, measured. deepseek-v4-flash was no longer
+  offered; every run is on deepseek-v4.1-flash, with a new before
+  bought on the `v0.1.1` body (`--context-commit` does not work for a
+  plugin context, so from a worktree at the tag):
+
+  | run | body | scenario | repeats | median |
+  | --- | --- | --- | --- | --- |
+  | `01a0e73f-4183-712c-8d13-ee6de9743655` | script | gw-1 (6.1 check) | 100 | — |
+  | `01a0e73f-bf37-7536-a8f7-258ff910ecb4` | v0.1.1 | gw-0 | 98, 96, 93 | 96 |
+  | `01a0e73f-c9a9-7713-9b60-e210c20b6803` | v0.1.1 | gw-1 | 94, 100, 97 | 97 |
+  | `01a0e75f-0823-71c4-bf1b-1ca4a135e5e3` | script | gw-0 | 37, 49, 41 | 41 |
+  | `01a0e75f-1236-727c-a8db-f848fce7eb91` | script | gw-1 | 100, 98, 94 | 98 |
+  | `01a0e7ca-2dc2-74ee-8495-8200d2acacb1` | script + plan 0009 | gw-0 (criteria v2) | 100, 100, 100 | 100 |
+
+  - v4.1 is far stronger than v4: the old body already clears both
+    bars, so the before/after cannot show the script lowering the
+    model floor on this model; the bars themselves are met.
+  - 6.1: the scorer found nothing missing and `tessl plugin pack`
+    carries `scripts/`; no transcript is available, so "the script
+    ran" is inferred from git state, not observed.
+  - gw-0's 41 was not the model: `land` correctly stopped with exit 3
+    on an ADR with no remote, which gw-0's pre-PR-33 criteria scored
+    as a failure; and `begin`'s untrailered bookkeeping commit made
+    `land` refuse. Both fixed by plan 0009, whose gw-0 run replaces
+    this one: median 100 against the bar of 87.
+  - gw-1: median 98 against 86.
+  - No reasoning line describes a local merge where a remote exists,
+    a fast-forward, a squash, or a worktree removed without a merge.
+    `activatedSkills` was empty in most repeats and named
+    `git-workflow` in plan 0009's first gw-0 run.
