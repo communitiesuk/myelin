@@ -1,7 +1,6 @@
 ---
 name: git-workflow
-model: sonnet
-compatibility: "Needs Bash and git, and the host CLI (gh for GitHub) where a remote exists. Measured 2026-09-23 as needing a sonnet-class model or stronger (evals/git-workflow-1, same body: claude-sonnet-5 94/100/100, deepseek-v4-flash 18/0/0); plan 0005 re-measures with the script."
+compatibility: "Needs Bash and git, and the host CLI (gh for GitHub) where a remote exists. No model floor: measured 2026-09-28 with the script on deepseek-v4.1-flash, evals/git-workflow-0 100/100/100 (run 01a0e7ca-2dc2-74ee-8495-8200d2acacb1) and evals/git-workflow-1 100/98/94 (run 01a0e75f-1236-727c-a8db-f848fce7eb91), against bars of 87 and 86 (plan 0005 Step 6, plan 0009)."
 description: Governs where work happens in a git repository and how it lands — branch-per-artefact, worktree isolation on contention, and integration that preserves commit structure. TRIGGER on any task about to create or modify a file in a git repository, before the first edit — a discovery note, an ADR, a plan, or code alike, all need a branch first. SKIP for read-only exploration that edits nothing, and for work already proceeding on an artefact branch this workflow created.
 ---
 # Git workflow
