@@ -83,7 +83,7 @@ t "refusal: first commit has no Derives-From trailer"
 
 t "refusal: trailer only on a later commit"
   wd="$(NOTRAILER=1 EXTRA=0 artefact "$R/r5" --where in-place)"
-  (cd "$wd" && printf 'more\n' >> docs/adr/0002-x.md && g add -A && g commit -q -m "$(printf 'Extend\n\nDerives-From: docs/discovery/0001-note.md\n')")
+  (cd "$wd" && printf 'more\n' >> docs/discovery/0002-x.md && g add -A && g commit -q -m "$(printf 'Extend\n\nDerives-From: docs/discovery/0001-note.md\n')")
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "first commit"
 
 t "refusal: trailer value not repository-relative"
@@ -121,6 +121,23 @@ t "decision: with no remote it cannot be proposed, exit 3, branch kept"
 t "not a decision: editing an existing ADR without Revises merges normally"
   wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d4" --where in-place)"
   assert_eq "0" "$(land_rc "$wd")"; assert_eq "2" "$(parents "$R/d4" dev)"
+
+t "decision: a new docs/adr file with no Derives-From is proposed, not refused, exit 3"
+  wd="$(ADRPATH=docs/adr/0002-x.md NOTRAILER=1 artefact "$R/d5" --remote origin --where worktree)"; githubify "$R/d5"; : > "$GH_STUB_LOG"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"; assert_contains "$out" "human"
+  assert_contains "$(cat "$GH_STUB_LOG")" "pr create"
+  case "$(cat "$GH_STUB_LOG")" in *"pr merge"*) fail "merge attempted on a decision" ;; esac
+  assert_eq "$(cd "$R/d5" && git rev-parse adr-0002-x)" "$(bare_tip "$R/d5" adr-0002-x)" "branch must be pushed at the same SHA"
+
+t "decision: a Revises branch whose first commit has no Derives-From is proposed, exit 3"
+  fixture "$R/d6" --trunk dev --remote origin >/dev/null; githubify "$R/d6"
+  out="$(cd "$R/d6" && bash "$SCRIPT" begin docs/adr/0001-one.md 2>&1)"
+  wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  (cd "$wd" && printf 'changed\n' >> docs/adr/0001-one.md && g add -A && g commit -q -m "$(printf 'Revise\n\nRevises: docs/adr/0001-one.md\n')")
+  : > "$GH_STUB_LOG"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=3"
+  case "$(cat "$GH_STUB_LOG")" in *"pr merge"*) fail "merge attempted on a Revises branch" ;; esac
 
 t "no remote: merge in place, primary ends on the trunk, two parents, branch gone, no remote invented"
   wd="$(artefact "$R/m1" --where in-place)"

@@ -211,13 +211,17 @@ cmd_begin() {
 # Run from inside the artefact's checkout, primary or worktree. In order:
 #   1. Refuses (exit 2) when HEAD is the trunk, tracked files have
 #      uncommitted changes (untracked files are not the artefact and may
-#      be a worktree's installed dependencies),
-#      there is nothing since the fork point, the first commit since the
-#      fork point carries no Derives-From trailer, or that trailer's value
-#      is not repository-relative (starts with / or ./).
+#      be a worktree's installed dependencies), or there is nothing since
+#      the fork point.
 #   2. Decides whether the branch is a decision: a commit since the fork
 #      point carries Revises, or the diff against the trunk adds a file
-#      under docs/adr/. A decision is pushed and proposed through the host
+#      under docs/adr/. A decision roots or revises the artefact graph, so
+#      it needs no Derives-From. Every other artefact derives from an
+#      upstream, so its first commit since the fork point must carry a
+#      Derives-From trailer; landing refuses (exit 2) when a non-decision
+#      does not. Either way, a Derives-From that is present must be
+#      repository-relative (not starting with / or ./), or landing refuses
+#      (exit 2). A decision is then pushed and proposed through the host
 #      module, then exit 3 with a report naming the pull request: a human
 #      merges it. With no remote a decision cannot be proposed: exit 3,
 #      branch left in place.
@@ -294,14 +298,21 @@ cmd_land() {
   local first
   first="$(git rev-list --reverse "$trunk..HEAD" | head -1)"
   [ -n "$first" ] || die 2 "nothing to land: no commits since the fork point from $trunk"
-  local trailer
-  trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
-  [ -n "$trailer" ] || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
-  printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
-
   local decision=0
   [ -n "$(git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD" | sed '/^$/d')" ] && decision=1
   git diff --name-status "$trunk...HEAD" | grep -qE '^A[[:space:]]+docs/adr/' && decision=1
+
+  # A decision roots or revises the artefact graph and needs no
+  # Derives-From; every other artefact derives from an upstream, so its
+  # first commit must carry one. A trailer that is present is validated
+  # as repository-relative either way.
+  local trailer
+  trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
+  if [ -z "$trailer" ]; then
+    [ "$decision" -eq 1 ] || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
+  else
+    printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
+  fi
 
   local primary here inplace=0 wt=""
   primary="$(physical "$(git worktree list --porcelain | awk 'NR==1 && $1=="worktree"{print $2}')")"
