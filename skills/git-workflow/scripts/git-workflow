@@ -162,9 +162,10 @@ copy_if_present() {
   # Copies only files git does not track (tracked ones are already checked
   # out), each to the same relative path, never overwriting a file present
   # in the worktree; so a tracked directory is filled in, not nested.
-  local root="$1" wt="$2" item
-  for item in .claude .env .mcp.json; do
-    [ -e "$root/$item" ] && cp -R "$root/$item" "$wt/$item"
+  local root="$1" wt="$2" f
+  git -C "$root" ls-files -z --others -- .claude .env .mcp.json | while IFS= read -r -d '' f; do
+    [ -e "$wt/$f" ] && continue
+    mkdir -p "$wt/$(dirname "$f")" && cp -pP "$root/$f" "$wt/$f"
   done
   return 0
 }
@@ -197,12 +198,13 @@ cmd_begin() {
   local wt="$root/.worktrees/$branch"
   git worktree add -q "$wt" -b "$branch" "$trunk" || die 2 "could not create worktree $wt"
   copy_if_present "$root" "$wt"
+  local include=""
   if ! git -C "$wt" check-ignore -q .worktrees/probe; then   # a path under it: a bare .worktrees matches no directory pattern
     printf '.worktrees/\n' >> "$wt/.gitignore"
-    git -C "$wt" add .gitignore
-    git -C "$wt" commit -q -m "Gitignore the worktree directory this workflow creates" || die 2 "could not commit the .worktrees/ ignore line"
+    include=.gitignore
   fi
   printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$wt"
+  [ -z "$include" ] || printf 'include=%s\n' "$include"
 }
 # land — integrate the artefact branch, or stop and say why.
 #
