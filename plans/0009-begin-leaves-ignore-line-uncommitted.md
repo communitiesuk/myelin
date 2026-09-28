@@ -1,6 +1,6 @@
 ---
 title: Fix begin's bookkeeping commit and config copy, and bring git-workflow-0 up to date
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-09-28
 deferred_reason: null

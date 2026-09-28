@@ -14,7 +14,9 @@
 #   begin   Name the artefact branch from its path, then branch in place
 #           or into .worktrees/<branch> from the trunk, copy the small
 #           configuration files into a worktree, and print trunk=, branch=
-#           and dir=. Never stages, stashes, reverts or deletes anything in
+#           and dir=, and include=.gitignore when the .worktrees/ ignore
+#           line was added and awaits the artefact's first commit. Makes no
+#           commit. Never stages, stashes, reverts or deletes anything in
 #           the primary checkout.
 #   land    From the artefact's checkout: refuse unless the first commit
 #           since the fork point carries Derives-From; hand a decision (a
@@ -127,14 +129,17 @@ cmd_check() {
 #
 # Runs check. When contention is in-place, creates the branch from the
 # trunk in the primary checkout and switches to it. Otherwise creates
-# .worktrees/<branch> from the trunk, copies .claude/, .env and .mcp.json
-# into it where they exist and never .venv/ or node_modules/, and, when
-# the repository ignores no .worktrees/, appends that line to the
-# worktree's .gitignore and commits it there — the one commit this script
-# makes. Never stages, stashes, reverts or deletes anything in the
-# primary checkout.
+# .worktrees/<branch> from the trunk, copies the untracked files under
+# .claude/, .env and .mcp.json into it where they exist and never .venv/
+# or node_modules/, and, when the repository ignores no .worktrees/,
+# appends that line to the worktree's .gitignore and leaves it
+# uncommitted: it is bookkeeping and rides on the artefact's first
+# commit, which carries the trailer. Makes no commit. Never stages,
+# stashes, reverts or deletes anything in the primary checkout.
 #
-# Prints trunk=<ref>, branch=<name> and dir=<absolute path to work in>.
+# Prints trunk=<ref>, branch=<name> and dir=<absolute path to work in>,
+# then include=.gitignore when it added the ignore line, naming the file
+# the artefact's first commit must include.
 # Exits 2 when the branch already exists, when the path is ungoverned and
 # --slug is missing, or when check would.
 branch_name_for() {
@@ -153,7 +158,10 @@ branch_name_for() {
 }
 
 copy_if_present() {
-  # copy small configuration from the base checkout into the worktree; never move
+  # copy small configuration from the base checkout into the worktree; never move.
+  # Copies only files git does not track (tracked ones are already checked
+  # out), each to the same relative path, never overwriting a file present
+  # in the worktree; so a tracked directory is filled in, not nested.
   local root="$1" wt="$2" item
   for item in .claude .env .mcp.json; do
     [ -e "$root/$item" ] && cp -R "$root/$item" "$wt/$item"
