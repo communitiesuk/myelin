@@ -83,7 +83,7 @@ t "refusal: first commit has no Derives-From trailer"
 
 t "refusal: trailer only on a later commit"
   wd="$(NOTRAILER=1 EXTRA=0 artefact "$R/r5" --where in-place)"
-  (cd "$wd" && printf 'more\n' >> docs/adr/0002-x.md && g add -A && g commit -q -m "$(printf 'Extend\n\nDerives-From: docs/discovery/0001-note.md\n')")
+  (cd "$wd" && printf 'more\n' >> docs/discovery/0002-x.md && g add -A && g commit -q -m "$(printf 'Extend\n\nDerives-From: docs/discovery/0001-note.md\n')")
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "first commit"
 
 t "refusal: trailer value not repository-relative"
