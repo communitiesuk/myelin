@@ -51,6 +51,20 @@ artefact() {
 # to the bare repository instead, so git and the stub host share one origin.
 githubify() { (cd "$1" && git remote set-url origin https://github.com/example/repo.git && git config "url.$(pwd)/.origin/repo.git.insteadOf" https://github.com/example/repo.git); export GH_STUB_BARE="$1/.origin/repo.git" GH_STUB_TRUNK=dev; }
 
+t "no remote: the first worktree artefact in a repository lands when its first commit includes begin's ignore line"
+  fixture "$R/f1" --trunk dev --dirty >/dev/null
+  out="$(cd "$R/f1" && bash "$SCRIPT" begin plans/0002-x.md 2>&1)"
+  wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  assert_contains "$out" "include=.gitignore"
+  (cd "$wd" && mkdir -p plans && printf -- '---\ntitle: x\n---\n' > plans/0002-x.md && g add plans/0002-x.md .gitignore \
+    && g commit -q -m "$(printf 'Add plan\n\nDerives-From: docs/adr/0001-one.md\n')")
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "2" "$(parents "$R/f1" dev)" "dev must end in a two-parent merge: $out"
+  assert_eq "1" "$(cd "$R/f1" && git show dev:.gitignore | grep -c '^\.worktrees/$')" "the ignore line must reach dev through the merge"
+  [ -d "$wd" ] && fail "worktree left behind: $out"
+  true
+
 t "refusal: on the trunk"
   fixture "$R/r1" --trunk dev >/dev/null
   out="$(land "$R/r1"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "trunk"
