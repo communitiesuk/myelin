@@ -10,6 +10,25 @@ tessl install mhclg-aaai/myelin
 
 The plugin is private to the `aaai` organisation on tessl: it does not appear in the public registry, and every member of the organisation can install it.
 
+## Requirements
+
+Before you run myelin in a repository, it needs:
+
+- **`git` and Bash.** The workflow's mechanics are a shell script.
+- **A host CLI wherever the repository has a remote** — `gh` for GitHub. `git-workflow` lands work by opening and merging a pull request; without the host CLI it pushes the branch and stops.
+- **A resolvable trunk.** `git-workflow` derives the branch it forks from — a local `dev`, a local `develop`, or whatever `refs/remotes/origin/HEAD` names — and never reads it from configuration. A repository where none of these resolves is treated as not set up, and the workflow stops rather than guess. One command fixes it: `git remote set-head origin -a`.
+- **A capable enough model, where a skill declares a floor.** A *model floor* is the least-capable model a skill is known to run reliably on; below it the skill's behaviour degrades and it can look broken when it is not. myelin's skills state any floor in their frontmatter. As of this writing `git-workflow` declares none — it was measured to hold up on a small model — so there is no floor to meet today, but check a skill's frontmatter rather than assume.
+
+### Letting the agent land its own work
+
+`git-workflow` lands most artefacts itself by merging their pull request, and that merge needs a harness permission for the merge command. Without it the agent does the right thing — it opens the pull request, stops, and leaves the artefact waiting as an open PR. **This is deliberate, not a failure.** To let the agent land unattended, allow the merge command in your Claude Code settings:
+
+```
+Bash(gh pr merge *)
+```
+
+in `.claude/settings.json` (checked in, for a repository that wants it) or `.claude/settings.local.json` (per clone). Decision artefacts are exempt by design: an ADR, or any branch that revises one, is always left for a human to merge regardless of this permission.
+
 ## Skills
 
 The workflow stages, left to right:
@@ -25,6 +44,26 @@ And two that cut across them:
 6. **`git-workflow`** — where work happens and how it lands: a branch per artefact, isolated into a worktree on contention, landed through a pull request as a two-parent merge so that commit structure and trailers survive. The trunk, the branch name and the integration path are derived from the repository, never read from its configuration or prose.
 
 Skills are exercised by eval scenarios under `evals/`, run with `tessl eval run`.
+
+## Using myelin
+
+Work moves left to right through the stages above, each producing an artefact the next consumes. A typical piece of work starts with `facilitated-discovery` to turn a fuzzy intention into a decision — or goes straight to `adr` when the decision is already clear — records that decision as an ADR, turns the accepted ADR into a `plans` action list, and implements against that plan under `test-first-workflow`. `git-workflow` runs underneath the lot, giving each artefact its own branch and landing it.
+
+You do not wire the stages together yourself: each skill loads when a task matches its trigger, and every artefact carries a directive that re-points the next agent at the skill it needs, so the chain keeps moving across a long session.
+
+## Opinions
+
+myelin is opinionated about how work is done, so that the later, cheaper stages can run with less judgement. The commitments worth knowing up front:
+
+- **Branch before any edit** — including markdown decision artefacts. Nothing is written on the trunk.
+- **One branch per artefact**, where an artefact is what one skill produces in one invocation.
+- **The fork point is derived, never configured** — `dev`, then `develop`, then `origin/HEAD`.
+- **Merge commits only** — no squash, no rebase, no fast-forward — so an artefact's commits and their trailers survive on the trunk. Disable the squash and rebase merge buttons at the repository level where the host allows it.
+- **Pull request by default where a remote exists.** The agent lands its own work; an ADR, and any branch that revises a decision, is left for a human to merge.
+- **Isolation on contention.** A single strand of work branches in place; a second strand in flight branches into a gitignored `.worktrees/` worktree instead of fighting for the checkout.
+- **Seeds live in a store you own** — an org file, a `seeds.md`, issues tagged on your host, or several at once — found through an optional one-line pointer in `AGENTS.md`/`CLAUDE.md`. Agents read that store to start a conversation; they never write into your private one.
+
+These are decisions with reasons behind them; the reasoning lives in `docs/adr/`.
 
 ## How this repo records its own work
 
