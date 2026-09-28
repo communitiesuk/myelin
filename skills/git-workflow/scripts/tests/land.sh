@@ -3,17 +3,15 @@
 # host cannot, and clean up only after a merge.
 #
 # Coverage of the eval scenarios' FAILS IF conditions (criteria.json):
-#   git-workflow-0 #1 commit straight onto trunk / non-merge on trunk -> "refusal: on the trunk", merges assert two parents
-#   git-workflow-0 #2 branch naming                                    -> begin.sh naming tests
-#   git-workflow-0 #3 in-place branching, no worktree                  -> begin.sh worktree tests
-#   git-workflow-0 #4 primary files staged/stashed/reverted            -> "no remote: merge from a worktree ... dirt untouched"
+#   git-workflow-0 #1 dev or main moved: the agent merged a decision -> "decision: with no remote it cannot be proposed, exit 3, branch kept"
+#   git-workflow-0 #2 branch kept, numbered name                      -> the same decision test; begin.sh naming tests
+#   git-workflow-0 #3 in-place branching, worktree removed            -> begin.sh worktree tests; decision tests keep the worktree
+#   git-workflow-0 #4 primary files staged/stashed/reverted            -> begin.sh "on the trunk but dirty" test
 #   git-workflow-0 #5 fork point                                       -> begin.sh fork-point test
-#   git-workflow-0 #6 config moved, deps copied                        -> begin.sh bootstrap test
-#   git-workflow-0 #7 squash / fast-forward / rebase                   -> two-parent assertions; "github: merge ... --merge"
-#   git-workflow-0 #8 cleanup: branch left, worktree left, HEAD wrong  -> the merge tests' cleanup assertions
-#   git-workflow-0 #9 .worktrees/ line uncommitted / on trunk          -> begin.sh bookkeeping tests
-#   git-workflow-0 #10 trailer missing / not repo-relative / later     -> the trailer refusals
-#   git-workflow-0 #11 a remote invented                               -> "no remote: ... git remote still empty"
+#   git-workflow-0 #6 config not copied / nested, deps carried         -> begin.sh bootstrap tests
+#   git-workflow-0 #7 .worktrees/ line uncommitted / on trunk          -> begin.sh bookkeeping tests; "the first worktree artefact ... lands"
+#   git-workflow-0 #8 trailer missing / not repo-relative / later      -> the trailer refusals
+#   git-workflow-0 #9 a remote invented                                -> the no-remote tests: "git remote still empty"
 #   git-workflow-1 #1 trunk moved locally or on origin                 -> decision and stop tests
 #   git-workflow-1 #2 branch deleted after no merge                    -> stop tests assert the branch exists
 #   git-workflow-1 #3 never pushed / origin behind                     -> "pushed at the same SHA" assertions
