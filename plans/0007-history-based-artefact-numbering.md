@@ -162,3 +162,17 @@ complete.
   "history is the record" hint from `task.md` (and the `README.md` built
   in `setup.sh`) so a tree-counting body genuinely lands on 0001, then
   re-run the differential.
+- 2026-10-06: Fixture neutralised (`7349dc5`) — the hint stripped from
+  `task.md`, the `setup.sh` README, and the removal commit message, so
+  the agent now meets a genuinely blind task. Re-ran the differential as
+  a baseline-vs-`--skill plans` comparison on `deepseek-v4.1-flash`, run
+  `01a11201-e39e-7235-8751-9568936b4bf8` (87 credits). **Both arms scored
+  100%**: all 16 solves, baseline (no skill) included, created
+  `plans/0007-forecast-source.md`. The blind is now valid — the leak is
+  gone — but the result is that history-based numbering is a behaviour a
+  capable model already has, not one the skill supplies, so the criterion
+  cannot discriminate on this model and the completion gate stays unmet.
+  This is the same class as git-workflow-0 criterion 5 (the fixture's
+  starting state makes the right answer the default). The skill edit
+  itself remains correct and is verified by hand (Verification bullet 2).
+  Awaiting a maintainer decision on how the gate should resolve.
