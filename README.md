@@ -10,6 +10,12 @@ tessl install mhclg-aaai/myelin
 
 The plugin is private to the `aaai` organisation on tessl: it does not appear in the public registry, and every member of the organisation can install it.
 
+### Install scope: a stale global install silently wins
+
+Claude Code resolves same-named skills by a **fixed precedence** — personal (`~/.claude/skills`) outranks project (`.claude/skills`) — and a tessl install uses the **same bare name** (`tessl__<skill>`) in every scope. So a global install silently outranks a project install of the *same* skill, with no error: if you install myelin both globally and into a repo, the global copy wins, and a **stale** global keeps winning even after you update the repo's copy. A stale install left under an **old workspace name** (`majerr/`, `communitiesuk/`) lingers and keeps shadowing until it is removed — removing the current install does not touch it, and an uninstall can leave the `~/.claude/skills/tessl__*` symlinks behind, dangling.
+
+Until myelin distributes as a namespaced plugin, keep yourself out of this trap: install in **one scope**, keep a global install **current** (`tessl install -g mhclg-aaai/myelin`), and remove any myelin install under an old workspace name. The full analysis is in `docs/discovery/0004-skill-freshness-and-distribution.md`.
+
 ## Requirements
 
 Before you run myelin in a repository, it needs:
@@ -74,6 +80,8 @@ myelin is developed using myelin, so the artefacts above are also how this repo 
 - `plans/` — implementation plans, present only while their work is intended.
 
 **`dev` is the trunk and `main` holds only releases.** Every artefact branch forks from `dev` and lands there by pull request. A release fast-forwards `main` to a commit on `dev`, tags it `v<version>`, and publishes that version to the registry; the release notes are derived from the merges since the previous tag and live on the tag and the host's release page, not in the tree. See `docs/adr/0005-releases.md`.
+
+**Developing myelin's own skills — avoid loading a stale copy of yourself.** A tessl install is a snapshot of the *published* version, not a view of this tree, and personal scope outranks project scope — so an agent working in this repo will load a stale global install instead of your edits, with no error. (This repo has no in-repo install by default, so resolution falls straight back to the personal scope.) Before developing a skill here: ensure **no global myelin install exists** (so nothing shadows the repo), then install from the local checkout with `tessl install --watch-local`, which reinstalls as you edit. With no personal copy to outrank it, the local one is what the agent loads. See `docs/discovery/0004-skill-freshness-and-distribution.md`.
 
 **The working tree holds the current intention and nothing else.** There are no superseded ADRs, no archive folder and no completed plans: an ADR is revised in place, and a plan is deleted when its work is done. Git history is the record, and commits carry trailers (`Derives-From`, `Revises`, `Completes`, `Abandons`, `Consumed-By`) so the relationships between artefacts stay recoverable. So an empty `plans/` means no work is in flight, not that nothing has happened — `git log --follow -p` and `git log --grep` are the retrieval path. See `docs/adr/0004-where-does-history-live.md`.
 
