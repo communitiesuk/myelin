@@ -4,10 +4,13 @@ status: deferred
 adr: 0004
 date: 2026-09-25
 deferred_reason: >-
-  Steps 1-2 landed (skill bodies fixed, eval scenario authored). Step 3
-  runs plan-numbering-0 through tessl eval run to show the criterion
-  discriminates, which costs credits. Paused until the tessl credit
-  renewal (week of 2026-09-28). Unblocks by running Step 3.
+  Step 3 ran (2026-10-06) and the criterion did NOT discriminate: the
+  pre-fix body scored the full 50/50 on the number criterion — a capable
+  model picks 0007 without the skill-body command because the fixture's
+  task.md itself states the record lives in history, leaking the
+  discriminator. The completion gate is therefore unmet. Unblocks by
+  redesigning the fixture/task so the pre-fix body genuinely fails (e.g.
+  remove the history hint from task.md), then re-running the differential.
 ---
 
 # Number plans and discovery notes from history, not the tree
@@ -144,3 +147,18 @@ complete.
   0004, and only reading history gives the correct 0007. Fixture
   test-run confirms the empty tree and the `plans/0006` history max.
   Not yet run through `tessl eval run` (Step 3, deferred to credits).
+- 2026-10-06: Step 3 executed on `deepseek-v4.1-flash`, scoped to
+  `evals/plan-numbering-0` alone: fixed body — run
+  `01a0e75f-1c63-7227-a239-6d37f49f8799`; pre-fix v0.1.1 body — run
+  `01a0e75f-264c-72d6-813e-be0fcbfd6cf6`. **Both scored 100%**, and the
+  "plan number is derived from history" criterion scored the full 50/50
+  on the *pre-fix* body too. The criterion does not discriminate: the
+  agent numbers the plan 0007 without the history command, because
+  `task.md` tells it the record lives in history. The completion gate
+  (fails without the fix, passes with it) is therefore **unmet**, so the
+  plan stays `deferred`. No new credits were spent today — the two runs
+  already existed, and re-running the identical fixture would only
+  reconfirm non-discrimination. Next action is a fixture fix: remove the
+  "history is the record" hint from `task.md` (and the `README.md` built
+  in `setup.sh`) so a tree-counting body genuinely lands on 0001, then
+  re-run the differential.
