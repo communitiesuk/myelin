@@ -1,16 +1,8 @@
 ---
 title: Number plans and discovery notes from history, not the tree
-status: deferred
+status: complete
 adr: 0004
 date: 2026-09-25
-deferred_reason: >-
-  Step 3 ran (2026-10-06) and the criterion did NOT discriminate: the
-  pre-fix body scored the full 50/50 on the number criterion — a capable
-  model picks 0007 without the skill-body command because the fixture's
-  task.md itself states the record lives in history, leaking the
-  discriminator. The completion gate is therefore unmet. Unblocks by
-  redesigning the fixture/task so the pre-fix body genuinely fails (e.g.
-  remove the history hint from task.md), then re-running the differential.
 ---
 
 # Number plans and discovery notes from history, not the tree
@@ -128,8 +120,10 @@ complete.
   yields `0007` as the next plan number, and prints the correct
   highest `docs/discovery/` number.
 - Step 3's differential eval run shows the criterion failing without
-  the fix and passing with it. **This is the completion gate and is
-  deferred until credits are available.**
+  the fix and passing with it. **This is the completion gate.** Met on
+  2026-10-06 by run `01a11234-8ba8-7043-8100-1632d4a8d496`: baseline
+  (no skill) 53% ± 33pp, the plans skill 100% ± 0pp, on the rebuilt
+  fixture that reproduces the production duplicate-0004 defect.
 
 ## Progress notes
 
@@ -162,3 +156,38 @@ complete.
   "history is the record" hint from `task.md` (and the `README.md` built
   in `setup.sh`) so a tree-counting body genuinely lands on 0001, then
   re-run the differential.
+- 2026-10-06: Fixture neutralised (`7349dc5`) — the hint stripped from
+  `task.md`, the `setup.sh` README, and the removal commit message, so
+  the agent now meets a genuinely blind task. Re-ran the differential as
+  a baseline-vs-`--skill plans` comparison on `deepseek-v4.1-flash`, run
+  `01a11201-e39e-7235-8751-9568936b4bf8` (87 credits). **Both arms scored
+  100%**: all 16 solves, baseline (no skill) included, created
+  `plans/0007-forecast-source.md`. The blind is now valid — the leak is
+  gone — but the result is that history-based numbering is a behaviour a
+  capable model already has, not one the skill supplies, so the criterion
+  cannot discriminate on this model and the completion gate stays unmet.
+  This is the same class as git-workflow-0 criterion 5 (the fixture's
+  starting state makes the right answer the default). The skill edit
+  itself remains correct and is verified by hand (Verification bullet 2).
+  Awaiting a maintainer decision on how the gate should resolve.
+- 2026-10-06: Root-caused why the blind did not discriminate, rather than
+  relaxing the gate. The dense 0001–0006 fixture only tested the *easy*
+  shape of the problem: over an unbroken run, "+1 past an obvious maximum"
+  is trivial and a capable model gets it with or without the skill. But
+  that is not how the production bug happened. At the fork point where the
+  real duplicate `plans/0004` was numbered (`0975854`), the tree was empty
+  and history had added 0001–0004, with 0004 the most recently completed
+  and removed. The correct next number was 0005; the agent reused 0004,
+  dropping a new plan into the retired top slot that looked free. Rebuilt
+  the fixture to reproduce exactly that state (`6f0842a`): history adds
+  0001–0004 and retires them one by one so the last plan commit removes
+  0004, tree empty, ADR to implement is 0006 (distinct from every wrong
+  answer). The discriminator is now 0005 (increment past the highest ever
+  added) vs 0004 (reuse the retired top) and 0006 (copy the ADR number).
+- 2026-10-06: Step 3 **passed** on the rebuilt fixture. Run
+  `01a11234-8ba8-7043-8100-1632d4a8d496` (83 credits), baseline-vs-`--skill
+  plans` on `deepseek-v4.1-flash`: baseline **53% ± 33pp** — it reused
+  0004 (recreated `plans/0004-retired-plan.md`) and in other repeats copied
+  the ADR number 0006 — against the plans skill at **100% ± 0pp**, which
+  numbered 0005 every time. The criterion fails without the skill and
+  passes with it, so the completion gate is met. Plan set `complete`.
