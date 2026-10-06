@@ -41,9 +41,6 @@ cat > README.md <<'EOF'
 Meadow schedules irrigation across a network of field sensors. It has a
 long tail of operational decisions, recorded as ADRs, and each is
 implemented through a numbered plan.
-
-Completed plans are removed from `plans/` once their work has landed;
-git history is the record of what was done.
 EOF
 
 mkdir -p docs/adr
@@ -202,7 +199,7 @@ git rm -q plans/*.md
 mkdir -p plans
 touch plans/.gitkeep
 git add plans/.gitkeep
-git commit -q -m "Remove the completed plans; plans/ is empty, history is the record"
+git commit -q -m "Remove the completed plans now their work has landed"
 
 # Anchor for the scorer: everything after this tag is the agent's work.
 git tag fixture-base dev
