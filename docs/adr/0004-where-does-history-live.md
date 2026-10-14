@@ -79,8 +79,9 @@ When an ADR is revisited, it is edited. The superseded text is in the
 history of the file, reachable with `git log --follow -p`. The
 `adr` skill's rules against editing a merged ADR and against deleting
 superseded ADRs are withdrawn, and the `supersedes`, `superseded_by`
-and `superseded` status vocabulary is withdrawn with them. An ADR is
-`proposed` or `accepted`.
+and `superseded` status vocabulary is withdrawn with them. An ADR
+carries no status: on the trunk it is accepted, and on a branch or an
+open pull request it is proposed (ADR 0009).
 
 The test for whether a revision is an edit or a new ADR: **the title
 of an ADR is the question it answers.** If the revision still answers
@@ -149,8 +150,8 @@ trailers, and a key may repeat. `Derives-From` names direct
 upstreams only: a skill produced by a plan step names the plan, not
 the ADR behind it, which is one hop away through the plan's own
 `adr:` field. `Revises` is for changes to the decision; a typo fix
-does not carry it, and nor does an edit to a `proposed` ADR, which is
-still being drafted.
+does not carry it, and nor does an edit made on the ADR's own branch
+before it merges, which is still drafting.
 
 Trailers record edges between artefacts. Structure inside an
 artefact, such as the order of docstring, test and code commits
@@ -235,6 +236,10 @@ question and is deferred to a separate ADR. Until it exists,
 - **An index file recording artefact relationships.** Rejected: it
   duplicates what frontmatter and trailers already record, and it
   must be maintained by hand.
+- **A `status` field of `proposed` or `accepted`.** The original form
+  of this decision, reversed by ADR 0009. Nothing set the field at
+  merge, so ADR 0008 landed accepted while saying `proposed`; an ADR's
+  place in git already says which it is.
 - **Prose-only commit messages, no trailers.** Rejected: the
   relationships would have to be inferred from sentences, which is
   the kind of judgement the history skill exists to remove.
