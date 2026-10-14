@@ -1,6 +1,5 @@
 ---
 title: What must the README tell a new user before they rely on myelin?
-status: accepted
 date: 2026-09-28
 ---
 

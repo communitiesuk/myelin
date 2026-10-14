@@ -11,7 +11,7 @@ Plans are the action side of the ADR/plan pair. Where an ADR captures *what was 
 
 **Plans always derive from ADRs. Projects can only implement what has been decided.**
 
-Before writing a plan, verify a corresponding ADR exists in `docs/adr/` and is at least `proposed` (ideally `accepted`). If no ADR exists:
+Before writing a plan, verify a corresponding ADR exists in `docs/adr/`, either accepted (on the trunk) or proposed (on its own branch, the branch that adds it, whether or not its pull request is open yet). Accepted is better. An ADR carries no status field; where it is says which (see the `adr` skill). `git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md` succeeds if and only if the ADR is on the trunk. An ADR whose pull request was closed unmerged is neither proposed nor accepted; treat it as absent. If no ADR exists:
 
 1. Stop.
 2. Discuss what needs to be done with the user, confirming decisions to capture.

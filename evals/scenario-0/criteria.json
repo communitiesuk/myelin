@@ -1,5 +1,5 @@
 {
-  "context": "Tests whether the agent, given an existing accepted ADR whose title is a question and a change to the answer to that question, revises that ADR in place rather than writing a second record: the same file is edited, its question-shaped title and original date are kept, its frontmatter is the three-field schema, its Decision now records PostgreSQL, its Alternatives section gains an entry recording the reversed SQLite decision and why it was reversed, the file carries no vocabulary marking one record as replacing another, and any commit that changes the decision carries a Revises trailer with a reason in the body.",
+  "context": "Tests whether the agent, given an existing accepted ADR whose title is a question and a change to the answer to that question, revises that ADR in place rather than writing a second record: the same file is edited, its question-shaped title and original date are kept, its frontmatter is the two-field schema of title and date, its Decision now records PostgreSQL, its Alternatives section gains an entry recording the reversed SQLite decision and why it was reversed, the file carries no vocabulary marking one record as replacing another, and any commit that changes the decision carries a Revises trailer with a reason in the body.",
   "type": "weighted_checklist",
   "checklist": [
     {
@@ -13,8 +13,8 @@
       "max_score": 8
     },
     {
-      "name": "Frontmatter is exactly title, status and date",
-      "description": "The ADR's YAML frontmatter contains exactly three fields: title, status and date, and no others. The status value is exactly one of proposed or accepted. Any additional field, or any other status value, fails this check",
+      "name": "Frontmatter is exactly title and date",
+      "description": "The ADR's YAML frontmatter contains exactly two fields: title and date, and no others. A status field, or any other additional field, fails this check",
       "max_score": 10
     },
     {
@@ -34,7 +34,7 @@
     },
     {
       "name": "No replaced-record vocabulary",
-      "description": "The file nowhere marks itself or another record as replaced by, or replacing, a successor record: no frontmatter field naming a record this one replaces or is replaced by, no status value other than proposed or accepted, and no body prose or heading built on the stem 'supersed'. The prior decision is described in Alternatives as a reversed choice, not as a retired record",
+      "description": "The file nowhere marks itself or another record as replaced by, or replacing, a successor record: no frontmatter field naming a record this one replaces or is replaced by, and no body prose or heading built on the stem 'supersed'. The prior decision is described in Alternatives as a reversed choice, not as a retired record",
       "max_score": 10
     },
     {

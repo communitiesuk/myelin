@@ -1,6 +1,5 @@
 ---
 title: How do downstream skills get loaded at the right moment?
-status: accepted
 date: 2026-08-27
 ---
 

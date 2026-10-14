@@ -10,7 +10,7 @@ The team keeps its architecture decisions under `docs/adr/`, numbered in
 sequence, and keeps the investigations that precede them under
 `docs/discovery/`. Read `docs/adr/0001-http-client-timeouts.md` and
 `docs/adr/0002-configuration-loading.md` for the house style: YAML
-frontmatter with `title`, `status` and `date`, then `## Context`,
+frontmatter with `title` and `date`, then `## Context`,
 `## Decision` and `## Consequences`.
 
 `docs/discovery/0001-event-volume.md` is a finished discovery note. It
@@ -37,11 +37,10 @@ Produce, in the repository in the current working directory:
 
 - A new ADR under `docs/adr/`, taking the next number in the sequence
   and following the file-naming and section structure of the two
-  existing ADRs. It should record the decision above as `accepted`,
-  give the reasoning from the discovery note as its context, name the
-  firmware rollout as the alternative that was considered and deferred,
-  and state the consequence that liveness detection now depends on a
-  sampled signal.
+  existing ADRs. It should give the reasoning from the discovery note
+  as its context, name the firmware rollout as the alternative that
+  was considered and deferred, and state the consequence that liveness
+  detection now depends on a sampled signal.
 
 Record it the way this repository's work is normally recorded, so that a
 colleague picking the repository up afterwards finds the decision in its

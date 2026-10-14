@@ -1,6 +1,5 @@
 ---
 title: How is an artefact checked before the next stage consumes it?
-status: proposed
 date: 2026-10-14
 ---
 
