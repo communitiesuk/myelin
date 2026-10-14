@@ -128,7 +128,7 @@ limit, stop rule and Escalation scope below. It is the human's
 decision and joins the upstream; it takes precedence over the
 confirmed summary or any earlier change, and over any recorded parent
 decision it contradicts, which the next round's record marks
-superseded; a reviewer does not flag it. When it finishes, the human
+superseded; a reviewer does not flag it. When the loop finishes, the human
 is asked to accept again.
 
 **The reviewer is independent.** It gets the artefact, its upstream
