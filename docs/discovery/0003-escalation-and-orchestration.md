@@ -160,6 +160,38 @@ So the ticket work does not compete with this note; its deferred half
 here should discharge it rather than treat it as separate. ADR 0006
 carries a `Derives-From` to this note for that reason.
 
+### [2026-10-14] Committed: the question is how, not whether
+
+The maintainer has committed to the orchestrator turn. myelin is going
+to move beyond skills that a single agent loads, and soon. That settles
+the first of the "larger and not yet decidable" questions below. What
+remains is the *shape*, and this note is now about how.
+
+It also changes what the two probes are for. They're no longer
+conditions to meet before an ADR. They're inputs to the design, and
+they'll be answered in practice rather than as standalone experiments:
+
+- **The first step is stage reviews (#77).** Before the next stage
+  consumes an artefact, an independent reviewer subagent checks it, the
+  parent sorts the findings and escalates decisions to the human, and
+  the loop repeats until a stop rule is met. For plans, a drafter
+  subagent writes and a reviewer subagent reviews. That is the
+  interlocutor/worker split at its smallest, with the reviewer run
+  *after* the worker rather than as a peer watching it, which is the
+  parent-led shape probe 2 suspected the harness supports. Its run logs
+  (whether workers followed their skills, rounds, overrides, models)
+  answer probe 1 on real work.
+- **An inventory of the harness's primitives (#78)** answers the rest:
+  agent definitions (and whether they can preload skills), background
+  agents, hooks, the SDK.
+- With those in hand, this note goes back through facilitated-discovery
+  aiming at the "how" ADRs (#79). The sequence is tracked in the pinned
+  roadmap issue (#80).
+
+The stage-review loop also gives the enforcement piece above somewhere
+to read a verdict from: findings and how each was handled, recorded in
+the PR.
+
 ## Open questions
 
 Two are decisive and directly **probeable** on the current harness;
@@ -187,11 +219,9 @@ answer them before any ADR:
 
 Larger and not yet decidable:
 
-- **Is myelin taking the orchestrator turn at all?** This is a
-  whole-system architecture change. The landing gate alone probably
-  does not justify it; its being the fourth converging thread might.
-  That is the decision the eventual ADR has to make, and it should be
-  made on the combined evidence, not on the gate alone.
+- ~~**Is myelin taking the orchestrator turn at all?**~~ Settled
+  2026-10-14: yes. The eventual ADRs decide its shape, not whether to
+  take it (see above).
 - **What does the observer read to judge (1)(3)(4)?** The worker's tool
   calls, its outputs, the diff, the governing ADR? And what is the
   structured form of a "block" so the interlocutor/human can act on it?
@@ -229,8 +259,12 @@ Larger and not yet decidable:
   observe of another and whether it (or the parent) can halt it, from
   the harness/SDK capabilities — before assuming the paired-observer
   picture is buildable.
-- **Do not** open an ADR until both probes are answered; the
-  architecture rests on them.
+- ~~**Do not** open an ADR until both probes are answered; the
+  architecture rests on them.~~ Superseded 2026-10-14: the probes are
+  now answered by the stage-review loop (#77) and the harness inventory
+  (#78), and the stage-review ADR goes ahead first, as the smallest
+  piece of the architecture. The "how" ADRs still wait for that
+  evidence.
 - **Reframe [[Reviewers]]** so its landing-gate material becomes input
   to this question rather than an active thread of its own, matching the
   reclassification above.
