@@ -109,10 +109,10 @@ or reopened by round N+1's reviewer.
   surfaces its findings and exits.
 - **Parent.** Once both have reported, decides on both lists together,
   in one place, and records the decisions in the round's record, in a
-  commit made before the next round's draft or the closing pass, or
-  in that commit itself (see the review record below). The decisions
-  recorded in earlier rounds reach later drafters and reviewers as
-  those rounds' output.
+  commit made before the next round's draft or the closing pass, or in
+  that commit itself, or in a commit of its own if nothing follows
+  (see the review record below). The decisions recorded in earlier
+  rounds reach later drafters and reviewers as those rounds' output.
 
 The parent makes no decisions before the first draft.
 
@@ -122,16 +122,14 @@ gets the upstream, the draft and the recorded decisions. The pass is
 not a round and is not re-reviewed; the parent checks that the change
 matches the recorded decisions.
 
-For an ADR, changes requested at acceptance are the human's
-decisions and join the upstream. Where one differs from the confirmed
-summary or from an earlier change, the later one takes precedence,
-and a reviewer does not flag it as contradicting the upstream. A
-change requested at acceptance also supersedes any recorded parent
-decision it contradicts, and the parent marks that decision
-superseded in the record. A change requested at acceptance restarts
-the loop at round 1, under the same rules: the closing pass above,
-and the round limit, stop rule and Escalation scope below. When it
-finishes, the human is asked to accept again.
+For an ADR, a change requested at acceptance restarts the loop at
+round 1, under the same rules: the closing pass above, and the round
+limit, stop rule and Escalation scope below. It is the human's
+decision and joins the upstream; it takes precedence over the
+confirmed summary or any earlier change, and over any recorded parent
+decision it contradicts, which the next round's record marks
+superseded; a reviewer does not flag it. When it finishes, the human
+is asked to accept again.
 
 **The reviewer is independent.** It gets the artefact, its upstream
 sources and the recorded decisions, never the drafter's or the
@@ -142,16 +140,16 @@ record does not.
 
 ### The parent owns the loop
 
-Once the summary is confirmed, the parent decides on every issue and
-finding, except those Escalation scope sends to the human, and has
-the draft revised, and re-reviewed where the stop rule requires,
-without asking the human. Choices the summary did not settle are the
-parent's, because they revise nothing the human has agreed or seen;
-the parent makes them at a round's decision point, like any other.
-It has each Medium or Low finding fixed, in a later round or the
-closing pass above, or records in the review record why not. The
-human next sees the artefact drafted and reviewed, together with that
-record.
+Once the upstream is settled (for an ADR, the summary confirmed), the
+parent decides on every issue and finding, except those Escalation
+scope sends to the human, and has the draft revised, and re-reviewed
+where the stop rule requires, without asking the human. Choices the
+upstream did not settle are the parent's, because they revise nothing
+the human has agreed or seen; the parent makes them at a round's
+decision point, like any other. It has each Medium or Low finding
+fixed, in a later round or the closing pass above, or records in the
+review record why not. The human next sees the artefact drafted and
+reviewed, together with that record.
 
 ### Each stage checks what it adds
 
@@ -214,15 +212,16 @@ the next round or the landing, until the human answers.
 
 ### The review record is in git
 
-Each round's record, the issues and findings and the parent's
-decision on each, goes in the body of a commit on the artefact's
-branch made before the next round's draft or the closing pass, or in
-that commit itself. The closing pass's commit records the parent's
-check. So the record is in git history whatever the host. Changes
-requested at acceptance are recorded, quoting the text the human
-accepted, in a commit of their own before the loop restarts. The
-record carries no trailer. Where there is a pull request, its
-description repeats the record, so a future merge hook can read it.
+Each round's record, the issues and findings and the parent's decision
+on each, goes in the body of a commit on the artefact's branch made
+before the next round's draft or the closing pass, or in that commit
+itself, or in a commit of its own if nothing follows. The closing
+pass's commit records the parent's check. So the record is in git
+history whatever the host. Changes requested at acceptance are
+recorded, quoting the text the human accepted, in a commit of their
+own before the loop restarts. The record carries no trailer. Where
+there is a pull request, its description repeats the record, so a
+future merge hook can read it.
 
 ### Passing the conversation to the summariser
 
@@ -281,7 +280,7 @@ the shape of ADR 0003's git-host modules.
   **Waiting for a cross-harness standard**: none is reliable today.
 - **Deciding before the first draft; resuming the drafter between
   rounds.** This ADR as first written had the drafter work from the
-  upstream 'and nothing else' and gave the parent's decisions no time
+  upstream "and nothing else" and gave the parent's decisions no time
   or route. Reversed: Rounds puts decisions at one point after the
   issues are in, gives each subagent one task, and carries no
   reasoning forward.
@@ -325,12 +324,12 @@ the shape of ADR 0003's git-host modules.
 - Every ADR written under this loop has a written upstream: its
   discovery note, or else the confirmed summary in its introducing
   commit (or a revision's first revising commit), plus any changes
-  requested at acceptance. The summary adds
-  no edge to ADR 0004's graph, and ADR 0004's trailer table is
-  unchanged.
+  requested at acceptance. The summary adds no edge to ADR 0004's
+  graph, and ADR 0004's trailer table is unchanged.
 - A revision of an accepted ADR carries `Revises` on its first
-  revising commit; later round commits on the same revision branch
-  are drafting of that revision and carry no trailer.
+  revising commit; later round commits on the same revision branch are
+  drafting of that revision and carry no trailer, since under ADR 0004
+  the `Revises` edge is added by exactly one commit.
 - Each round costs at least two subagent runs, a fresh drafter and a
   fresh reviewer.
 - Open, for the orchestration work: what else a run should record as
@@ -358,10 +357,14 @@ the shape of ADR 0003's git-host modules.
   this loop defines; the human-lands-an-ADR rule this leaves in place.
 - `docs/adr/0004-where-does-history-live.md` — git history as the
   record, which the review record and the summary's home follow; the
-  trailer graph this leaves unchanged; the closed paths the ADR
-  reviewer reads.
+  trailer graph this leaves unchanged, in which the `Revises` edge is
+  added by exactly one commit; the closed paths the ADR reviewer
+  reads.
 - `docs/adr/0006-where-do-captured-ideas-live.md` — the deferred
   escalation route, which this loop answers only within a review.
+- `docs/adr/0009-adr-acceptance.md` — acceptance is the human's merge;
+  a change requested at acceptance restarts the loop before the human
+  is asked again.
 - `docs/discovery/0003-escalation-and-orchestration.md` — context: the
   orchestrator commitment, and the merged question this ADR separates.
   A reference, not an upstream: this ADR does not consume it, and it
