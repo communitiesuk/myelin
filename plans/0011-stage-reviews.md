@@ -36,8 +36,7 @@ deferred_reason: null
 All work happens on the branch `git-workflow` begins for this plan
 (`begin plans/0011-stage-reviews.md`) after the plan has landed. The
 commit for Step 1 also flips this plan's `status` to `in-progress`.
-Steps 0 to 9 spend no tessl eval credits. Step 10 does, and says how
-many.
+Only Step 10 spends tessl eval credits, and it says how many.
 
 Paths that begin `skills/adr/` ship with the `adr` skill. Paths that
 begin `skills/plans/` ship with the `plans` skill.
@@ -55,6 +54,10 @@ bash skills/git-workflow/scripts/tests/run.sh                                   
 
 If any output differs, stop. The plan is not ready. Record what
 differed in Progress notes and set `status: deferred`.
+
+Also note in Progress notes whether the eval runner's solution
+directory is a git repository, from an existing run's scorer reasoning
+if one is available (`tessl eval view 01a120c6-39f6-721a-9e45-99f7d3bbf6dd`).
 
 ### Step 1 — Define the dialogue format
 
@@ -105,8 +108,8 @@ The contract, written first as the header comment:
   back. Exit 2: usage error.
 - It states that the transcript format is internal to Claude Code and
   undocumented, and may change between versions, and names the
-  Claude Code version the fixtures were modelled on (`claude --version`;
-  `2.1.296 (Claude Code)` on 2026-10-14).
+  Claude Code version the fixtures were modelled on: what
+  `claude --version` prints when you model them.
 
 The tested prototype is
 `/private/tmp/claude-502/-Users-matthewroberts1-projects-myelin/a000be99-d5c2-44cd-a1a5-60c164f8eae1/scratchpad/extract-dialogue`.
@@ -171,11 +174,11 @@ Fixtures are hand-written `.jsonl` files under
 
 Red commit: `Test the Claude Code dialogue adapter` (tests and
 fixtures). Check: `bash skills/adr/scripts/tests/run.sh` prints
-`10 tests, 10 failed`. Green commit: `Add the Claude Code dialogue adapter`.
-Check: it prints `10 tests, 0 failed`.
+`10 tests, 10 failed`. Then write the adapter. Check: it prints
+`10 tests, 0 failed`.
 
-Then smoke it once on this session's real transcript, writing to the
-session's temporary directory:
+Before the green commit, smoke it once on this session's real
+transcript, writing to the session's temporary directory:
 
 ```sh
 bash skills/adr/scripts/claude-code-dialogue "$CLAUDE_CODE_SESSION_ID" "<directory the session started in>" "$TMPDIR/dialogue.md"; echo "exit=$?"   # expect exit=0
@@ -183,9 +186,10 @@ sed -n 2p "$TMPDIR/dialogue.md"                                                 
 grep -cE '"tool_use_id"|"type":"thinking"' "$TMPDIR/dialogue.md"                    # expect 0
 ```
 
-Record the transcript size, the output size and the three outputs in
-Progress notes and in the green commit's body. Commit neither the
-transcript nor the output.
+Green commit: `Add the Claude Code dialogue adapter`, its body
+giving the transcript size, the output size and the three outputs.
+Record them in Progress notes too. Commit neither the transcript nor
+the output.
 
 ### Step 3 — Write the summariser brief
 
@@ -219,7 +223,8 @@ Both carry this common text, word for word:
 
 You get the upstream, the draft, and the recorded decisions: the
 bodies of the commits on the branch since the fork point, which hold
-every round's record. You get nothing else. Check the draft against
+every round's record. You are handed nothing else; read the
+repository only as What you check says. Check the draft against
 the upstream and against the recorded decisions, which are settled:
 do not reopen them. The one exception: flag a recorded decision of
 the parent's that contradicts the upstream, as an escalation.
@@ -322,6 +327,8 @@ the shared block in 5e:
 ~~~markdown
 ## Drafting and review
 
+If you are a drafter or reviewer subagent, skip this section.
+
 The harness states this skill's base directory when it loads the
 skill. Call that `$SKILL_DIR`.
 
@@ -379,7 +386,7 @@ conversation, because the summariser sees only the dialogue.
    reason. Review finishes before the human is asked to accept; the
    human's merge accepts.
 
-With no human available, stop and report at step 4: the pull request
+With no human available, land, then stop and report: the pull request
 where there is one, and each escalation with its reason.
 
 ### Changes requested at acceptance
@@ -395,20 +402,19 @@ it contradicts.
    verbatim.
 2. Restart the loop at round 1, under the same rules. Round 1 is the
    revision applying the change, and its review. Its drafter gets the
-   upstream, the current draft and the recorded decisions. After the
-   K-th restart, each round's record opens
-   `Review record, restart K, round N.`, and round 1's marks under
-   `Superseded:` each recorded decision the change contradicts. A
-   reviewer does not flag the change.
+   upstream, the current draft and the recorded decisions. Its records
+   open as "The record" below gives after a restart, and round 1's
+   marks under `Superseded:` each recorded decision the change
+   contradicts. A reviewer does not flag the change.
 3. When the loop finishes, land again and ask the human to accept
    again.
 
 An answer to an escalation that changes the draft is a change
 requested at acceptance, whenever it is given. An answer that leaves
 the draft as it stands is recorded in an empty commit titled
-`Record the human's answer on <path>`, whose body opens
-`Review record, the human's answer.` and quotes it. Later reviewers
-treat it as settled.
+`Record the human's answer on <path>`, whose body opens as "The
+record" below gives for the human's answer, for the last round, and
+quotes it. Later reviewers treat it as settled.
 ~~~
 
 **5e.** After that section, insert the shared block below, exactly,
@@ -429,7 +435,9 @@ fresh: none is resumed from an earlier round.
   review. You make every commit on the artefact's branch; drafters and
   reviewers edit or read files and never commit.
 - A **drafter** subagent drafts or revises the artefact. Its
-  instructions are this skill. Its report ends with a numbered list of
+  instructions are this skill; the repository, and what this skill
+  tells it to read, are part of those instructions, not of the
+  upstream. Its report ends with a numbered list of
   the issues it found: ambiguities in the upstream, conflicts with a
   recorded decision or with this skill, and choices it made that
   nothing settles. A cheaper model may draft.
@@ -455,7 +463,12 @@ not hold.
 
 1. A fresh drafter drafts or revises. Commit the draft. Round 1's is
    the introducing commit (or a revision's first revising commit). A
-   later round's is titled `Revise <path> (round N draft)`.
+   later round's is titled `Revise <path> (round N draft)`. A draft
+   commit carries only its title, plus the confirmed summary and
+   trailers where this skill requires them; never reasoning. An
+   unreviewed draft already on the branch is round 1's draft: the loop
+   starts at its review, and round 1's record gives the drafter as
+   `not a subagent`.
 2. A fresh reviewer reviews the committed draft.
 3. When both have reported, and not before, decide on both lists
    together. Make no decision before the first draft. Each High is
@@ -481,8 +494,17 @@ Escalated: each with its reason, or "none".
 Next: round N+1, closing pass, stop, or stopped for the human.
 ```
 
+Every record's first line has this form, its suffixes in this order:
+`Review record, round N.`; after the K-th restart,
+`Review record, round N, restart K.`; for the human's answer, add
+`, the human's answer` last, as in
+`Review record, round N, restart K, the human's answer.`
+
 It carries no artefact-graph trailer (`Derives-From`, `Revises`,
 `Consumed-By`, `Completes`, `Abandons`).
+
+Outside any git repository, run the loop and report the records
+instead of committing them.
 
 **Stop rule (provisional).** Only High findings trigger another round.
 Stop after a round whose review leaves no High open. Run at most 3
@@ -526,12 +548,11 @@ writes it, and rewrites it when the branch lands again.
 **5f.** Check, once, in this live Claude Code session:
 
 ```sh
-printenv CLAUDE_CODE_SESSION_ID | grep -cE '^[0-9a-f-]{36}$'                    # expect 1
-bash skills/adr/scripts/claude-code-dialogue "$CLAUDE_CODE_SESSION_ID" "<directory the session started in>" "$TMPDIR/d.md"; echo "exit=$?"   # expect exit=0
+printenv CLAUDE_CODE_SESSION_ID | grep -cE '^[0-9a-f-]{36}$'   # expect 1
 ```
 
 `$CLAUDE_CODE_SESSION_ID` was seen set in this harness on 2026-10-14.
-Record both outputs and `claude --version` in this step's commit body.
+Record its output in this step's commit body.
 
 **5g.** Run `tessl review run quality skills/adr`. Its score is not
 lower than 5a's. Record it in Progress notes.
@@ -551,6 +572,8 @@ and record its score.
 ~~~markdown
 ## Drafting and review
 
+If you are a drafter or reviewer subagent, skip this section.
+
 A plan's upstream is its ADR.
 
 1. Begin the plan's branch (`git-workflow`).
@@ -564,7 +587,8 @@ A plan's upstream is its ADR.
    review showing that the ADR needs revising is an escalation.
 4. The human's answer is the human's decision. Record it in an empty
    commit titled `Record the human's answer on <path>`, whose body
-   opens `Review record, round N, the human's answer.` and quotes it.
+   opens as "The record" below gives for the human's answer, and
+   quotes it.
    It is part of round N's record. The loop then continues where it
    paused, under the stop rule; an answer does not restart it.
 5. With no human available, stop and report at that decision point,
@@ -593,9 +617,15 @@ Commit: `Add the drafting and review loop to the plans skill`.
 
 > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
-**Red.** In `skills/git-workflow/scripts/tests/stub-gh`, add two
-cases before `*)`, and a sentence to its header comment saying
-`pr view` reports an open pull request only when `GH_STUB_PR=open`:
+**Red.** In `skills/git-workflow/scripts/tests/stub-gh`, after
+header line 12 (`# GH_STUB_SQUASH.`), add:
+
+```sh
+# "pr view" reports an open pull request, printing its URL, only when
+# GH_STUB_PR=open; it ignores --json and --jq. "pr edit" succeeds.
+```
+
+and add two cases before `*)`:
 
 ```sh
   "pr view")
@@ -645,22 +675,39 @@ with:
 ```sh
     url="$(gh pr view "$2" --json state,url --jq 'select(.state == "OPEN") | .url' 2>/dev/null)"
     if [ -n "$url" ]; then
-      gh pr edit "$2" --body "$(git log --format=%B "$3..$2")" >/dev/null || exit 1
+      gh pr edit "$2" --body "$(git log --reverse --format=%B "$3..$2")" >/dev/null || exit 1
       printf '%s\n' "$url"
     else
       gh pr create --head "$2" --base "$3" --fill-verbose || exit 1
     fi ;;
 ```
 
-In the same file's usage comment, replace the `propose` entry's text
-with: `open a pull request from the pushed branch onto the trunk, its
-description every commit's message and body; when one is already
-open, rewrite its description from those instead; prints its URL`.
-In the header of `skills/git-workflow/scripts/git-workflow`, replace
-`propose <branch>    open a pull request for the pushed branch` with
-`propose <branch>    open a pull request for the pushed branch, or
-rewrite the open one's description; it carries every commit's message
-and body`.
+The stub does not emulate `--jq`, so the case of a closed pull request
+for the branch is untested.
+
+In the same file, replace usage lines 5 to 7 with:
+
+```sh
+#   bash hosts/github propose <branch> <trunk>   open a pull request from the
+#                                                pushed branch onto the trunk,
+#                                                its description every
+#                                                commit's message and body,
+#                                                oldest first; when one is
+#                                                already open, rewrite its
+#                                                description from those
+#                                                instead; prints its URL
+```
+
+In `skills/git-workflow/scripts/git-workflow`, replace header line 31
+(`#   propose <branch>    open a pull request for the pushed branch`),
+which also omits `<trunk>`, with:
+
+```sh
+#   propose <branch> <trunk>
+#                       open a pull request for the pushed branch onto the
+#                       trunk, or rewrite the open one's description; it
+#                       carries every commit's message and body
+```
 
 Run `bash skills/git-workflow/scripts/tests/run.sh`. Expect
 `56 tests, 0 failed`. Commit:
@@ -719,6 +766,15 @@ tagged `fixture-base-dev`, ADRs with `title` and `date` frontmatter
 only. Each `setup.sh` header says what each fixture element lets fail.
 No `task.md` mentions review, subagents, rounds or records; those
 must come from the skill.
+
+Each `criteria.json` has a `context`, modelled on
+`evals/git-workflow-1/criteria.json`'s. It says: the solution
+directory is `solution/`, a git repository, and paths are relative to
+it; what the fixture leaves (branches, files, and the tags
+`fixture-base-dev` and, where there is one, `fixture-base-plan`); that
+`task.md` says nothing about review, so every scored property must
+come from the skill; that the agent's final report is untested here;
+and "Score from git state and the working tree only."
 
 Test each fixture first: write the state checks listed for it as a
 short script in the session's temporary directory, run it in an empty
@@ -805,7 +861,7 @@ Criteria, scored from git:
 | D1, D2 and D3 each appear as a finding in a record | 20 |
 | `plans/0001-forecast-source.md` as merged into `dev` has no on-disk cache, logs the choice to stdout, has no step that deletes what Verification reads, and implements the 6-hour rule | 20 |
 | A round is recorded after the last round whose draft fixed a High, and it reports each of those Highs `confirmed fixed`; no more than 3 rounds are recorded | 15 |
-| Every record names the drafter's and the reviewer's models | 5 |
+| Every record names the drafter's and the reviewer's models; round 1's gives the drafter as `not a subagent` | 5 |
 | Every Medium or Low a record decides to act on is fixed by a later round's draft or by a commit after the last record whose body opens `Closing pass.` and records the parent's check; no other commit after the last record changes the plan | 10 |
 | No record or closing-pass commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
 | `dev` ends in a two-parent merge of the plan branch, and `git diff fixture-base-dev dev -- docs/adr/` is empty | 10 |
@@ -827,9 +883,9 @@ Criteria:
 | Criterion | Score |
 | --- | --- |
 | Precondition: the plan branch exists with a commit after `fixture-base-plan`. Then `dev` equals `fixture-base-dev`: nothing landed | 25 |
-| A commit after `fixture-base-plan` on the plan branch has a record body whose `Escalated:` entry names the conflict between logging to stdout and writing nothing to stdout, with its reason (the fix would change the accepted ADR) | 30 |
+| A commit after `fixture-base-plan` on the plan branch has a record body whose `Escalated:` entry names the conflict between logging to stdout and writing nothing to stdout, with either reason: the fix would change the accepted ADR, or a High is still open after round 3 | 30 |
 | No commit on the plan branch follows the commit that records the escalation | 15 |
-| The agent's final message names the escalation and its reason, and says the plan has not landed | 20 |
+| That record's `Escalated:` line is not `none`, and it has the line `Next: stopped for the human.` | 20 |
 | No branch changes `docs/adr/`: `git log --all fixture-base-dev.. -- docs/adr/` is empty | 10 |
 
 #### `evals/adr-0/` — an ADR drafted from a labelled summary
@@ -872,9 +928,10 @@ Criteria:
 | A new `docs/adr/0002-*.md` exists on an `adr-0002-*` branch, and `dev` equals `fixture-base-dev` | 15 |
 | In the first commit after `fixture-base-dev` on that branch, the text between `# Confirmed decision summary` and `# End of confirmed decision summary` equals the fenced block byte for byte, ignoring leading and trailing blank lines | 25 |
 | That body has a line containing `supplied labelled` outside the two markers, and no line between them begins `Mode:` | 10 |
-| The ADR does not decide a retry budget or a maximum number of attempts | 15 |
-| A later commit's body opens `Review record, round 1.` with severities, decisions, and the drafter's and reviewer's models | 20 |
-| No record commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
+| The ADR does not decide a retry budget or a maximum number of attempts | 10 |
+| A later commit's body opens `Review record, round 1.` with severities, decisions, and the drafter's and reviewer's models | 15 |
+| The closing pass: if the last record decides to act on any issue or finding, a commit after it has a body opening `Closing pass.` that records the parent's check, and no other commit after the record changes the ADR; if it decides to act on none, its `Next:` line reads `stop` | 10 |
+| No record or closing-pass commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
 | The branch still exists and `git remote` prints nothing | 10 |
 
 #### `evals/adr-1/` — an unlabelled decision with no human stops and asks
@@ -888,9 +945,9 @@ Criteria:
 
 | Criterion | Score |
 | --- | --- |
-| No new file under `docs/adr/` exists on any branch or in the working tree, and `dev` equals `fixture-base-dev` | 40 |
-| The agent's final message shows a summary of the decision and asks the human to confirm it | 40 |
-| `git log --all fixture-base-dev..` is empty: nothing was committed | 20 |
+| No commits: `git log --all fixture-base-dev..` is empty, and `dev` equals `fixture-base-dev` | 40 |
+| No new files: `git status --porcelain --untracked-files=all` lists nothing under `docs/adr/` | 30 |
+| No branch: `git for-each-ref refs/heads/` lists only the fixture's branches | 30 |
 
 Check: `tessl eval lint evals/` reports no errors and four more
 scenarios than before. Commit:
@@ -900,7 +957,9 @@ credits are spent here.
 ### Step 10 — Run the evals (spends credits)
 
 > Spends tessl eval credits: 10 per scenario execution on this pin,
-> 110 for the runs below and up to 100 more for re-runs. Run one
+> 130 for the runs below. Re-runs are capped at 2 per new scenario
+> (40 each, 160 in all) and at three repeats per regression scenario
+> (20 each, up to 100), so at most 390 in all. Run one
 > scenario at a time; never run the whole `evals/` directory. Before
 > each run, `tessl eval lint evals/<scenario>` reports one scenario
 > (free).
@@ -939,13 +998,24 @@ body of the commit that records them,
 
 - A new scenario whose skill arm does not score above its baseline
   does not discriminate. Fix the fixture, not the criteria, and re-run
-  that scenario only. If the agent under eval could not start
+  that scenario only, at most twice. If the agent under eval could not start
   subagents, record that and set this plan `deferred` with that
   reason.
 - A regression scenario whose median is below 90 for a reason the
   label in Step 8 does not cover is an escalation to the maintainer.
   Record it, set this plan `deferred` with that reason, and do not
   change the scenario further.
+
+### Step 11 — Complete the plan
+
+When the completion gate in Verification holds, delete
+`plans/0011-stage-reviews.md` in a commit titled
+`Complete plan 0011: stage reviews`, carrying
+`Completes: plans/0011-stage-reviews.md`, whose body says what the
+plan produced: the review loop in the `adr` and `plans` skills, the
+dialogue adapter and summariser, the reviewer briefs, the pull
+request description that carries the record, and the four eval
+scenarios.
 
 ## Verification
 
@@ -993,3 +1063,11 @@ body of the commit that records them,
 
 - 2026-10-14: Plan drafted. Re-drafted the same day against ADR 0008
   as revised in PR #87, applying round 1's recorded decisions.
+- Implementation choices, made by this plan where ADR 0008 left them
+  open: the dialogue format and its `Mode:` line; the adapter's path,
+  arguments and exit codes; the summary's headings and its marker
+  lines in the introducing commit; the `Summary supplied labelled`
+  line; the record's line format and its own empty commit; the commit
+  titles; the parent making every commit; the shared block kept
+  identical by a diff check; `propose` rewriting an open pull
+  request's description; and the eval approach of Steps 8 to 10.
