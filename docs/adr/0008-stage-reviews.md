@@ -128,8 +128,10 @@ limit, stop rule and Escalation scope below. It is the human's
 decision and joins the upstream; it takes precedence over the
 confirmed summary or any earlier change, and over any recorded parent
 decision it contradicts, which the next round's record marks
-superseded; a reviewer does not flag it. When the loop finishes, the human
-is asked to accept again.
+superseded; a reviewer does not flag it. An answer to an escalation
+that changes the draft is such a change; one that leaves the draft as
+it stands is not. When the loop finishes, the human is asked to
+accept again.
 
 **The reviewer is independent.** It gets the artefact, its upstream
 sources and the recorded decisions, never the drafter's or the
@@ -201,6 +203,8 @@ The parent surfaces to the human:
 
 The loop does not resolve these itself; with no human available, the
 agent stops and reports them as "When no human can confirm" sets out.
+For an ADR, an answer that changes the draft restarts the loop (see
+Rounds).
 
 Escalations are batched. A drafter or reviewer that finds one carries
 on to the end of its task. The parent collects every escalation from
