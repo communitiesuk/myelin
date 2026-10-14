@@ -10,63 +10,73 @@ deferred_reason: null
 
 ## Reference
 
-Implements `docs/adr/0008-stage-reviews.md`. When an ADR is accepted
-is `docs/adr/0009-adr-acceptance.md`'s: the human's merge.
-
-**Depends on plan 0010** (`plans/0010-remove-adr-status.md`,
-implementing ADR 0009), which must be completed before Step 1 of this
-plan starts. This plan is written against the tree plan 0010 leaves:
-ADR frontmatter is `title` and `date` only; `skills/adr/SKILL.md` has
-no `status` field or status lifecycle, and its `Revises` exemption
-covers edits made on the ADR's own branch before it merges; the
-`plans` skill's "at least `proposed`" check is reworded; and no eval
-criterion requires `status`. No step here adds `status` to any file,
-and no step here edits the sections of `skills/adr/SKILL.md` or
-`skills/plans/SKILL.md` that plan 0010 changes. Before Step 1, confirm
-the dependency has landed:
-
-```sh
-git log --format=%B dev | grep -F 'Completes: plans/0010-'
-grep -rn '^status:' docs/adr/ ; echo "exit=$?"   # expect exit=1
-```
-
-If the first command prints nothing, stop: this plan is not ready.
-
-ADR 0008's Consequences for ADRs 0001 and 0003 are already on the
-trunk (`da1ad9d`), and its Consequence for ADR 0006 needs no edit, so
-no step touches an ADR. No other plan in the tree names ADR 0008.
+- Implements `docs/adr/0008-stage-reviews.md`.
+- Related: `docs/adr/0009-adr-acceptance.md` (acceptance is the
+  human's merge); `docs/adr/0004-where-does-history-live.md` (the
+  trailer graph the review record stays out of).
+- Depends on plan 0010, completed at `8a95933`. Step 0 checks it.
+- ADR 0008's Consequences, and where each stands:
+  - ADR 0001's "rejected for now" entry notes the commitment: on the
+    trunk, `da1ad9d`. No step.
+  - ADR 0003's rationale names this review: on the trunk, `da1ad9d`,
+    widened in `d61ee6c`. Its rules are unchanged. No step.
+  - Acceptance is ADR 0009's, implemented by plan 0010 (`8a95933`).
+    The restart rule is Step 5.
+  - ADR 0006's general escalation route stays deferred. No step.
+  - The written upstream and the summary's home: Step 5.
+  - `Revises` on the first revising commit only: Steps 5 and 8.
+  - Two subagent runs per round: Steps 5 and 6.
+  - Out of scope (reviews of tests and code, the orchestration
+    architecture, the merge-verdict hook): no step.
+  - Left to the plan: the parent makes every commit (Steps 5 and 6);
+    the eval approach is Steps 8 to 10.
 
 ## Steps
 
-Every step works on this plan's branch, begun with the `git-workflow`
-skill. The first implementation commit flips this plan to
-`in-progress`. Steps 1–8 write files and spend no credits. Step 9
-spends credits and says so.
+All work happens on the branch `git-workflow` begins for this plan
+(`begin plans/0011-stage-reviews.md`) after the plan has landed. The
+commit for Step 1 also flips this plan's `status` to `in-progress`.
+Steps 0 to 9 spend no tessl eval credits. Step 10 does, and says how
+many.
 
-Paths below that begin `skills/adr/` ship with the `adr` skill; paths
-that begin `skills/plans/` ship with the `plans` skill.
+Paths that begin `skills/adr/` ship with the `adr` skill. Paths that
+begin `skills/plans/` ship with the `plans` skill.
+
+### Step 0 — Check the dependencies
+
+Run from the repository root, with `dev` up to date:
+
+```sh
+git log --format=%B dev | grep -cF 'Completes: plans/0010-remove-adr-status.md'   # expect 1
+grep -rln '^status:' docs/adr/ ; echo "exit=$?"                                    # expect exit=1
+git cat-file -e dev:docs/adr/0008-stage-reviews.md && echo accepted               # expect accepted
+bash skills/git-workflow/scripts/tests/run.sh                                     # expect 55 tests, 0 failed
+```
+
+If any output differs, stop. The plan is not ready. Record what
+differed in Progress notes and set `status: deferred`.
 
 ### Step 1 — Define the dialogue format
 
 Create `skills/adr/references/dialogue.md`, the fixed format the
-summariser reads, whichever mode produced it. It specifies:
+summariser reads, whichever mode produced it. It says:
 
 - The file is Markdown. Line 1 is `# Dialogue`. Line 2 is exactly one
   of `Mode: adapter (claude-code)` or `Mode: fallback`.
-- Then, in conversation order, one block per turn, each opened by a
-  level-3 heading on its own line: `### Human`, `### Assistant`,
-  `### Question` or `### Answer`, followed by that turn's text
-  verbatim.
+- Then, in conversation order, one block per turn. Each block opens
+  with a level-3 heading on its own line, `### Human`,
+  `### Assistant`, `### Question` or `### Answer`, followed by that
+  turn's text verbatim.
 - `### Human` is a message the human typed. `### Assistant` is
   assistant prose shown to the human. `### Question` is a question the
-  assistant put to the human through a question tool, with its
-  options listed one per line as `- <label>: <description>`.
-  `### Answer` is the human's answer to the question block before it.
+  assistant put to the human through a question tool, with its options
+  one per line as `- <label>: <description>`. `### Answer` is the
+  human's answer to the question block before it.
 - Left out: tool calls and tool output, reasoning, subagent
   conversations, and messages the harness injected rather than the
   human typed.
-- The file is written outside the repository (the session's temporary
-  directory) and is never committed.
+- The file is written outside the repository, in the session's
+  temporary directory, and is never committed.
 
 Commit: `Define the dialogue format the summariser reads`.
 
@@ -75,74 +85,112 @@ Commit: `Define the dialogue format the summariser reads`.
 > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
 Create `skills/adr/scripts/claude-code-dialogue`, a bash script using
-`jq`, following the shape of `skills/git-workflow/scripts/git-workflow`
-(a header comment that is the usage text and the contract, `set -u`,
-`--help` printing the header).
+`jq`. It follows the shape of `skills/git-workflow/scripts/git-workflow`:
+a header comment that is the usage text and the contract, `set -u`,
+and `--help` printing the header.
 
-Contract, written first as the header comment:
+The contract, written first as the header comment:
 
 - Usage: `bash claude-code-dialogue <session-id> <project-path> <out-file>`.
-- Locates the transcript at
-  `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/<encoded>/<session-id>.jsonl`,
-  where `<encoded>` is `<project-path>` with every character outside
+- It locates the transcript at
+  `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/<encoded>/<session-id>.jsonl`.
+  `<encoded>` is `<project-path>` with every character outside
   `[A-Za-z0-9]` replaced by `-`. If that file does not exist, it uses
   the single file matching `projects/*/<session-id>.jsonl` under the
-  same root; none or more than one is "not found".
-- Writes `<out-file>` in the format of `references/dialogue.md`, with
-  `Mode: adapter (claude-code)` on line 2.
-- Exit 0 written; 1 transcript not found, unreadable, or `jq` missing,
-  with nothing written to `<out-file>`, so the caller falls back; 2
-  usage error.
-- States that the transcript format is internal to Claude Code and
-  undocumented, and names the Claude Code version (`claude --version`)
-  the fixtures were modelled on.
+  same root. None, or more than one, is "not found".
+- It writes `<out-file>` in the format of `references/dialogue.md`,
+  with `Mode: adapter (claude-code)` on line 2.
+- Exit 0: written. Exit 1: transcript not found or unreadable, or `jq`
+  missing; nothing is written to `<out-file>`, so the caller falls
+  back. Exit 2: usage error.
+- It states that the transcript format is internal to Claude Code and
+  undocumented, and may change between versions, and names the
+  Claude Code version the fixtures were modelled on (`claude --version`;
+  `2.1.296 (Claude Code)` on 2026-10-14).
 
-Before writing fixtures, inspect the shape of entries in one of your
-own local transcripts — a human message, assistant text and thinking
-blocks, a tool call and its result, a question-tool call and its
-answer, a subagent (sidechain) entry, a harness-injected entry — and
-model synthetic fixtures on that shape. Commit no real transcript
-content.
+The tested prototype is
+`/private/tmp/claude-502/-Users-matthewroberts1-projects-myelin/a000be99-d5c2-44cd-a1a5-60c164f8eae1/scratchpad/extract-dialogue`.
+It is in a session's scratchpad and may be gone, so its filter is
+quoted here. Model the adapter on it. The adapter adds the `#`/`Mode:`
+header, `###` headings, `### Question`/`### Answer` in place of its
+two-level headings, and drops `isSidechain` and `isMeta` entries:
 
-Tests, in `skills/adr/scripts/tests/` with a `run.sh` and `lib.sh` in
-the style of `skills/git-workflow/scripts/tests/` (each test file run
-in its own subshell under a fresh temporary directory; `run.sh` prints
-`N tests, K failed` and exits non-zero on any failure). Fixtures are
-hand-written `.jsonl` files under `skills/adr/scripts/tests/fixtures/`.
-Cover at least:
+```jq
+if .type == "user" then
+  (.message.content
+   | if type == "string" then
+       (select(startswith("<") | not) | "## Human\n\n" + . + "\n")
+     else
+       (.[] | (select(.type == "text") | .text | select(startswith("<") | not) | "## Human\n\n" + . + "\n"),
+              (select(.type == "tool_result") | (.content | if type == "array" then map(.text? // "") | join("") else tostring end)
+               | select(startswith("The user answered")) | "## Human (answers to the questions above)\n\n" + . + "\n"))
+     end)
+elif .type == "assistant" then
+  (.message.content[] |
+    (select(.type == "text") | "## Assistant\n\n" + .text + "\n"),
+    (select(.type == "tool_use" and .name == "AskUserQuestion") | "## Assistant (questions)\n\n" + (.input.questions | map("- " + .question + "\n" + (.options | map("  - " + .label + ": " + .description) | join("\n"))) | join("\n")) + "\n"))
+else empty end
+```
 
-1. A human message given as a string and one given as text blocks
+Before writing fixtures, look at the shape of entries in one of your
+own local transcripts: a human message as a string and as text
+blocks, assistant text and thinking blocks, a tool call and its
+result, an `AskUserQuestion` call and its answer, `isSidechain` and
+`isMeta` entries, and entries of type `attachment`,
+`queue-operation` and `system`. Model synthetic fixtures on those
+shapes. Commit no real transcript content.
+
+Tests go in `skills/adr/scripts/tests/`, with a `run.sh` and `lib.sh`
+in the style of `skills/git-workflow/scripts/tests/`: each test file
+runs in its own subshell under a fresh temporary directory, and
+`run.sh` prints `N tests, K failed` and exits non-zero on any failure.
+Fixtures are hand-written `.jsonl` files under
+`skills/adr/scripts/tests/fixtures/`. One test each:
+
+1. A human message given as a string, and one given as text blocks,
    both become `### Human` blocks, verbatim.
-2. Assistant text becomes `### Assistant`; thinking blocks and tool
+2. Assistant text becomes `### Assistant`. Thinking blocks and tool
    calls in the same message are dropped.
-3. Tool results are dropped.
-4. Sidechain (subagent) entries are dropped.
-5. Harness-injected entries (meta messages, command output,
-   attachments, queue and system entries) are dropped.
-6. A question-tool call becomes `### Question` with its question text
-   and options, and its result becomes the `### Answer` that follows.
+3. Tool results are dropped, except a question's answer.
+4. `isSidechain: true` entries are dropped.
+5. Harness-injected entries are dropped: `isMeta: true`, user text
+   that starts with `<`, and entries of type `attachment`,
+   `queue-operation` and `system`.
+6. An `AskUserQuestion` call becomes `### Question` with its question
+   text and options, and its answer becomes the `### Answer` that
+   follows.
 7. Order is preserved across all of the above in one mixed fixture,
-   compared byte-for-byte against an expected output file.
-8. A project path containing `/` and `.` (for example
-   `/x/proj/.worktrees/b`) is encoded to `-x-proj--worktrees-b` and
-   found.
-9. The unique-match fallback finds the transcript; two matches are
+   compared byte for byte against an expected output file.
+8. The project path `/x/proj/.worktrees/b` is encoded to
+   `-x-proj--worktrees-b` and the transcript is found.
+9. The unique-match fallback finds the transcript. Two matches are
    "not found".
-10. Not found exits 1 and leaves no `<out-file>`; missing arguments
-    exit 2; `--help` exits 0 and names the three arguments and the
+10. Not found exits 1 and leaves no `<out-file>`. Missing arguments
+    exit 2. `--help` exits 0 and names the three arguments and the
     exit codes.
 
-Red commit (tests), then green commit (script). Then smoke it once on
-a real session of yours, writing the output to the session's
-temporary directory: record in Progress notes the transcript size,
-the output size, and that
-`grep -cE '"tool_use_id"|"type":"thinking"' <out-file>` prints `0`.
-Commit neither the transcript nor the output.
+Red commit: `Test the Claude Code dialogue adapter` (tests and
+fixtures). Check: `bash skills/adr/scripts/tests/run.sh` prints
+`10 tests, 10 failed`. Green commit: `Add the Claude Code dialogue adapter`.
+Check: it prints `10 tests, 0 failed`.
+
+Then smoke it once on this session's real transcript, writing to the
+session's temporary directory:
+
+```sh
+bash skills/adr/scripts/claude-code-dialogue "$CLAUDE_CODE_SESSION_ID" "<directory the session started in>" "$TMPDIR/dialogue.md"; echo "exit=$?"   # expect exit=0
+sed -n 2p "$TMPDIR/dialogue.md"                                                     # expect Mode: adapter (claude-code)
+grep -cE '"tool_use_id"|"type":"thinking"' "$TMPDIR/dialogue.md"                    # expect 0
+```
+
+Record the transcript size, the output size and the three outputs in
+Progress notes and in the green commit's body. Commit neither the
+transcript nor the output.
 
 ### Step 3 — Write the summariser brief
 
-Create `skills/adr/references/summariser.md`, the brief the parent
-gives the summariser subagent. It says:
+Create `skills/adr/references/summariser.md`, the summariser
+subagent's instructions. It says:
 
 - Inputs: the path of a dialogue file in the format of
   `references/dialogue.md`, and the question the ADR will answer.
@@ -155,316 +203,793 @@ gives the summariser subagent. It says:
   Decided, quote the human's own words where the human decided.
   Anything the assistant proposed that the human did not confirm goes
   under Proposed, not confirmed, never under Decided.
-- The summary's last line copies the dialogue's mode line verbatim
-  (`Mode: adapter (claude-code)` or `Mode: fallback`).
+- The summary's last line copies the dialogue's mode line verbatim:
+  `Mode: adapter (claude-code)` or `Mode: fallback`.
 
 Commit: `Add the summariser brief`.
 
 ### Step 4 — Write the two reviewer briefs
 
 Create `skills/adr/references/review.md` and
-`skills/plans/references/review.md`. Both share this frame:
+`skills/plans/references/review.md`, each reviewer's instructions.
+Both carry this common text, word for word:
 
-- **Inputs.** The artefact, and its upstream sources: for an ADR, the
-  confirmed summary, its discovery note where one exists, `docs/adr/`
-  and `git log`; for a plan, the ADR it implements and the repository.
-  Never the drafter's or the parent's reasoning. In a round after the
-  first, also the text of each High finding still open, as an earlier
-  reviewer wrote it, without the parent's disposition.
-- **Output.** Numbered findings, each with a severity, the location
-  in the artefact, what is wrong, and the evidence. Severities:
-  **High** — the next stage would be misled: a contradiction, an
-  omission or addition against the upstream, or a required assertion
-  that cannot be checked; **Medium** — a defect that does not mislead
-  but should be fixed; **Low** — wording and clarity. In a round after
-  the first, a line for each open High saying `fixed` or `not fixed`,
-  with evidence.
-- **Escalations.** A separate list of findings whose fix would change
-  something the human has already agreed — the confirmed summary, or
-  an ADR on the trunk — each with its reason. The reviewer finishes
-  the whole review before returning; it never stops at the first
-  escalation, and never edits the artefact.
+~~~markdown
+## Inputs
 
-What each checks, copied from ADR 0008 and no wider:
+You get the upstream, the draft, and the recorded decisions: the
+bodies of the commits on the branch since the fork point, which hold
+every round's record. You get nothing else. Check the draft against
+the upstream and against the recorded decisions, which are settled:
+do not reopen them. The one exception: flag a recorded decision of
+the parent's that contradicts the upstream, as an escalation.
 
-- `skills/adr/references/review.md`: internal consistency;
-  consistency with the confirmed summary and the discovery note, and
-  with earlier ADRs, including the closed paths in their Alternatives
-  sections and their revision history; and that the ADR says nothing
-  about implementation. Until a history skill exists, read
-  `docs/adr/` and `git log --follow -p docs/adr/<file>` directly.
-- `skills/plans/references/review.md`: relies on the ADR being
-  consistent and does not re-review it. Checks fidelity — everything
-  the ADR decided is implemented, and nothing it did not decide — and
-  verifiability, asking of each assertion the plan requires: can it be
-  observed afterwards, and does another step destroy the evidence?
+A change the human requested at acceptance is part of the upstream
+and takes precedence over what it changes. Do not flag it.
+
+## Output
+
+Numbered findings. Each has a severity, its location in the draft,
+what is wrong, and the evidence.
+
+- **High**: the next stage would be misled. A contradiction, an
+  omission or an addition against the upstream, or a required
+  assertion that cannot be checked.
+- **Medium**: a defect that does not mislead but should be fixed.
+- **Low**: wording and clarity.
+
+For each High in the previous round's record, a line saying
+`confirmed fixed` or `reopened`, with the evidence.
+
+## Escalations
+
+A separate list, each with its reason:
+
+- a finding whose fix would change something the human has already
+  agreed: the confirmed summary, a change requested at acceptance, or
+  an accepted ADR (one on the trunk);
+- a recorded decision of the parent's that contradicts the upstream.
+
+Finish the whole review before you report. Do not stop at the first
+escalation. Never edit the draft.
+~~~
+
+Then each adds what it checks, from ADR 0008 and no wider:
+
+- `skills/adr/references/review.md`, under `## What you check`: the
+  upstream is the discovery note where one exists, the confirmed
+  summary, and every change requested at acceptance. Check internal
+  consistency; consistency with the upstream (does the ADR say what
+  the human decided?) and with earlier ADRs, including the closed
+  paths in their Alternatives sections and their revision history;
+  and that the ADR says nothing about implementation. Until ADR 0004's
+  history skill exists, read `docs/adr/` and
+  `git log --follow -p docs/adr/<file>` directly.
+- `skills/plans/references/review.md`, under `## What you check`: the
+  upstream is the ADR the plan implements. Rely on the ADR being
+  consistent; do not review it. Check fidelity: everything the ADR
+  decided is implemented, and nothing it did not decide. Check
+  verifiability: for each assertion the plan requires, can it be
+  observed afterwards, and does another step destroy the evidence? A
+  plan that cannot be faithful without changing the ADR is an
+  escalation.
+
+Check:
+
+```sh
+c() { sed -n '/^## Inputs$/,/^## What you check$/p' "$1" | sed '$d'; }
+diff <(c skills/adr/references/review.md) <(c skills/plans/references/review.md) && echo same   # expect same
+```
 
 Commit: `Add the ADR and plan reviewer briefs`.
 
-### Step 5 — Add the review loop to the `adr` skill
+### Step 5 — Add the drafting and review loop to the `adr` skill
 
-Edit `skills/adr/SKILL.md`. Its `description` is unchanged.
+Edit `skills/adr/SKILL.md`. Its `description` line is unchanged.
 
-Add a section `## Drafting and review` after "Before writing". It
-holds two parts.
+**5a.** Before editing, run `tessl review run quality skills/adr` and
+record its score in Progress notes.
 
-**The ADR flow**, in order:
+**5b.** In "## Revising an ADR", after the bullet that ends `Trailer
+and body are both mandatory.`, insert:
 
-1. Write the dialogue to a file in the session's temporary directory
-   with the adapter:
-   `bash "$SKILL_DIR/scripts/claude-code-dialogue" "${CLAUDE_SESSION_ID}" "<project path the session started in>" "<file>"`.
-   On exit 1, or in a harness other than Claude Code, write the
-   dialogue out yourself in the same format, unfiltered, with
-   `Mode: fallback`. Do not filter it in either mode.
-2. Give a summariser subagent `references/summariser.md`, the
-   dialogue file's path, and the ADR's question. Do not summarise it
-   yourself.
+~~~markdown
+- On a revision branch, the first revising commit carries `Revises`
+  and, in its body, the confirmed summary, as the introducing commit
+  does (see "The introducing commit"). Later commits on the same branch,
+  round records and revisions alike, are drafting of that revision and
+  carry no trailer: the `Revises` edge is added by exactly one commit.
+~~~
+
+**5c.** In "## The introducing commit", after its one paragraph,
+append:
+
+~~~markdown
+Its body carries the confirmed summary verbatim, between a line
+`# Confirmed decision summary` and a line
+`# End of confirmed decision summary`, before any trailers. For a
+labelled summary, the next line after the closing marker is
+`Summary supplied labelled; no summariser ran.` Otherwise the
+summary's own last line names the mode that produced it. Commit with
+`git commit --cleanup=whitespace -F <file>` so the heading lines
+survive. The summary adds no edge to the artefact graph and no trailer.
+~~~
+
+**5d.** After the "## Before writing" section, before "## Location
+and naming", insert this section, followed by
+the shared block in 5e:
+
+~~~markdown
+## Drafting and review
+
+The harness states this skill's base directory when it loads the
+skill. Call that `$SKILL_DIR`.
+
+### The upstream: a confirmed summary
+
+An ADR's upstream is its confirmed summary, with its discovery note
+where one exists, plus every change requested at acceptance. You never
+write the summary and never filter the conversation.
+
+**A labelled summary.** When the task gives a statement labelled
+`Confirmed summary:`, that statement is the confirmed summary. There
+is no summariser and no wait. Only the label counts. The labelled text
+runs from after the label to the end of its paragraph; where the label
+ends its line and a fenced block follows, it is that block's contents.
+Give it to the drafter verbatim and never edit it. An unlabelled
+statement, such as "ADR: we've decided X because Y" at the start of a
+session, is conversation: it goes through the summariser and
+confirmation below.
+
+**Otherwise**, wherever there is a conversation, even when a discovery
+note exists:
+
+1. Write the dialogue to a file in the session's temporary directory,
+   outside the repository, with the adapter:
+   `bash "$SKILL_DIR/scripts/claude-code-dialogue" "$CLAUDE_CODE_SESSION_ID" "<the directory the session started in>" "<file>"`.
+   On exit 1, when `$CLAUDE_CODE_SESSION_ID` is unset, or in a harness
+   other than Claude Code, write the dialogue out yourself in the
+   format of `references/dialogue.md`, unfiltered, with
+   `Mode: fallback`. That mode is degraded: copy verbatim and leave
+   nothing out. Never commit the dialogue file.
+2. Give a summariser subagent `references/summariser.md` as its
+   instructions, and the dialogue file's path and the ADR's question as
+   its inputs. Do not summarise yourself.
 3. Show the human the summary verbatim, as the exact text the drafter
-   will receive, and ask them to confirm it. If you change any of it
-   afterwards, show the changed text and have it confirmed again.
-4. Begin the ADR's branch (`git-workflow` skill), then give a drafter
-   subagent the confirmed summary, the discovery note where one
-   exists, and this skill. Nothing else.
-5. Commit the draft as the introducing commit. Its body carries the
-   confirmed summary verbatim, under the heading
-   `# Confirmed decision summary`, followed by any `Derives-From`
-   trailers. Commit with `git commit -F <file> --cleanup=whitespace`
-   so heading lines survive.
-6. Run the review loop with `references/review.md`.
-7. Only when the loop has stopped, land the branch (`git-workflow`
-   `land`, exit 3), and give the human the reviewed ADR, the review
-   record, and every escalation, each with its reason. The human's
-   merge accepts it.
-8. If the human asks for changes, the loop continues on the branch:
-   the requested changes are confirmed text added to the summary, a
-   drafter revises, and the review loop runs again.
+   will receive, and ask them to confirm it. If any of it changes
+   afterwards, show the changed text and have it confirmed again
+   before drafting.
 
-Check once, in a live Claude Code session, that `${CLAUDE_SESSION_ID}`
-in the loaded skill text is replaced by the session's id, and that
-the adapter run as above exits 0; record the result in Progress notes.
-If it is not replaced, the step 1 text names how the parent finds its
-session id instead, and the check is repeated.
+With neither a labelled summary nor a human to confirm one, stop and
+ask.
 
-Also state: the parent never drafts; anything the parent works out
-that the ADR needs must be said in the conversation, because the
-summariser sees only the dialogue; and the loop applies whenever this
-skill drafts an ADR's text or revises what one decides, not to a typo
-fix.
+Anything you work out that the ADR needs must be said in the
+conversation, because the summariser sees only the dialogue.
 
-**The review loop**, the shared block (see Step 6), placed between the
-lines `<!-- review-loop:begin -->` and `<!-- review-loop:end -->`:
+### The flow
 
-- **Roles.** Each subagent has one task: a drafter drafts or revises;
-  a reviewer reviews against its brief. A cheaper model may draft; the
-  reviewer's model is at least as strong as the drafter's.
-- **Who commits.** The parent makes every commit on the branch. Drafter
-  and reviewer subagents edit or read files and never commit.
-- **A round.** A reviewer subagent reviews the current draft, given
-  only the inputs its brief names. The parent triages every finding:
-  it fixes each High; fixes each Medium or Low or records why not; and
-  collects every escalation. Fixes go to a drafter subagent with the
-  findings to act on. The parent commits the round as
-  `Revise <artefact> after review round N`, or, when nothing changed,
-  as an empty commit (`git commit --allow-empty`) titled
-  `Record review round N of <artefact>`.
-- **The record.** That commit's body opens with
-  `Review record, round N.`, then lists: the models used for the
-  drafter, the reviewer and (for an ADR) the summariser; the count of
-  findings by severity; each finding with its severity and what was
-  done about it (`Fixed: …` or `Not changed: …`, with the reason);
-  each High's state (open, or confirmed fixed in round N); the
-  escalations; and whether the loop stops. It carries no trailer
-  other than the attribution line.
-- **Stop rule (provisional).** A High stays open until a later round's
-  reviewer reports it fixed, so any round that fixes a High is
-  followed by another round. Only High findings trigger another
-  round. Stop when no High is open, after at most 3 rounds.
-- **Escalation.** Surface a finding to the human only when acting on
-  it would change something the human has agreed — the confirmed
-  summary, or an ADR on the trunk — or when a High is still open after
-  round 3. Do not resolve these yourself. A drafter or reviewer that
-  finds one finishes its task; you surface all of a draft's or a
-  review's escalations together, each with its reason.
-- **The pull request.** Where there is one, its description repeats
-  every round's record (Step 7 makes `land` do this).
+1. Settle the upstream, above.
+2. Begin the ADR's branch (`git-workflow`).
+3. Run the review loop below. Round 1's draft is the introducing
+   commit, or, for a revision of an accepted ADR, the first revising
+   commit.
+4. When the loop has finished, land the branch (`git-workflow` `land`,
+   exit 3). Give the human the reviewed ADR, the pull request where
+   there is one, the review record, and every escalation with its
+   reason. Review finishes before the human is asked to accept; the
+   human's merge accepts.
 
-For an ADR, escalations wait until the human is shown the reviewed
-draft. Run `tessl review run skills/adr` until green. Commit:
-`Add the drafting and review loop to the adr skill`.
+With no human available, stop and report at step 4: the pull request
+where there is one, and each escalation with its reason.
 
-### Step 6 — Add the review loop to the `plans` skill
+### Changes requested at acceptance
 
-Edit `skills/plans/SKILL.md`. Its `description` is unchanged.
+A change the human requests at acceptance is the human's decision and
+joins the upstream. It takes precedence over the confirmed summary,
+over any earlier change, and over any recorded decision of yours that
+it contradicts.
 
-Add a section `## Drafting and review` after "Location and naming":
+1. Record it first, in an empty commit of its own titled
+   `Record changes requested at acceptance of <path>`, whose body opens
+   `Changes requested at acceptance.` and quotes the human's text
+   verbatim.
+2. Restart the loop at round 1, under the same rules. Round 1 is the
+   revision applying the change, and its review. Its drafter gets the
+   upstream, the current draft and the recorded decisions. After the
+   K-th restart, each round's record opens
+   `Review record, restart K, round N.`, and round 1's marks under
+   `Superseded:` each recorded decision the change contradicts. A
+   reviewer does not flag the change.
+3. When the loop finishes, land again and ask the human to accept
+   again.
 
-1. Begin the plan's branch (`git-workflow` skill). Give a drafter
-   subagent the ADR and this skill. The parent never drafts.
-2. Commit the draft as the introducing commit, with its
-   `Derives-From` trailer.
-3. Run the review loop with `references/review.md`.
-4. A plan lands without a human. When a draft or a review raises an
-   escalation, pause after it, before the next round or the landing,
-   surface the escalations together, and wait for the human's answer.
-   A plan review showing that the ADR needs revising is an escalation.
-5. Land (`git-workflow` `land`) only when the loop has stopped and no
-   escalation is unanswered.
+An answer to an escalation that changes the draft is a change
+requested at acceptance, whenever it is given. An answer that leaves
+the draft as it stands is recorded in an empty commit titled
+`Record the human's answer on <path>`, whose body opens
+`Review record, the human's answer.` and quotes it. Later reviewers
+treat it as settled.
+~~~
 
-Then copy the review-loop block from Step 5 verbatim, between the same
-two marker lines. Run `tessl review run skills/plans` until green.
-Commit: `Add the drafting and review loop to the plans skill`.
+**5e.** After that section, insert the shared block below, exactly,
+including its two marker lines. Step 6 inserts the same block in the
+`plans` skill.
 
-### Step 7 — Make the pull request description repeat the record
+~~~markdown
+<!-- review-loop:begin -->
+### The review loop
 
-> **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+The loop runs whenever this skill drafts an artefact or revises what
+one decides. It does not run for a typo fix.
 
-In `skills/git-workflow/scripts/hosts/github`, `propose` opens the
-pull request with `gh pr create --head <branch> --base <trunk>
---fill-verbose`, so its description carries every commit's message
-and body. Update the `propose` line of the usage comment in
-`hosts/github`, and the host-module interface lines in the header of
-`skills/git-workflow/scripts/git-workflow`, to say the description
-carries every commit's message and body.
+**Roles.** Each subagent has one small task, and every subagent is
+fresh: none is resumed from an earlier round.
 
-Red first: in `skills/git-workflow/scripts/tests/land.sh`, the test
-"decision: a new docs/adr file is proposed, never merged, exit 3"
-gains an assertion that the `pr create` line in `$GH_STUB_LOG`
-contains `--fill-verbose`, and the plain-merge-through-host test
-gains the same assertion. Run
-`bash skills/git-workflow/scripts/tests/run.sh` and see them fail;
-change the module; see `N tests, 0 failed`.
+- You, the **parent**, run the loop. You never draft and never
+  review. You make every commit on the artefact's branch; drafters and
+  reviewers edit or read files and never commit.
+- A **drafter** subagent drafts or revises the artefact. Its
+  instructions are this skill. Its report ends with a numbered list of
+  the issues it found: ambiguities in the upstream, conflicts with a
+  recorded decision or with this skill, and choices it made that
+  nothing settles. A cheaper model may draft.
+- A **reviewer** subagent reviews the draft. Its instructions are
+  `references/review.md`. Its model is at least as strong as the
+  drafter's. It never edits the artefact.
 
-### Step 8 — Author the eval scenarios
+**Inputs.** The upstream is what the artefact is checked against. The
+recorded decisions are the bodies of the commits on the branch since
+the fork point (`git log --format=%B <trunk>..HEAD`), which hold every
+round's record, including any earlier loop's.
 
-> **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+| Subagent | Gets |
+| --- | --- |
+| Drafter, round 1 of the first loop | the upstream |
+| Drafter, every other round, and the closing pass | the upstream, the current draft, the recorded decisions |
+| Reviewer, every round | the upstream, the draft, the recorded decisions |
 
-Create three scenarios, each with `task.md`, `scenario.json`,
-`criteria.json` (a `weighted_checklist`) and a `setup.sh` fixture in
-the shape of `evals/plan-numbering-0/setup.sh`: trunk `dev`, no
-remote, a fixed local identity, the fixture's base tagged
-`fixture-base-dev`, ADRs with `title` and `date` frontmatter only. No
-`task.md` mentions review, subagents or records; those must come from
-the skill. Each `setup.sh` header says what each fixture element lets
-fail. Testing a fixture means running its `setup.sh` in an empty
-temporary directory and checking the state listed below with `git`;
-write those checks first as a short script in the session's temporary
-directory, see them fail on an empty directory, then write `setup.sh`.
+No subagent gets your reasoning, or any deliberation the record does
+not hold.
 
-- **`evals/plans-0/`** — a drafted plan with planted defects, taken
-  to landing. Fixture: `docs/adr/0001-forecast-source.md` on `dev`
-  (primary and fallback provider by environment variable; fallback
-  only when the primary is unreachable or older than 6 hours; the
-  choice logged per tick as a JSON line on stdout; an on-disk forecast
-  cache rejected under Alternatives). Branch `plan-0001-forecast-source`
-  checked out in place, clean, its one commit adding
-  `plans/0001-forecast-source.md` with
-  `Derives-From: docs/adr/0001-forecast-source.md`. The draft plants:
-  D1, a step adding the on-disk cache the ADR rejected; D2, a step
-  that writes the per-tick log to `run.log`, a later step that deletes
-  `run.log`, and a Verification that reads it; D3, no step implements
-  the 6-hour staleness rule. Task: the plan was drafted from ADR 0001;
-  take it through to landing as the project's process requires.
-  Criteria, scored from git: a commit on the plan branch after the
-  fixture's tip whose body records findings each with a severity and
-  a disposition; D1, D2 and D3 each appear as findings; the plan as
-  merged into `dev` contains none of D1–D3; a round is recorded after
-  the last round that fixed a High, reporting each fixed High
-  confirmed; no more than 3 rounds are recorded; the record names the
-  models used; `docs/adr/` is unchanged on every branch.
-- **`evals/plans-1/`** — an escalation pauses landing. Fixture as
-  `plans-0`, except the ADR also says, under Decision, that the
-  scheduler writes nothing to stdout, so its own logging rule cannot
-  be planned without revising it; the draft logs to stdout and has no
-  other defect. Criteria: `dev` equals `fixture-base-dev` (nothing
-  landed); the plan branch still exists; a commit on it records the
-  finding as escalated, with its reason; `docs/adr/` is unchanged on
-  every branch.
-- **`evals/adr-0/`** — an ADR drafted from a confirmed summary. Fixture:
-  one earlier ADR on `dev`. Task: the conversation has ended and the
-  human has confirmed the summary given in `task.md` as the exact text
-  for the drafter; write the ADR. The summary is in the format of
-  `skills/adr/references/summariser.md`, ends `Mode: fallback`, and
-  lists one option (a retry budget of 3) under Proposed, not
-  confirmed. Criteria: a new `docs/adr/0002-*.md` exists on a branch
-  and not on `dev`; the first commit on that branch has the summary in
-  its body verbatim, including its `#### ` heading lines and its mode
-  line; the ADR does not decide the retry budget; a later commit body
-  records a review round with severities, dispositions and models;
-  `dev` equals `fixture-base-dev`.
+**A round.**
 
-Commit the three scenarios. They are red: no credits are spent here.
+1. A fresh drafter drafts or revises. Commit the draft. Round 1's is
+   the introducing commit (or a revision's first revising commit). A
+   later round's is titled `Revise <path> (round N draft)`.
+2. A fresh reviewer reviews the committed draft.
+3. When both have reported, and not before, decide on both lists
+   together. Make no decision before the first draft. Each High is
+   fixed by the next round's drafter. Each Medium or Low is fixed in a
+   later round or the closing pass, or the record says why not. A
+   choice the upstream did not settle is yours. Collect every
+   escalation.
+4. Commit the round's record before anything else happens on the
+   branch, as an empty commit
+   (`git commit --allow-empty --cleanup=whitespace -F <file>`) titled
+   `Record review round N of <path>`.
 
-### Step 9 — Run the evals (spends credits)
+**The record.** Its body, in this order:
 
-> Spends tessl credits. Do not start without credits. Each run is a
-> single scenario; do not run the whole `evals/` directory.
-
-For each new scenario, a baseline-versus-skill run on one scenario,
-with the same model for both arms:
-
-```sh
-tessl eval run evals/plans-0 --context . --skill plans --skill git-workflow
-tessl eval run evals/plans-1 --context . --skill plans --skill git-workflow
-tessl eval run evals/adr-0   --context . --skill adr   --skill git-workflow
+```
+Review record, round N.
+Models: drafter <model>, reviewer <model>[, summariser <model>].
+Drafter's issues: each numbered, with "Decided:" and a short reason.
+Reviewer's findings: each numbered, with its severity, "Decided:" and a short reason.
+Highs from round N-1: each "confirmed fixed" or "reopened".
+Superseded: each recorded decision a change requested at acceptance contradicts.
+Escalated: each with its reason, or "none".
+Next: round N+1, closing pass, stop, or stopped for the human.
 ```
 
-Then the regression runs, one scenario each, with the context the
-existing recorded scores used (for `git-workflow-0` and
-`git-workflow-1`, the runs named in the `git-workflow` skill's
-`compatibility` line): `evals/scenario-0`, `evals/scenario-1`,
-`evals/git-workflow-0`, `evals/git-workflow-1`.
+It carries no artefact-graph trailer (`Derives-From`, `Revises`,
+`Consumed-By`, `Completes`, `Abandons`).
 
-Record every run id, model and score in Progress notes and in the body
-of the commit that records them. Outcomes:
+**Stop rule (provisional).** Only High findings trigger another round.
+Stop after a round whose review leaves no High open. Run at most 3
+rounds, counting the first. If a High is still open after round 3, the
+loop ends and that High is escalated.
+
+**The closing pass.** When the loop stops with issues or Medium or Low
+findings you decided to act on, a fresh drafter applies them. The pass
+is not a round and is not re-reviewed. Check that the change matches
+the recorded decisions and does nothing else; if it does not, a fresh
+drafter redoes the pass. Commit it titled
+`Apply the closing pass to <path>`, its body opening `Closing pass.`,
+then the drafter's model, each decision applied, and
+`Checked by the parent: the change matches the recorded decisions and nothing else.`
+
+**Escalation.** Surface these to the human, and do not resolve them
+yourself:
+
+- a finding whose fix would change something the human has already
+  agreed: the confirmed summary, a change requested at acceptance, or
+  an accepted ADR (for example, a plan review showing that the ADR
+  needs revising);
+- a High still open after round 3;
+- a reviewer finding that a recorded decision of yours contradicts the
+  upstream.
+
+Escalations are batched. A drafter or reviewer that finds one carries
+on to the end of its task. Surface all of a round's escalations
+together, each with its reason, at the point this skill names.
+
+**With no human available**, as in a one-turn task, stop and report
+at that point, naming each escalation and its reason. Make no further
+round commit.
+
+**The pull request.** Where there is one, its description is every
+commit's message and body, so it repeats every round's record. `land`
+writes it, and rewrites it when the branch lands again.
+<!-- review-loop:end -->
+~~~
+
+**5f.** Check, once, in this live Claude Code session:
+
+```sh
+printenv CLAUDE_CODE_SESSION_ID | grep -cE '^[0-9a-f-]{36}$'                    # expect 1
+bash skills/adr/scripts/claude-code-dialogue "$CLAUDE_CODE_SESSION_ID" "<directory the session started in>" "$TMPDIR/d.md"; echo "exit=$?"   # expect exit=0
+```
+
+`$CLAUDE_CODE_SESSION_ID` was seen set in this harness on 2026-10-14.
+Record both outputs and `claude --version` in this step's commit body.
+
+**5g.** Run `tessl review run quality skills/adr`. Its score is not
+lower than 5a's. Record it in Progress notes.
+
+Commit: `Add the drafting and review loop to the adr skill`.
+
+### Step 6 — Add the drafting and review loop to the `plans` skill
+
+Edit `skills/plans/SKILL.md`. Its `description` line is unchanged.
+
+**6a.** Before editing, run `tessl review run quality skills/plans`
+and record its score.
+
+**6b.** After the "## Location and naming" section, before
+"## Frontmatter", insert:
+
+~~~markdown
+## Drafting and review
+
+A plan's upstream is its ADR.
+
+1. Begin the plan's branch (`git-workflow`).
+2. Run the review loop below. Round 1's draft is the introducing
+   commit, with its `Derives-From` trailer.
+3. A plan lands without a human. When a round raises an escalation,
+   pause at that round's decision point. Commit its record, with each
+   escalation and its reason under `Escalated:` and
+   `Next: stopped for the human.`, then surface the escalations
+   together and wait, before the next round or the landing. A plan
+   review showing that the ADR needs revising is an escalation.
+4. The human's answer is the human's decision. Record it in an empty
+   commit titled `Record the human's answer on <path>`, whose body
+   opens `Review record, round N, the human's answer.` and quotes it.
+   It is part of round N's record. The loop then continues where it
+   paused, under the stop rule; an answer does not restart it.
+5. With no human available, stop and report at that decision point,
+   after committing the record. Name each escalation and its reason,
+   and say the plan has not landed.
+6. Land (`git-workflow` `land`) only when the loop has stopped, any
+   closing pass is committed, and no escalation is unanswered.
+~~~
+
+**6c.** After it, insert the shared block from 5e, exactly.
+
+**6d.** Run `tessl review run quality skills/plans`. Its score is not
+lower than 6a's. Record it in Progress notes.
+
+Check:
+
+```sh
+block() { sed -n '/<!-- review-loop:begin -->/,/<!-- review-loop:end -->/p' "$1"; }
+diff <(block skills/adr/SKILL.md) <(block skills/plans/SKILL.md) && echo same   # expect same
+block skills/adr/SKILL.md | wc -l                                               # expect more than 80
+```
+
+Commit: `Add the drafting and review loop to the plans skill`.
+
+### Step 7 — Make the pull request description carry the record
+
+> **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+
+**Red.** In `skills/git-workflow/scripts/tests/stub-gh`, add two
+cases before `*)`, and a sentence to its header comment saying
+`pr view` reports an open pull request only when `GH_STUB_PR=open`:
+
+```sh
+  "pr view")
+    [ "${GH_STUB_PR:-none}" = open ] || { echo "no pull requests found for branch" >&2; exit 1; }
+    echo "https://github.com/example/repo/pull/7"; exit 0 ;;
+  "pr edit") exit 0 ;;
+```
+
+In `skills/git-workflow/scripts/tests/land.sh`:
+
+- In the test `decision: a new docs/adr file is proposed, never merged, exit 3`,
+  after its `assert_contains "$(cat "$GH_STUB_LOG")" "pr create"` line, add:
+
+  ```sh
+  assert_contains "$(grep 'pr create' "$GH_STUB_LOG")" "--fill-verbose"
+  ```
+
+- After that test, add:
+
+  ```sh
+  t "decision: landing again with the pull request open rewrites its description from every commit, exit 3"
+    wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d7" --remote origin --where worktree)"; githubify "$R/d7"
+    (cd "$wd" && g commit -q --allow-empty -m "$(printf 'Record review round 1 of docs/adr/0002-x.md\n\nReview record, round 1.\n')")
+    : > "$GH_STUB_LOG"
+    out="$(GH_STUB_PR=open land "$wd"; echo "exit=$?")"
+    assert_contains "$out" "exit=3"; assert_contains "$out" "pull/7"
+    case "$(cat "$GH_STUB_LOG")" in *"pr create"*) fail "a second pull request was opened" ;; esac
+    assert_contains "$(cat "$GH_STUB_LOG")" "pr edit adr-0002-x --body"
+    assert_contains "$(cat "$GH_STUB_LOG")" "Review record, round 1."
+    assert_contains "$(cat "$GH_STUB_LOG")" "Derives-From: docs/discovery/0001-note.md"
+    assert_eq "$(cd "$R/d7" && git rev-parse adr-0002-x)" "$(bare_tip "$R/d7" adr-0002-x)" "branch must be pushed at the same SHA"
+  ```
+
+Run `bash skills/git-workflow/scripts/tests/run.sh`. Expect
+`56 tests, 2 failed`. Commit:
+`Test that propose carries every commit body and rewrites an open pull request`.
+
+**Green.** In `skills/git-workflow/scripts/hosts/github`, replace line
+26:
+
+```sh
+    gh pr create --head "$2" --base "$3" --fill || exit 1 ;;
+```
+
+with:
+
+```sh
+    url="$(gh pr view "$2" --json state,url --jq 'select(.state == "OPEN") | .url' 2>/dev/null)"
+    if [ -n "$url" ]; then
+      gh pr edit "$2" --body "$(git log --format=%B "$3..$2")" >/dev/null || exit 1
+      printf '%s\n' "$url"
+    else
+      gh pr create --head "$2" --base "$3" --fill-verbose || exit 1
+    fi ;;
+```
+
+In the same file's usage comment, replace the `propose` entry's text
+with: `open a pull request from the pushed branch onto the trunk, its
+description every commit's message and body; when one is already
+open, rewrite its description from those instead; prints its URL`.
+In the header of `skills/git-workflow/scripts/git-workflow`, replace
+`propose <branch>    open a pull request for the pushed branch` with
+`propose <branch>    open a pull request for the pushed branch, or
+rewrite the open one's description; it carries every commit's message
+and body`.
+
+Run `bash skills/git-workflow/scripts/tests/run.sh`. Expect
+`56 tests, 0 failed`. Commit:
+`Make propose carry every commit body and rewrite an open pull request`.
+
+### Step 8 — Label the confirmed decision in the existing scenarios
+
+Under Step 5, an ADR task without a `Confirmed summary:` label stops
+and asks. Label the decision in each scenario that writes an ADR. Each
+edit is data in a task, not code.
+
+- `evals/git-workflow-0/task.md` and `evals/git-workflow-1/task.md`,
+  line 24: replace `That decision has now been taken. The team will **sample 3.x firmware`
+  with `Confirmed summary: the team will **sample 3.x firmware`. The
+  labelled paragraph runs to `and schema are unchanged.`
+- `evals/scenario-0/task.md`: after line 7, insert a blank line and
+  this paragraph:
+
+  ```text
+  Confirmed summary: the tool moves from SQLite to PostgreSQL. Concurrent writes during busy deploy windows now cause intermittent lock errors, and operations need proper backups and point-in-time recovery, which SQLite cannot give at the level they now need.
+  ```
+
+- `evals/scenario-1/task.md`: after line 5, insert a blank line and
+  this paragraph:
+
+  ```text
+  Confirmed summary: the API is rate limited per client IP address with a token bucket backed by Redis. A client whose bucket is empty gets HTTP 429 Too Many Requests with a `Retry-After` header. The Redis connection URL and each route's bucket capacity and refill rate come from environment variables.
+  ```
+
+- `evals/scenario-0/criteria.json`, the criterion
+  `Revising commit carries trailer and reason`: append to its
+  `description`, keeping `max_score` 10:
+  ` Exactly one commit on the branch carries Revises: the first commit that changes the ADR, whose body also carries the confirmed summary between the lines '# Confirmed decision summary' and '# End of confirmed decision summary'. Later commits on the branch carry no Revises.`
+
+`evals/plan-numbering-0` writes a plan, not an ADR, and is not
+changed.
+
+Check:
+
+```sh
+grep -c '^Confirmed summary: ' evals/git-workflow-0/task.md evals/git-workflow-1/task.md evals/scenario-0/task.md evals/scenario-1/task.md   # expect 1 for each
+tessl eval lint evals/                                                                                                                     # expect no errors
+```
+
+Commit: `Label the confirmed decision in the ADR-writing scenarios`.
+
+### Step 9 — Author the new eval scenarios
+
+> **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+
+Create four scenarios, each with `task.md`, `scenario.json`,
+`criteria.json` (a `weighted_checklist` totalling 100) and a
+`setup.sh` fixture in the shape of `evals/plan-numbering-0/setup.sh`:
+trunk `dev`, no remote, a fixed local identity, the fixture's base
+tagged `fixture-base-dev`, ADRs with `title` and `date` frontmatter
+only. Each `setup.sh` header says what each fixture element lets fail.
+No `task.md` mentions review, subagents, rounds or records; those
+must come from the skill.
+
+Test each fixture first: write the state checks listed for it as a
+short script in the session's temporary directory, run it in an empty
+temporary directory and see it fail, then write `setup.sh`, run it in
+a fresh empty directory, and see the checks pass.
+
+#### `evals/plans-0/` — a drafted plan with planted defects, taken to landing
+
+Fixture. On `dev`, `docs/adr/0001-forecast-source.md`:
+
+~~~markdown
+---
+title: Which forecast source does the scheduler trust?
+date: 2026-09-20
+---
+
+# Which forecast source does the scheduler trust?
+
+> **Directive for the implementer**: when implementing this ADR, invoke the `plans` skill to produce the corresponding plan artifact. Do not begin implementation without a plan.
+
+## Context
+
+The scheduler reads one forecast provider. When that provider is
+down, irrigation runs without a forecast.
+
+## Decision
+
+- The scheduler reads a primary and a fallback forecast provider,
+  whose URLs come from `FORECAST_PRIMARY_URL` and
+  `FORECAST_FALLBACK_URL`.
+- It uses the fallback only when the primary is unreachable or its
+  forecast is older than 6 hours.
+- On every tick it writes one JSON line to stdout naming the provider
+  it used: `{"tick": "<ISO time>", "source": "primary"}` or
+  `"fallback"`.
+
+## Alternatives considered
+
+- **An on-disk forecast cache, read when the primary is down.**
+  Rejected: a cached forecast goes stale silently, and the fallback
+  covers the outage.
+
+## Consequences
+
+- Every environment configures two providers.
+~~~
+
+Then branch `plan-0001-forecast-source`, checked out in place and
+clean, with one commit
+`Add plan 0001: forecast source with fallback` carrying
+`Derives-From: docs/adr/0001-forecast-source.md`, adding
+`plans/0001-forecast-source.md`, tagged `fixture-base-plan`. The plan
+has frontmatter `title: Forecast source with fallback`,
+`status: draft`, `adr: 0001`, `date: 2026-09-21`,
+`deferred_reason: null`; the sections Reference, Steps, Verification
+and Progress notes; and these steps, with the planted defects:
+
+1. Read `FORECAST_PRIMARY_URL` and `FORECAST_FALLBACK_URL` in
+   `meadow/config.py`, exiting with an error naming either when unset.
+2. In `meadow/forecast.py`, call the primary, and the fallback when
+   the request fails. (D3: nothing implements the 6-hour staleness
+   rule.)
+3. Write each fetched forecast to `cache/forecast.json` and read it
+   when both providers fail. (D1: the rejected on-disk cache.)
+4. On every tick, append the JSON line to `run.log`. (D2, with step
+   5 and Verification.)
+5. On shutdown, the scheduler deletes `run.log`.
+
+Verification: run the scheduler for three ticks with the primary
+stopped, then read `run.log`; every line names `fallback`. (D2: step 5
+destroys the evidence.) The H1 reads `# Forecast source with a
+fallback`, which does not match `title`. (D4, a Low.)
+
+Task: you are working on the meadow scheduler; the plan in
+`plans/0001-forecast-source.md` was drafted from
+`docs/adr/0001-forecast-source.md`; take it through to landing as the
+project's process requires.
+
+Criteria, scored from git:
+
+| Criterion | Score |
+| --- | --- |
+| A commit after `fixture-base-plan`, reachable from `dev` or the plan branch, has a body opening `Review record, round` that lists findings, each with a severity (High, Medium or Low) and a decision | 15 |
+| D1, D2 and D3 each appear as a finding in a record | 20 |
+| `plans/0001-forecast-source.md` as merged into `dev` has no on-disk cache, logs the choice to stdout, has no step that deletes what Verification reads, and implements the 6-hour rule | 20 |
+| A round is recorded after the last round whose draft fixed a High, and it reports each of those Highs `confirmed fixed`; no more than 3 rounds are recorded | 15 |
+| Every record names the drafter's and the reviewer's models | 5 |
+| Every Medium or Low a record decides to act on is fixed by a later round's draft or by a commit after the last record whose body opens `Closing pass.` and records the parent's check; no other commit after the last record changes the plan | 10 |
+| No record or closing-pass commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
+| `dev` ends in a two-parent merge of the plan branch, and `git diff fixture-base-dev dev -- docs/adr/` is empty | 10 |
+
+#### `evals/plans-1/` — an escalation with no human stops the loop
+
+Fixture as `plans-0`, except the ADR's Decision has a fourth bullet,
+`- The scheduler writes nothing to stdout.`, so its logging rule
+cannot be planned without revising it, and the draft plan has no
+planted defect other than logging the JSON line to stdout as the ADR's
+third bullet says (steps 1 to 4 implement the ADR faithfully, the
+6-hour rule included; there is no step 5, and Verification reads
+stdout).
+
+Task as `plans-0`.
+
+Criteria:
+
+| Criterion | Score |
+| --- | --- |
+| Precondition: the plan branch exists with a commit after `fixture-base-plan`. Then `dev` equals `fixture-base-dev`: nothing landed | 25 |
+| A commit after `fixture-base-plan` on the plan branch has a record body whose `Escalated:` entry names the conflict between logging to stdout and writing nothing to stdout, with its reason (the fix would change the accepted ADR) | 30 |
+| No commit on the plan branch follows the commit that records the escalation | 15 |
+| The agent's final message names the escalation and its reason, and says the plan has not landed | 20 |
+| No branch changes `docs/adr/`: `git log --all fixture-base-dev.. -- docs/adr/` is empty | 10 |
+
+#### `evals/adr-0/` — an ADR drafted from a labelled summary
+
+Fixture: `docs/adr/0001-job-scheduling.md` on `dev`, titled
+`How are jobs scheduled?`, deciding that jobs run from a cron table in
+`jobs.cron`, with the usual sections and directive.
+
+Task: the job runner needs a decision on retrying failed jobs; write
+the ADR. The task then says, on its own line, `Confirmed summary:`,
+followed by this fenced block (no mode line):
+
+~~~text
+#### Question
+How does the job runner retry a failed job?
+
+#### Context
+Jobs fail on transient network errors and are lost until the next
+scheduled run.
+
+#### Decided
+"Retry only transient failures, exit code 75, with exponential
+backoff from 2 seconds, doubling, capped at 5 minutes."
+"A job that fails permanently is moved to `dead/`."
+
+#### Proposed, not confirmed
+A retry budget of 3 attempts.
+
+#### Rejected or not chosen
+Retrying every failure: a permanent failure would loop.
+
+#### Out of scope / deferred
+Alerting on dead jobs.
+~~~
+
+Criteria:
+
+| Criterion | Score |
+| --- | --- |
+| A new `docs/adr/0002-*.md` exists on an `adr-0002-*` branch, and `dev` equals `fixture-base-dev` | 15 |
+| In the first commit after `fixture-base-dev` on that branch, the text between `# Confirmed decision summary` and `# End of confirmed decision summary` equals the fenced block byte for byte, ignoring leading and trailing blank lines | 25 |
+| That body has a line containing `supplied labelled` outside the two markers, and no line between them begins `Mode:` | 10 |
+| The ADR does not decide a retry budget or a maximum number of attempts | 15 |
+| A later commit's body opens `Review record, round 1.` with severities, decisions, and the drafter's and reviewer's models | 20 |
+| No record commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
+| The branch still exists and `git remote` prints nothing | 10 |
+
+#### `evals/adr-1/` — an unlabelled decision with no human stops and asks
+
+Fixture as `adr-0`. Task: the same request, but the decision is given
+unlabelled, as `ADR: we've decided to retry only transient failures,
+exit code 75, with exponential backoff from 2 seconds, doubling,
+capped at 5 minutes, because jobs are being lost until the next run.`
+
+Criteria:
+
+| Criterion | Score |
+| --- | --- |
+| No new file under `docs/adr/` exists on any branch or in the working tree, and `dev` equals `fixture-base-dev` | 40 |
+| The agent's final message shows a summary of the decision and asks the human to confirm it | 40 |
+| `git log --all fixture-base-dev..` is empty: nothing was committed | 20 |
+
+Check: `tessl eval lint evals/` reports no errors and four more
+scenarios than before. Commit:
+`Add eval scenarios for the stage-review loop`. They are red. No
+credits are spent here.
+
+### Step 10 — Run the evals (spends credits)
+
+> Spends tessl eval credits: 10 per scenario execution on this pin,
+> 110 for the runs below and up to 100 more for re-runs. Run one
+> scenario at a time; never run the whole `evals/` directory. Before
+> each run, `tessl eval lint evals/<scenario>` reports one scenario
+> (free).
+
+Every run uses `--agent claude --model deepseek-v4.1-flash`, the
+release pin, and `--context .`.
+
+**New scenarios**, each with its baseline arm (2 executions, 20
+credits each):
+
+```sh
+tessl eval run evals/plans-0 --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 plans-0" --wait --json --yes
+tessl eval run evals/plans-1 --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 plans-1" --wait --json --yes
+tessl eval run evals/adr-0   --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 adr-0"   --wait --json --yes
+tessl eval run evals/adr-1   --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 adr-1"   --wait --json --yes
+```
+
+**Regressions**, one run each, no baseline (10 credits each), for
+`scenario-0`, `scenario-1`, `git-workflow-0`, `git-workflow-1` and
+`plan-numbering-0`:
+
+```sh
+tessl eval run evals/<scenario> --context . --skip-baseline --agent claude --model deepseek-v4.1-flash --label "plan 0011 regression <scenario>" --wait --json --yes
+```
+
+Their baselines are the v0.3.0 medians (tag message, Gate 3 run
+`01a120c6-39f6-721a-9e45-99f7d3bbf6dd`, deepseek-v4.1-flash): 100 for
+each of the five. Plan 0010's criteria changes (`1bec91b`) postdate
+those medians. A scenario more than 10 points below its baseline (the
+release skill's threshold), so below 90, is re-run with `-n 2` (20
+credits) and judged on the median of its three scored repeats.
+
+Record every run id, model and score in Progress notes and in the
+body of the commit that records them,
+`Record plan 0011 Step 10: eval runs`. Outcomes:
 
 - A new scenario whose skill arm does not score above its baseline
-  does not discriminate: fix the fixture, not the criteria, and re-run
+  does not discriminate. Fix the fixture, not the criteria, and re-run
   that scenario only. If the agent under eval could not start
-  subagents, record that and set this plan `deferred`.
-- A regression scenario that falls below its recorded score because
-  the agent stopped at the summary-confirmation gate is an escalation
-  to the maintainer: record it, set this plan `deferred` with that
-  reason, and do not change the scenario.
+  subagents, record that and set this plan `deferred` with that
+  reason.
+- A regression scenario whose median is below 90 for a reason the
+  label in Step 8 does not cover is an escalation to the maintainer.
+  Record it, set this plan `deferred` with that reason, and do not
+  change the scenario further.
 
 ## Verification
 
-- `bash skills/adr/scripts/tests/run.sh` prints `N tests, 0 failed`
-  with N ≥ 10, and `bash skills/git-workflow/scripts/tests/run.sh`
-  prints `0 failed`. Both are re-runnable from the tree at any time.
-- `grep -n -- '--fill-verbose' skills/git-workflow/scripts/hosts/github`
-  matches the `propose` line.
+- `bash skills/adr/scripts/tests/run.sh` prints `10 tests, 0 failed`,
+  and `bash skills/git-workflow/scripts/tests/run.sh` prints
+  `56 tests, 0 failed`. Both re-run from the tree at any time.
+- `grep -c -- '--fill-verbose' skills/git-workflow/scripts/hosts/github`
+  prints `1`, and `grep -c 'gh pr edit' skills/git-workflow/scripts/hosts/github`
+  prints `1`.
 - These files exist: `skills/adr/references/dialogue.md`,
   `skills/adr/references/summariser.md`,
   `skills/adr/references/review.md`,
   `skills/plans/references/review.md`,
-  `skills/adr/scripts/claude-code-dialogue`.
-- The shared loop is one mechanism, word for word:
+  `skills/adr/scripts/claude-code-dialogue`, and
+  `evals/{plans-0,plans-1,adr-0,adr-1}/{task.md,scenario.json,criteria.json,setup.sh}`.
+- The shared loop is one mechanism, word for word: the `block` check
+  in Step 6 prints `same`, and the `c` check in Step 4 prints `same`.
+- Neither skill's `description` changed:
 
   ```sh
-  block() { sed -n '/<!-- review-loop:begin -->/,/<!-- review-loop:end -->/p' "$1"; }
-  diff <(block skills/adr/SKILL.md) <(block skills/plans/SKILL.md) && echo same
+  git diff "$(git merge-base dev HEAD)" HEAD -- skills/adr/SKILL.md skills/plans/SKILL.md | grep -E '^[-+]description:' ; echo "exit=$?"   # expect exit=1
   ```
 
-  prints `same`, and `block skills/adr/SKILL.md` is not empty.
-- `git diff dev -- skills/adr/SKILL.md skills/plans/SKILL.md` shows no
-  change to either `description` line, and
-  `grep -n '^status:' skills/adr/SKILL.md docs/adr/*.md` prints
-  nothing.
-- `tessl review run skills/adr` and `tessl review run skills/plans`
-  are green (a review, not a paid `tessl eval run`).
-- Step 2's smoke figures and Step 9's run ids are recorded in Progress
-  notes and in commit bodies, so they survive this plan's deletion;
-  each run is re-readable with `tessl eval view <id>`.
-- **Completion gate:** each of `plans-0`, `plans-1` and `adr-0` scores
-  higher with its skill than without, and none of the four regression
-  scenarios falls below its recorded score.
+- `grep -rn '^status:' docs/adr/ skills/adr/SKILL.md` prints nothing.
+- `grep -c 'CLAUDE_CODE_SESSION_ID' skills/adr/SKILL.md` prints at
+  least `1`, and `grep -c 'CLAUDE_SESSION_ID}' skills/adr/SKILL.md`
+  prints `0`.
+- `tessl review run quality skills/adr` and
+  `tessl review run quality skills/plans` score no lower than before
+  Steps 5 and 6 (a review, not a `tessl eval run`).
+- Step 2's smoke figures, Step 5f's live check and Step 10's run ids
+  are in commit bodies, so they survive this plan's deletion. Each run
+  is re-readable with `tessl eval view <id>`.
+- **Completion gate:** each of `plans-0`, `plans-1`, `adr-0` and
+  `adr-1` scores higher with its skill than without, and each of the
+  five regression scenarios has a median of 90 or more.
 - Not part of the gate, and checkable only after this plan completes:
-  the first ADR and the first plan written after this lands each have,
-  on their branch, an introducing commit (with, for the ADR, the
-  confirmed summary in its body) followed by commits whose bodies
-  open `Review record, round N.`; where a pull request exists, its
+  the first ADR and the first plan written after it each have, on
+  their branch, an introducing commit (for the ADR, with the confirmed
+  summary between its markers) followed by commits whose bodies open
+  `Review record, round N.`; where a pull request exists, its
   description contains those records.
 
 ## Progress notes
 
-- 2026-10-14: Plan drafted. Waiting on plan 0010.
+- 2026-10-14: Plan drafted. Re-drafted the same day against ADR 0008
+  as revised in PR #87, applying round 1's recorded decisions.
