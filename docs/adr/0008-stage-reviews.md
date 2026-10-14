@@ -58,23 +58,31 @@ both surface, in rounds, until the stop rule below is met.
     conversation are relevant to the ADR's question. The parent does
     not filter.
   - The human confirms the summary, not the draft, and confirms the
-    exact text the drafter receives. Anything the parent changes in
-    it after confirmation is confirmed again before drafting.
+    exact summary text the drafter receives. Anything the parent
+    changes in it after confirmation is confirmed again before
+    drafting.
   - The confirmed summary is the ADR's written upstream, even where
     there is no discovery note. The drafter works from it and what the
     rounds below add, nothing else, and the reviewer checks the ADR
     against it: does the ADR say what the human decided?
-  - A task can supply the confirmed summary itself, for when no human
-    is available to confirm one, as in a one-turn eval. A statement
-    labelled "Confirmed summary:" is the confirmed summary: there is
-    no summariser step and no wait, and it goes straight to the
-    drafter. **Only the label counts.** An unlabelled statement, such
-    as "ADR: we've decided X because Y" at the start of a session,
-    goes through the summariser and confirmation like any
-    conversation. With neither a labelled summary nor a human to
-    confirm one, the agent stops and asks.
   - The review loop finishes before the human is asked to accept.
   - The summary lives in the body of the ADR's introducing commit.
+
+### When no human can confirm
+
+A task can supply the confirmed summary itself, for when no human is
+available to confirm one, as in a one-turn eval. A statement labelled
+"Confirmed summary:" is the confirmed summary: there is no summariser
+step and no wait. The labelled text goes to the drafter verbatim, and
+the parent does not edit it. **Only the label counts.** An unlabelled
+statement, such as "ADR: we've decided X because Y" at the start of a
+session, goes through the summariser and confirmation like any
+conversation. With neither a labelled summary nor a human to confirm
+one, the agent stops and asks.
+
+When no human is available, an escalation, or a High finding still
+open after 3 rounds, makes the agent stop and report it, as it stops
+and asks when there is no summary.
 
 ### Rounds
 
@@ -82,7 +90,7 @@ Each round runs a fresh drafter and a fresh reviewer, then the parent
 decides. No subagent is resumed from an earlier round.
 
 - **Drafter.** Gets the upstream and, after the first round, the
-  current draft and the decisions recorded in the previous round. It
+  current draft and the decisions recorded in earlier rounds. It
   drafts or revises, surfaces the issues it finds, and exits.
 - **Reviewer.** Gets the upstream, the draft and the same recorded
   decisions, so it checks the draft against settled decisions rather
@@ -105,9 +113,9 @@ finding, and has the draft revised and re-reviewed without asking the
 human. Choices the summary did not settle are the parent's, because
 they revise nothing the human has agreed or seen; the parent makes
 them at a round's decision point, like any other. It has each Medium
-or Low finding fixed, or records in the review record why not. The
-human next sees the artefact drafted and reviewed, together with that
-record.
+or Low finding fixed, in a later round or the closing pass below, or
+records in the review record why not. The human next sees the
+artefact drafted and reviewed, together with that record.
 
 ### Each stage checks what it adds
 
@@ -139,10 +147,18 @@ checked.
 **The round limit and the stop criteria are temporary**, to be
 revisited with evidence from the run logs.
 
-A High finding stays open until a later review round confirms it is
-fixed, so any round that fixes a High is followed by another review
-round. Only High findings trigger another round. Stop when no High
-findings remain open, with at most 3 rounds.
+A round is a draft or revision by a fresh drafter followed by a
+review by a fresh reviewer. Round 1 is the first draft and its
+review. A High found in round N is fixed by round N+1's drafter and
+confirmed fixed or reopened by round N+1's reviewer. Only High
+findings trigger another round. Stop after a round whose review
+leaves no High open. Run at most 3 rounds, counting the first.
+
+When the loop stops with Medium or Low findings the parent decided to
+fix, a fresh drafter applies them in a closing pass. It gets the
+upstream, the draft and the recorded decisions. The pass is not a
+round and is not re-reviewed; the parent checks that the change
+matches the recorded decisions.
 
 ### Escalation scope
 
@@ -164,10 +180,9 @@ the next round or the landing, until the human answers.
 
 Each round's commit on the artefact's branch carries, in its body,
 the issues and findings and the parent's decision on each, so the
-record is in git history
-whatever the host. It carries no trailer. Where there is a pull
-request, its description repeats the record, so a future merge hook
-can read it.
+record is in git history whatever the host. It carries no trailer.
+Where there is a pull request, its description repeats the record, so
+a future merge hook can read it.
 
 ### Passing the conversation to the summariser
 
@@ -188,7 +203,8 @@ the shape of ADR 0003's git-host modules.
   dialogue out itself, unfiltered. This is a degraded mode: it costs
   output tokens, copies verbatim poorly, and risks the parent leaving
   things out.
-- The summary records which mode produced it.
+- The summary records which mode produced it, or that it was
+  supplied labelled.
 - Anything the parent works out has to be stated in the conversation,
   because the summariser sees only the dialogue.
 
@@ -224,13 +240,18 @@ the shape of ADR 0003's git-host modules.
   **Waiting for a cross-harness standard**: none is reliable today.
 - **The parent decides before the first draft, and resumes the same
   drafter between rounds.** How the loop first ran in practice: this
-  ADR as first written gave the parent's decisions no time and no
-  route to the drafter. Rejected for the rounds above, which put
-  decisions at one fixed point after the issues are in, give each
-  subagent one small task, and stop any drafter carrying reasoning
-  forward from earlier rounds.
+  ADR as first written had the drafter work from the upstream "and
+  nothing else", and gave the parent's decisions no time or route.
+  Rejected for the rounds above, which put decisions at one fixed
+  point after the issues are in, give each subagent one small task,
+  and stop any drafter carrying reasoning forward from earlier
+  rounds.
+- **The parent's decisions as part of the upstream, presented before
+  drafting, with the reviewer flagging any that contradict the
+  summary.** Not chosen: overtaken by the round structure the human
+  set out.
 - **With no human to confirm: an unlabelled written decision counts
-  as the confirmed summary.** Superseded by the label: without a
+  as the confirmed summary.** Rejected for the label: without a
   marker, an agent could treat a casual remark as a written decision.
   **The eval harness answers the confirmation**: more realistic, but
   doubtful where evals are one turn. **Rewriting the affected evals to
@@ -260,8 +281,8 @@ the shape of ADR 0003's git-host modules.
   the confirmed summary in its introducing commit. The summary adds
   no edge to ADR 0004's graph, and ADR 0004's trailer table is
   unchanged.
-- Each round costs two subagent runs, a fresh drafter and a fresh
-  reviewer.
+- Each round costs at least two subagent runs, a fresh drafter and a
+  fresh reviewer.
 - Open, for the orchestration work: what else a run should record as
   signal, for future iterations and for communication between agents.
 - Out of scope, and deferred:
