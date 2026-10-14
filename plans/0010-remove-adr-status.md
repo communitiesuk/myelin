@@ -10,7 +10,8 @@ deferred_reason: null
 
 ## Reference
 
-Implements [ADR 0009](../docs/adr/0009-adr-acceptance.md), which revised [ADR 0004](../docs/adr/0004-where-does-history-live.md) (commit `ab0479f`). Related: plan 0011 (ADR 0008, stage reviews) also edits `skills/adr/SKILL.md` and is implemented after this one. This plan's edits to that file are confined to the "Frontmatter", "Status lifecycle" and "Revising an ADR" sections named in Step 3.
+Implements [ADR 0009](../docs/adr/0009-adr-acceptance.md).
+Related: `plans/0011-stage-reviews.md` (ADR 0008), implemented after this one.
 
 ## Steps
 
@@ -47,11 +48,15 @@ Check:
 for f in docs/adr/*.md; do printf '%s: ' "$f"; awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f{sub(/:.*/,"");printf "%s ",$0}' "$f"; echo; done
 ```
 
-prints `title date` for all nine files. `git diff -U0 -- docs/adr/` shows eight removed lines and no added lines.
+prints `title date` for all nine files, and
 
-### Step 2: Update the eval criteria that require a `status` field
+```sh
+git diff -U0 -- docs/adr/ | grep -E '^[-+]' | grep -vE '^(---|\+\+\+) '
+```
 
-Edit the checks first, so the next run tests the skill text that Steps 3 and 4 write.
+prints exactly eight lines: seven `-status: accepted` and one `-status: proposed`.
+
+### Step 2: Update the evals that require or instruct a `status` field
 
 `evals/scenario-0/criteria.json`:
 
@@ -59,18 +64,51 @@ Edit the checks first, so the next run tests the skill text that Steps 3 and 4 w
 - The check named `Frontmatter is exactly title, status and date`: rename it to `Frontmatter is exactly title and date`. Set its description to `The ADR's YAML frontmatter contains exactly two fields: title and date, and no others. A status field, or any other additional field, fails this check`. Keep `max_score` at 10.
 - The check named `No replaced-record vocabulary`: in its description, replace `no frontmatter field naming a record this one replaces or is replaced by, no status value other than proposed or accepted, and no body prose` with `no frontmatter field naming a record this one replaces or is replaced by, and no body prose`. Keep `max_score` at 10.
 
-`evals/scenario-0/task.md`: delete the line `status: accepted` (line 18) from the fixture ADR `docs/adr/0001-which-database.md`. That way the record the agent revises already follows the two-field schema the check scores.
+`evals/scenario-0/task.md`:
+
+- Delete the line `status: accepted` (line 18) from the fixture ADR `docs/adr/0001-which-database.md`.
+- In the section ``## The existing record: `docs/adr/0001-which-database.md` ``, after the sentence ending `already exists in the project with the content below.`, insert:
+
+  ```markdown
+  The record was accepted and has been on the project's main branch for some time.
+  ```
 
 `evals/scenario-1/criteria.json`:
 
 - The check named `ADR frontmatter completeness`: set its description to `The ADR file's YAML frontmatter contains exactly two fields: title and date — and no others`. Keep `max_score` at 8.
 - Delete the whole check object named `ADR status validity` (`max_score` 7). That leaves 12 checks.
 
-Do not change:
+`evals/git-workflow-0/task.md` and `evals/git-workflow-1/task.md` (identical text at these lines):
 
-- `evals/git-workflow-0/` and `evals/git-workflow-1/`. Their `setup.sh` and `task.md` describe the `orchard` fixture project's own house style (`title`, `status`, `date`), and none of their criteria scores a `status` field.
-- `evals/plan-numbering-0/setup.sh`. Its fixture ADRs carry `status: accepted`, but no criterion scores it.
-- `evals/scenario-3/` and `evals/scenario-4/`. Their "Plan status updated" checks are about a plan's `status`, not an ADR's.
+- Line 13: replace ``frontmatter with `title`, `status` and `date`, then `## Context`,`` with ``frontmatter with `title` and `date`, then `## Context`,``.
+- Lines 38 to 44: replace the bullet
+
+  ```markdown
+  - A new ADR under `docs/adr/`, taking the next number in the sequence
+    and following the file-naming and section structure of the two
+    existing ADRs. It should record the decision above as `accepted`,
+    give the reasoning from the discovery note as its context, name the
+    firmware rollout as the alternative that was considered and deferred,
+    and state the consequence that liveness detection now depends on a
+    sampled signal.
+  ```
+
+  with
+
+  ```markdown
+  - A new ADR under `docs/adr/`, taking the next number in the sequence
+    and following the file-naming and section structure of the two
+    existing ADRs. It should give the reasoning from the discovery note
+    as its context, name the firmware rollout as the alternative that
+    was considered and deferred, and state the consequence that liveness
+    detection now depends on a sampled signal.
+  ```
+
+`evals/git-workflow-0/setup.sh`: delete the `status: accepted` lines at 89 and 114, which are in the fixture ADRs `docs/adr/0001-http-client-timeouts.md` and `docs/adr/0002-configuration-loading.md`.
+
+`evals/git-workflow-1/setup.sh`: delete the `status: accepted` lines at 78 and 103, in the same two fixture ADRs.
+
+Do not change `evals/plan-numbering-0/setup.sh`, or the "Plan status updated" checks in `evals/scenario-3/` and `evals/scenario-4/`.
 
 Check:
 
@@ -79,11 +117,15 @@ for f in evals/scenario-0/criteria.json evals/scenario-1/criteria.json; do jq -e
 jq '.checklist | length' evals/scenario-1/criteria.json        # 12
 grep -nE 'title, status|status value|status field is set|status validity|proposed or accepted|three-field' evals/scenario-0 evals/scenario-1 -r   # no output
 grep -n '^status:' evals/scenario-0/task.md                    # no output
+grep -nE 'status|as `accepted`' evals/git-workflow-*/task.md   # no output
+grep -nE '^status: (proposed|accepted)' evals/git-workflow-*/setup.sh   # no output
+bash -n evals/git-workflow-0/setup.sh && bash -n evals/git-workflow-1/setup.sh
+tessl eval lint evals/                                         # 9 scenarios valid
 ```
 
 ### Step 3: Update `skills/adr/SKILL.md`
 
-Change only the three places listed here. The `description` stays as it is.
+Change only the three places listed here, in the "Frontmatter", "Status lifecycle" and "Revising an ADR" sections. Plan 0011 also edits this file; touch nothing else in it. The `description` stays as it is.
 
 1. **Frontmatter section.** Delete the `status: proposed` line from the YAML example, which leaves `title` and `date`. Delete this bullet:
 
@@ -113,7 +155,7 @@ Change only the three places listed here. The `description` stays as it is.
    and nor does an edit made on the ADR's own branch before it merges, which is still drafting.
    ```
 
-Leave these as they are. "Accepted" in them now means "on the trunk", so they stay true:
+Leave these as they are:
 
 - `The commit that changes what an accepted ADR decides` in "Revising an ADR".
 - `Do not keep a reversed ADR in the tree under a status flag.` in "Do not".
@@ -124,7 +166,7 @@ Check:
 grep -nE '^status: |`proposed` \||## Status lifecycle|edit to a `proposed` ADR' skills/adr/SKILL.md   # no output
 grep -c "own branch before it merges" skills/adr/SKILL.md                                            # 1
 grep -c '^## Proposed and accepted$' skills/adr/SKILL.md                                             # 1
-git diff -- skills/adr/SKILL.md | grep -E '^[-+]description:'                                        # no output (trigger contract unchanged)
+git diff dev...HEAD -- skills/adr/SKILL.md | grep -E '^[-+]description:'                              # no output
 ```
 
 ### Step 4: Update the plans skill's ADR check in `skills/plans/SKILL.md`
@@ -138,7 +180,7 @@ Before writing a plan, verify a corresponding ADR exists in `docs/adr/` and is a
 with
 
 ```markdown
-Before writing a plan, verify a corresponding ADR exists in `docs/adr/`, either accepted (on the trunk) or proposed (on its own branch, with that branch's pull request open). Accepted is better. An ADR carries no status field; where it is says which (see the `adr` skill). `git log --oneline <trunk> -- docs/adr/NNNN-<slug>.md` prints the commit that brought it onto the trunk if it is accepted, and nothing if it is not. An ADR whose pull request was closed unmerged is neither. Treat it as absent. If no ADR exists:
+Before writing a plan, verify a corresponding ADR exists in `docs/adr/`, either accepted (on the trunk) or proposed (on its own branch, with that branch's pull request open). Accepted is better. An ADR carries no status field; where it is says which (see the `adr` skill). `git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md` succeeds if and only if the ADR is on the trunk. An ADR whose pull request was closed unmerged is neither. Treat it as absent. If no ADR exists:
 ```
 
 Keep the numbered list that follows unchanged. The plan frontmatter's own `status` field (`draft` | `in-progress` | `deferred`) is a plan's status, not an ADR's, and does not change.
@@ -174,9 +216,9 @@ Check: `grep -c 'marked `accepted`' README.md` prints `0`.
 grep -rnE '^status: (proposed|accepted)' docs skills evals README.md
 ```
 
-This prints exactly the ten fixture lines that Step 2 leaves alone: `evals/git-workflow-0/setup.sh` lines 89 and 114, `evals/git-workflow-1/setup.sh` lines 78 and 103, and `evals/plan-numbering-0/setup.sh` lines 59, 74, 89, 104, 120 and 138. Any other hit is a missed edit.
+This prints exactly the six fixture lines that Step 2 leaves alone: `evals/plan-numbering-0/setup.sh` lines 59, 74, 89, 104, 120 and 138. Any other hit is a missed edit.
 
-Leave the following alone, because none of them is an ADR status field or a rule about one:
+Leave the following alone:
 
 - `proposed` used as a verb about pull requests in `skills/git-workflow/` (the `SKILL.md` exit-code 3 text, `references/RULES.md`, `scripts/git-workflow`, `scripts/tests/land.sh`).
 - The `status` fields of discovery notes and plans.
@@ -191,7 +233,7 @@ Delete `plans/0010-remove-adr-status.md` in the final commit on the last impleme
 Completes: plans/0010-remove-adr-status.md
 ```
 
-Its body says, in sentences, what the plan produced: the ADRs lost their `status` field, the `adr` and `plans` skills describe acceptance by location, the scenario 0 and 1 checks no longer require a status, and the README caveat was reworded.
+Its body says, in sentences, what the plan produced: the ADRs lost their `status` field, the `adr` and `plans` skills describe acceptance by location, the evals no longer require or instruct a status, and the README caveat was reworded.
 
 ## Verification
 
@@ -200,12 +242,12 @@ Run these on the implementation branch before landing, with `RANGE=dev..HEAD` an
 1. Every ADR's frontmatter is exactly `title` and `date`. The loop in Step 1 prints `title date` for every file in `docs/adr/`.
 2. The ADR edits removed the status lines and nothing else. `git diff -U0 $DIFF -- docs/adr/ | grep -E '^[-+]' | grep -vE '^(---|\+\+\+) '` prints exactly eight lines: seven `-status: accepted` and one `-status: proposed`.
 3. No commit revised a decision. `git log --format='%(trailers:key=Revises,valueonly)' $RANGE | sed '/^$/d'` prints nothing. `git diff --name-status $DIFF -- docs/adr/ | grep -c '^M'` prints `8`, and `git diff --name-status $DIFF -- docs/adr/ | grep -vc '^M'` prints `0`.
-4. The `adr` skill matches ADR 0009. The Step 3 checks pass, and `git diff $DIFF -- skills/adr/SKILL.md` touches only the Frontmatter, Proposed and accepted (formerly Status lifecycle) and Revising an ADR sections.
+4. The `adr` skill matches ADR 0009. The Step 3 checks pass (with `dev...HEAD` replaced by `$DIFF`). `git diff -U0 $DIFF -- skills/adr/SKILL.md | grep '^@@'` lists only hunks whose old-file start line (the number after `-`) lies in 29 to 41 (the Frontmatter example and bullets, and the Status lifecycle heading and bullets) or is 58 (the `Revises` exemption bullet), with at least one hunk at 29 and one at 58. Those numbers are the old file's lines, so they stay valid after landing.
 5. The plans skill no longer depends on a status field. The Step 4 checks pass.
-6. The eval criteria no longer require a status field and still parse. The Step 2 checks pass.
+6. The evals no longer require or instruct a status field and still parse. The Step 2 checks pass, including `tessl eval lint evals/` printing `9 scenarios valid`.
 7. The README caveat no longer refers to a status. The Step 5 check passes.
-8. The sweep in Step 6 prints exactly the ten fixture lines listed there.
-9. The plan is complete. `test ! -e plans/0010-remove-adr-status.md` succeeds on the trunk, and `git log --all --format='%(trailers:key=Completes,valueonly)' | grep -x 'plans/0010-remove-adr-status.md'` prints one line.
+8. The sweep in Step 6 prints exactly the six fixture lines listed there.
+9. The plan is complete. `test ! -e plans/0010-remove-adr-status.md` succeeds on the trunk, and `git log dev --format='%(trailers:key=Completes,valueonly)' | grep -x 'plans/0010-remove-adr-status.md'` prints one line.
 
 ## Progress notes
 
