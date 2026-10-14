@@ -129,9 +129,11 @@ decision and joins the upstream; it takes precedence over the
 confirmed summary or any earlier change, and over any recorded parent
 decision it contradicts, which the next round's record marks
 superseded; a reviewer does not flag it. An answer to an escalation
-that changes the draft is such a change; one that leaves the draft as
-it stands is not. When the loop finishes, the human is asked to
-accept again.
+that changes the draft is such a change, whenever it is given; one
+that leaves the draft as it stands is not; it is recorded in the
+round's record as the human's decision, and later reviewers treat it
+as settled. When the loop finishes, the human is asked to accept
+again.
 
 **The reviewer is independent.** It gets the artefact, its upstream
 sources and the recorded decisions, never the drafter's or the
@@ -201,10 +203,10 @@ The parent surfaces to the human:
 - any reviewer finding that a recorded parent decision contradicts
   the upstream.
 
-The loop does not resolve these itself; with no human available, the
-agent stops and reports them as "When no human can confirm" sets out.
-For an ADR, an answer that changes the draft restarts the loop (see
-Rounds).
+The loop does not resolve these itself. Once the human answers, for
+an ADR, an answer that changes the draft restarts the loop (see
+Rounds). With no human available, the agent stops and reports them as
+"When no human can confirm" sets out.
 
 Escalations are batched. A drafter or reviewer that finds one carries
 on to the end of its task. The parent collects every escalation from
@@ -222,10 +224,10 @@ before the next round's draft or the closing pass, or in that commit
 itself, or in a commit of its own if nothing follows. The closing
 pass's commit records the parent's check. So the record is in git
 history whatever the host. Changes requested at acceptance are
-recorded, quoting the text the human accepted, in a commit of their
-own before the loop restarts. The record carries no trailer. Where
-there is a pull request, its description repeats the record, so a
-future merge hook can read it.
+recorded, quoting the text the human accepted or gave, in a commit of
+their own before the loop restarts. The record carries no trailer.
+Where there is a pull request, its description repeats the record, so
+a future merge hook can read it.
 
 ### Passing the conversation to the summariser
 
