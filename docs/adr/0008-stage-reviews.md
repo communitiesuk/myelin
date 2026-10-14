@@ -81,9 +81,9 @@ conversation. With neither a labelled summary nor a human to confirm
 one, the agent stops and asks.
 
 With no human available, the agent stops and reports at the point
-where it would surface an escalation or a High still open after 3
-rounds: for an ADR, once the loop has finished; for a plan, at the
-decision point of the round that raised it.
+where it would surface an escalation (see Escalation scope): for an
+ADR, once the loop has finished; for a plan, at the decision point of
+the round that raised it.
 
 ### Rounds
 
@@ -100,9 +100,9 @@ confirmed fixed or reopened by round N+1's reviewer.
   drafts or revises, surfaces the issues it finds, and exits.
 - **Reviewer.** Gets the upstream, the draft and the same recorded
   decisions, so it checks the draft against settled decisions rather
-  than flagging them. It may flag a recorded parent decision that
-  contradicts the upstream (see Escalation scope). It surfaces its
-  findings and exits.
+  than reopening them, except that it may flag a recorded parent
+  decision that contradicts the upstream (see Escalation scope). It
+  surfaces its findings and exits.
 - **Parent.** Once both have reported, decides on both lists together,
   in one place, and records the decisions in the round's record, in
   the next commit on the branch (see the review record below). The
@@ -117,11 +117,15 @@ gets the upstream, the draft and the recorded decisions. The pass is
 not a round and is not re-reviewed; the parent checks that the change
 matches the recorded decisions.
 
-Changes the human requests at acceptance are recorded on the branch
-like a round's decisions, before drafting, then applied by a fresh
-drafter and reviewed as a round. That round counts if rounds remain;
-if none do, it is reviewed once anyway, and any High it leaves open
-is escalated.
+Changes the human requests at acceptance are the human's decisions.
+From then on they are part of the upstream that drafters and
+reviewers work against, and a reviewer does not flag them as
+contradicting the upstream. They always run as a reviewed round: a
+fresh drafter applies them and a fresh reviewer reviews the result.
+The round counts toward the round limit if rounds remain; if none do,
+it is reviewed once anyway, and any High it leaves open is escalated.
+Its decisions on issues and Medium or Low findings are applied in a
+closing pass, as above.
 
 **The reviewer is independent.** It gets the artefact, its upstream
 sources and the recorded decisions, never the drafter's or the
@@ -134,13 +138,14 @@ record does not.
 
 Once the summary is confirmed, the parent decides on every issue and
 finding, except those Escalation scope sends to the human, and has
-the draft revised, and re-reviewed where the stop rule requires,
-without asking the human. Choices the summary did not settle are the
-parent's, because they revise nothing the human has agreed or seen;
-the parent makes them at a round's decision point, like any other. It
-has each Medium or Low finding fixed, in a later round or the closing
-pass above, or records in the review record why not. The human next
-sees the artefact drafted and reviewed, together with that record.
+the draft revised, and re-reviewed where the stop rule, or a change
+requested at acceptance, requires, without asking the human. Choices
+the summary did not settle are the parent's, because they revise
+nothing the human has agreed or seen; the parent makes them at a
+round's decision point, like any other. It has each Medium or Low
+finding fixed, in a later round or the closing pass above, or records
+in the review record why not. The human next sees the artefact
+drafted and reviewed, together with that record.
 
 ### Each stage checks what it adds
 
@@ -174,20 +179,25 @@ revisited with evidence from the run logs.
 
 Only High findings trigger another round. Stop after a round whose
 review leaves no High open. Run at most 3 rounds, counting the first.
-If a High is still open after round 3, the loop ends and the High is
-escalated (see Escalation scope).
+A round for changes requested at acceptance is the one exception (see
+Rounds). If a High is still open after round 3, the loop ends and the
+High is escalated (see Escalation scope).
 
 ### Escalation scope
 
-The parent surfaces a finding to the human only when acting on it
-would change something the human has already agreed: the confirmed
-summary, or an accepted ADR. A plan review that shows the ADR needs
-revising is the example. It also surfaces any High finding still open
-after 3 rounds, or left open by the review of changes requested at
-acceptance, and always a reviewer's finding that a recorded parent
-decision contradicts the upstream. The loop does not resolve these
-itself; with no human available, the agent stops and reports them as
-"When no human can confirm" sets out.
+The parent surfaces to the human:
+
+- a finding whose fix would change something the human has already
+  agreed (the confirmed summary, the human's changes at acceptance,
+  or an accepted ADR); a plan review that shows the ADR needs
+  revising is the example;
+- a High still open after round 3, or left open by the review of
+  changes requested at acceptance; and
+- any reviewer finding that a recorded parent decision contradicts
+  the upstream.
+
+The loop does not resolve these itself; with no human available, the
+agent stops and reports them as "When no human can confirm" sets out.
 
 Escalations are batched. A drafter or reviewer that finds one carries
 on to the end of its task. The parent collects every escalation from
@@ -203,10 +213,12 @@ Each round's record, the issues and findings and the parent's
 decision on each, goes in the body of the next commit on the
 artefact's branch: the next round's revision or the closing pass, or
 a commit of its own if nothing follows. The closing pass's commit
-records the parent's check. So the record is in git history whatever
-the host. It carries no trailer.
-Where there is a pull request, its description repeats the record, so
-a future merge hook can read it.
+records the parent's check. Changes requested at acceptance are
+recorded, quoting the text the human accepted, in a commit of their
+own before the round that applies them. So the record is in git
+history whatever the host. It carries no trailer. Where there is a
+pull request, its description repeats the record, so a future merge
+hook can read it.
 
 ### Passing the conversation to the summariser
 
@@ -273,9 +285,9 @@ the shape of ADR 0003's git-host modules.
   rounds.
 - **The parent's decisions as part of the upstream, presented before
   drafting, with the reviewer flagging any that contradict the
-  summary.** Not chosen: overtaken by the round structure the human
-  set out. The reviewer's flag is kept, as a finding that always goes
-  to the human.
+  summary.** Not chosen as a whole: overtaken by the round structure
+  the human set out. Its reviewer flag is kept, against the upstream,
+  as a finding that always goes to the human.
 - **With no human to confirm: an unlabelled written decision counts
   as the confirmed summary.** Rejected for the label: without a
   marker, an agent could treat a casual remark as a written decision.
