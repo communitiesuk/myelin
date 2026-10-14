@@ -10,12 +10,11 @@ Before the migration work begins, the decision should be captured so future cont
 
 ## The existing record: `docs/adr/0001-which-database.md`
 
-The project records significant architectural choices as decision records under `docs/adr/`. The file `docs/adr/0001-which-database.md` already exists in the project with the content below. If it is not present in your working directory, restore it at that path exactly as shown before you begin.
+The project records significant architectural choices as decision records under `docs/adr/`. The file `docs/adr/0001-which-database.md` already exists in the project with the content below. The record was accepted and has been on the project's main branch for some time. If it is not present in your working directory, restore it at that path exactly as shown before you begin.
 
 ```markdown
 ---
 title: Which database does the project management tool use?
-status: accepted
 date: 2024-09-09
 ---
 

@@ -1,6 +1,5 @@
 ---
 title: Where do captured ideas and proposals live?
-status: accepted
 date: 2026-09-25
 ---
 

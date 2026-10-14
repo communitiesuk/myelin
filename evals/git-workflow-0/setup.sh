@@ -86,7 +86,6 @@ mkdir -p docs/adr
 cat > docs/adr/0001-http-client-timeouts.md <<'EOF'
 ---
 title: Bound every outbound HTTP call with an explicit timeout
-status: accepted
 date: 2026-04-02
 ---
 
@@ -111,7 +110,6 @@ EOF
 cat > docs/adr/0002-configuration-loading.md <<'EOF'
 ---
 title: Configuration is read once at start-up
-status: accepted
 date: 2026-06-11
 ---
 

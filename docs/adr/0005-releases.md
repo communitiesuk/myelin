@@ -1,6 +1,5 @@
 ---
 title: How is the plugin released?
-status: accepted
 date: 2026-09-23
 ---
 

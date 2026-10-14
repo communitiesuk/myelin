@@ -9,13 +9,8 @@
     },
     {
       "name": "ADR frontmatter completeness",
-      "description": "The ADR file's YAML frontmatter contains exactly three fields: title, status, and date — and no others",
+      "description": "The ADR file's YAML frontmatter contains exactly two fields: title and date — and no others",
       "max_score": 8
-    },
-    {
-      "name": "ADR status validity",
-      "description": "The ADR's status field is set to exactly one of the allowed values: proposed or accepted",
-      "max_score": 7
     },
     {
       "name": "ADR title is a question",
