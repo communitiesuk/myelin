@@ -106,4 +106,4 @@ The first section below has a decision behind it. The rest are directions, not c
 
 ## Status
 
-Early stage — expect the design of the skills, the artefacts they emit, and the mechanisms by which they interact to change. Decisions marked `accepted` in `docs/adr/` are the current line, but many of them are hypotheses that have not yet been validated in practice. Use with that caveat in mind.
+Early stage — expect the design of the skills, the artefacts they emit, and the mechanisms by which they interact to change. Decisions in `docs/adr/` on the trunk are the current line, but many of them are hypotheses that have not yet been validated in practice. Use with that caveat in mind.
