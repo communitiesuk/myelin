@@ -296,9 +296,8 @@ The line is drawn by what can check the artefact. A plan is reviewed
 against its ADR, a skill against its eval scenarios, code against its
 tests; each has a check other than a person reading it. An ADR is the
 thing those checks are made against. An agent reviewer checks it
-for consistency and against the human's confirmed summary (ADR 0008),
-but only a human can confirm it says what they meant, so a human
-lands it. On 2026-09-23 an agent opened and merged a revision of this
+for consistency and against its upstream (ADR 0008), but only a
+human can confirm it says what they meant, so a human lands it. On 2026-09-23 an agent opened and merged a revision of this
 ADR within the same minute and then removed the discovery note it
 derived from, on the strength of an acceptance that had not happened;
 the text turned out to be fine, which is not the point. Both facts
