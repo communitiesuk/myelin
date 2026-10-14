@@ -1,6 +1,5 @@
 ---
 title: How are new skills authored?
-status: accepted
 date: 2026-09-01
 ---
 

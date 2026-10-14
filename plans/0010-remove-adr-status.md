@@ -1,6 +1,6 @@
 ---
 title: Remove the ADR status field
-status: draft
+status: in-progress
 adr: 0009
 date: 2026-10-14
 deferred_reason: null
