@@ -33,6 +33,10 @@ The maintainer has committed to the orchestrator turn: myelin will
 move beyond skills for one agent, and soon. This loop is a way into
 that work — a parent agent with worker subagents, used on real work.
 
+Handing the summariser the conversation is feasible: a trial
+extraction on the session that produced this ADR gave 31 KB of
+dialogue from a 1.1 MB transcript.
+
 ## Decision
 
 One mechanism covers ADRs and plans. What differs between artefact
@@ -44,27 +48,38 @@ task**.
 
 A drafter subagent works from a written upstream. A reviewer subagent
 checks the draft against that upstream. The parent triages the
-findings, gets any decisions it needs from the human, and repeats
-until the stop rule below is met.
+findings and repeats until the stop rule below is met.
 
-- **Plan.** Upstream is the ADR. Drafter writes the plan, reviewer
+- **Plan.** Upstream is the ADR. Drafter writes the plan, the review
   loop runs, the plan lands.
 - **ADR.** Upstream is a confirmed summary. Parent → summariser
-  subagent → human confirms the summary → drafter → reviewer loop →
-  human sign-off.
+  subagent → human confirms the summary → drafter → review loop →
+  human acceptance.
   - The summariser's one task is to decide which parts of the
     conversation are relevant to the ADR's question. The parent does
     not filter.
-  - The human confirms the summary, not the draft.
+  - The human confirms the summary, not the draft, and confirms the
+    exact text the drafter receives. Anything the parent changes in
+    it after confirmation is confirmed again before drafting.
   - The confirmed summary is the ADR's written upstream, even where
     there is no discovery note. The drafter works from it and nothing
     else, and the reviewer checks the ADR against it: does the ADR say
     what the human decided?
-  - The review loop runs before the human's sign-off.
+  - The review loop finishes before the human is asked to accept.
   - The summary lives in the body of the ADR's introducing commit.
 
 **The reviewer is independent.** It gets the artefact and its upstream
 sources, never the drafter's or the parent's reasoning.
+
+### The parent owns the loop
+
+Once the summary is confirmed, the parent triages every finding,
+decides what changes, and has the draft revised and re-reviewed
+without asking the human. Choices the summary did not settle are the
+parent's, because they revise nothing the human has agreed or seen.
+Each Medium or Low finding the parent fixes, or records why not, in
+the review record. The human next sees the artefact drafted and
+reviewed, together with that record.
 
 ### Each stage checks what it adds
 
@@ -74,8 +89,8 @@ checked.
 - **ADR review:** internal consistency; consistency with its discovery
   note or summary and with earlier ADRs, including the closed paths in
   their Alternatives sections and their revision history; and that it
-  says nothing about implementation. Until the history skill of ADR
-  0004 exists, the reviewer reads `docs/adr/` and `git log` directly.
+  says nothing about implementation. Until ADR 0004's history skill
+  exists, the reviewer reads `docs/adr/` and `git log` directly.
 - **Plan review:** relies on the ADR being consistent. It checks
   fidelity — everything the ADR decided, nothing more — and
   verifiability. The brief asks, for each assertion the plan requires:
@@ -84,32 +99,42 @@ checked.
 
 ### Briefs and models
 
-- One reviewer brief per skill, kept with the skill at
-  `skills/<skill>/references/review.md`. More reviewers per artefact
-  are not ruled out later, for example personas reviewing from a
-  security or platform perspective.
-- A cheaper model may draft; the reviewer is at least as strong. The
-  models used are recorded on every run.
+- One reviewer brief per artefact-producing skill in scope, `adr` and
+  `plans`, kept with the skill at `skills/<skill>/references/review.md`.
+  More reviewers per artefact, for example security or platform
+  personas, are not ruled out.
+- A cheaper model may draft; the reviewer should be at least as
+  strong. The models used are recorded on every run.
 
 ### Stop rule — provisional
 
-**This rule is temporary.** It is a starting point, to be revisited
-with evidence from the run logs.
+**The round limit and the stop criteria are temporary**, to be
+revisited with evidence from the run logs.
 
-Stop when no High findings remain open, with at most 3 rounds. If
-any High findings remain after 3 rounds, escalate them to the human.
+A High finding stays open until a later review round confirms it is
+fixed, so any round that fixes a High is followed by another review
+round. Only High findings trigger another round. Stop when no High
+findings remain open, with at most 3 rounds.
 
-The stop rule is also the escalation route. Whatever the round, the
-parent surfaces to the human any finding that needs a human decision
-— for example, a plan review that shows the ADR needs revising. The
-loop does not resolve such findings itself.
+### Escalation scope
+
+The parent surfaces a finding to the human only when acting on it
+would change something the human has already agreed: the confirmed
+summary, or an accepted ADR. A plan review that shows the ADR needs
+revising is the example. It also surfaces any High finding still open
+after 3 rounds. The loop does not resolve these itself.
+
+For an ADR, these can wait until the human is shown the reviewed
+draft. For a plan, which lands without a human, the loop stops and
+asks.
 
 ### The review record is in git
 
 A commit on the artefact's branch carries, in its body, the findings
 and what was done about each, so the record is in git history
-whatever the host. Where there is a pull request, its description
-repeats the record, so a future merge hook can read it.
+whatever the host. It carries no trailer. Where there is a pull
+request, its description repeats the record, so a future merge hook
+can read it.
 
 ### Passing the conversation to the summariser
 
@@ -119,16 +144,11 @@ the shape of ADR 0003's git-host modules.
 - **Interface.** The parent produces the dialogue as a file in a fixed
   format — human messages, assistant prose, and questions with their
   answers, in order, with tool output and reasoning left out — and
-  gives the summariser its path. The summariser only ever sees that
+  passes the summariser its path. The summariser only ever sees that
   format.
-- **Adapter.** One per harness, shipped with the `adr` skill. The
-  first is a script for Claude Code that locates the session
-  transcript from `$CLAUDE_CODE_SESSION_ID` and the project path
-  (`~/.claude/projects/<slugified cwd>/<id>.jsonl`) and extracts the
-  dialogue with `jq`. On the session that produced this ADR it gave
-  31 KB of dialogue from a 1.1 MB transcript. The transcript format is
-  internal to Claude Code and undocumented, and may change between
-  versions.
+- **Adapter.** One per harness. The first is for Claude Code and ships
+  with the `adr` skill. The transcript format it reads is internal to
+  Claude Code and undocumented, and may change between versions.
 - **Fallback.** Where no adapter exists, the parent writes the
   dialogue out itself, unfiltered. This is a degraded mode: it costs
   output tokens, copies verbatim poorly, and risks the parent leaving
@@ -140,12 +160,11 @@ the shape of ADR 0003's git-host modules.
 ## Alternatives considered
 
 - **A subagent orchestrator, rejected for now by ADR 0001.** ADR 0001
-  parked it until there was evidence the cheaper mechanism worked and
-  so as not to become a bespoke harness early. The rejection no longer
-  holds: the maintainer has committed to the orchestrator turn, and
-  the 2026-09-23 review is evidence that an independent subagent finds
-  defects the drafting agent does not. This ADR is the smallest piece
-  of that turn, and decides nothing about the wider architecture.
+  rejected it because it moves the project toward a bespoke agent
+  harness before there is evidence that artefact-embedded directives
+  work. The rejection no longer holds because the maintainer has
+  committed to the orchestrator turn. This ADR is the smallest piece
+  of that turn and decides nothing about the wider architecture.
 - **The parent drafts the ADR; or the parent writes the summary for
   the drafter; or the whole conversation goes to the drafter.**
   Rejected: each gives one agent more than one task, or lets the
@@ -169,36 +188,37 @@ the shape of ADR 0003's git-host modules.
 
 ## Consequences
 
-- ADR 0003 says a plan merges once "written and reviewed"; that review
-  is now this loop. ADR 0003 also says nothing checks an ADR but a
-  human reading it. That is no longer so — a reviewer checks it first
-  — but its rule that a human lands an ADR is unchanged.
-- When an ADR flips from `proposed` to `accepted` is decided
-  separately (#66). This ADR requires only that the review finishes
-  before acceptance.
+- ADR 0001's "rejected for now" orchestrator entry points to this ADR
+  as where the path was taken up.
+- ADR 0003's rationale that nothing checks an ADR but a human reading
+  it changes: a reviewer now checks it first. Its rule that a human
+  lands an ADR stands, and its plan merge "written and reviewed" now
+  means reviewed by this loop.
+- When an ADR's status flips to `accepted` stays with #66. This ADR
+  requires only that review finishes before the human is asked to
+  accept, which is no later than the merge.
 - ADR 0006 deferred escalate-don't-thrash to the orchestration work.
-  The review loop now has an escalation route of its own, to the
-  present human; the general route stays deferred.
-- An ADR may now have no discovery note. Its upstream is then the
-  summary in its introducing commit, which is not a file in the tree.
-- Every review costs at least one extra subagent run per round, at a
-  model at least as strong as the drafter's.
-- The stop rule is a guess until the run logs say otherwise. What else
-  a run should record as signal for future iterations is open, and
-  belongs to the orchestration work.
-- The Claude Code adapter couples the `adr` skill to an undocumented
-  transcript format. Where it breaks, the fallback still works,
-  degraded.
-- The conversation adapter is the first harness adapter. Whether
-  myelin later builds separate harnesses for specific tasks is for
-  after orchestration.
+  The review loop now has a bounded escalation route of its own; the
+  general route stays deferred.
+- Every ADR now has a written upstream: its discovery note, or else
+  the confirmed summary in its introducing commit. The summary adds
+  no edge to ADR 0004's graph, and ADR 0004's trailer table is
+  unchanged.
+- Each round costs at least one extra subagent run, on a model that
+  should be at least as strong as the drafter's.
+- Open, for the orchestration work: what else a run should record as
+  signal, for future iterations and for communication between agents.
 - Out of scope, and deferred:
   - Reviews of tests and implementation. A reviewer that runs things
-    may need a different mechanism, such as a hook or CI, and probably
-    its own ADR, after orchestration.
+    may need a different mechanism, such as a hook or CI, and
+    probably its own ADR, after orchestration.
   - The orchestration architecture, including reviewers as agent
-    definitions and communication between agents.
+    definitions; and whether myelin later builds separate harnesses
+    for specific tasks, of which the conversation adapter is the
+    first adapter.
   - The merge-verdict hook that would read the review record.
+  - Who makes revision commits, and the eval approach, are left to
+    the plan.
 
 ## References
 
@@ -210,10 +230,12 @@ the shape of ADR 0003's git-host modules.
   this loop defines; the human-lands-an-ADR rule this leaves in place.
 - `docs/adr/0004-where-does-history-live.md` — git history as the
   record, which the review record and the summary's home follow; the
-  closed paths the ADR reviewer reads; the history skill whose absence
-  the interim path covers.
+  trailer graph this leaves unchanged; the closed paths the ADR
+  reviewer reads.
 - `docs/adr/0006-where-do-captured-ideas-live.md` — the deferred
   escalation route, which this loop answers only within a review.
-- `docs/discovery/0003-escalation-and-orchestration.md` — the
+- `docs/discovery/0003-escalation-and-orchestration.md` — context: the
   orchestrator commitment, and the merged question this ADR separates.
+  A reference, not an upstream: this ADR does not consume it, and it
+  stays in the tree for the orchestration work.
 - Issue #77, stage reviews; issue #66, ADR acceptance.
