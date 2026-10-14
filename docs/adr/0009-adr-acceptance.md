@@ -24,16 +24,19 @@ ADR 0003's rule that a human merges every decision exists because of
 the incident of 2026-09-23, when an agent merged an ADR on the
 strength of an acceptance that had not happened. `land` enforces the
 rule. The human wanted acceptance to cost little, and wanted their
-fingerprint on the merge. Agents work from git, and git always
-knows.
+fingerprint on the merge. Agents read git, and git records where an
+ADR is and who merged it, and when.
 
 ## Decision
 
 **An ADR carries no status field.** Its frontmatter is `title` and
 `date`.
 
-**Where an ADR is says whether it is accepted.** On a branch or an
-open pull request, it is proposed. On the trunk, it is accepted.
+**Where an ADR is says whether it is accepted.** An ADR not yet on
+the trunk is proposed, on its own branch (the branch that adds it)
+and that branch's open pull request. On the trunk it is accepted, and
+it stays accepted while a revision of it is proposed on another
+branch.
 
 **The human's merge is the act of accepting.** The merge commit
 records who accepted and when. Accepting is a single act, the merge,
@@ -41,12 +44,13 @@ so the human's fingerprint is on it, and there is nothing to set,
 flip or forget. An ADR merged while saying `proposed` cannot recur.
 
 **Not accepting** is asking for changes, after which the loop
-continues on the branch, or closing the pull request unmerged. Either
-way the ADR never reaches the trunk.
+continues on the branch, or closing the pull request unmerged. An
+ADR whose pull request is closed unmerged was not accepted and is no
+longer proposed; it never reaches the trunk.
 
 The cost is the visible label. A reader who opens the file on a
 branch without knowing it is a branch sees nothing that says it is
-proposed. That reader is judged a very rare edge case.
+proposed. The human judged that reader a very rare edge case.
 
 This revises ADR 0004: its `proposed`/`accepted` vocabulary is
 withdrawn, and its exemption from `Revises` for an edit to a
@@ -83,10 +87,8 @@ own branch before it merges.
   - The `adr` skill: its frontmatter schema, its status lifecycle,
     and its wording of the `Revises` exemption.
   - The `plans` skill's check that an ADR is "at least `proposed`
-    (ideally `accepted`)", which becomes that the ADR exists on the
-    trunk, or on the plan's fork point.
-  - The eval criteria in `evals/scenario-0` and `evals/scenario-1`
-    that require a `status` field.
+    (ideally `accepted`)".
+  - Eval criteria that require a `status` field.
 
 ## References
 
@@ -96,6 +98,6 @@ own branch before it merges.
 - `docs/adr/0004-where-does-history-live.md` — revised: the status
   vocabulary and the `Revises` exemption.
 - `docs/adr/0008-stage-reviews.md` — review finishes before the human
-  is asked to accept; asking is presenting the pull request for merge.
+  is asked to accept.
 - Issue #66, ADR acceptance; issue #74, non-revising ADR edits that
   `land` cannot route. Commit `740e7cd`, the merge of ADR 0008.

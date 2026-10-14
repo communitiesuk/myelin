@@ -80,8 +80,9 @@ history of the file, reachable with `git log --follow -p`. The
 `adr` skill's rules against editing a merged ADR and against deleting
 superseded ADRs are withdrawn, and the `supersedes`, `superseded_by`
 and `superseded` status vocabulary is withdrawn with them. An ADR
-carries no status: on the trunk it is accepted, and on a branch or an
-open pull request it is proposed (ADR 0009).
+carries no status: one not yet on the trunk is proposed, on its own
+branch (the branch that adds it); on the trunk it is accepted, and
+stays accepted while a revision of it is in flight (ADR 0009).
 
 The test for whether a revision is an edit or a new ADR: **the title
 of an ADR is the question it answers.** If the revision still answers
