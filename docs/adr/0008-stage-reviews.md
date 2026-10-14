@@ -11,7 +11,7 @@ date: 2026-10-14
 ## Context
 
 The maintainer often asks for a subagent review by hand before an
-artefact lands. No skill or rule asks for it, and human sign-off on
+artefact lands. No skill or rule asks for it, and human acceptance of
 an ADR masks the need.
 
 The evidence that it pays: on 2026-09-23 an independent agent
@@ -77,8 +77,8 @@ Once the summary is confirmed, the parent triages every finding,
 decides what changes, and has the draft revised and re-reviewed
 without asking the human. Choices the summary did not settle are the
 parent's, because they revise nothing the human has agreed or seen.
-Each Medium or Low finding the parent fixes, or records why not, in
-the review record. The human next sees the artefact drafted and
+The parent fixes each Medium or Low finding, or records in the
+review record why not. The human next sees the artefact drafted and
 reviewed, together with that record.
 
 ### Each stage checks what it adds
@@ -147,7 +147,9 @@ the shape of ADR 0003's git-host modules.
   passes the summariser its path. The summariser only ever sees that
   format.
 - **Adapter.** One per harness. The first is for Claude Code and ships
-  with the `adr` skill. The transcript format it reads is internal to
+  with the `adr` skill: a script that locates the session transcript
+  from the session id and the project path, and extracts the dialogue
+  with `jq`. The transcript format it reads is internal to
   Claude Code and undocumented, and may change between versions.
 - **Fallback.** Where no adapter exists, the parent writes the
   dialogue out itself, unfiltered. This is a degraded mode: it costs
@@ -163,8 +165,10 @@ the shape of ADR 0003's git-host modules.
   rejected it because it moves the project toward a bespoke agent
   harness before there is evidence that artefact-embedded directives
   work. The rejection no longer holds because the maintainer has
-  committed to the orchestrator turn. This ADR is the smallest piece
-  of that turn and decides nothing about the wider architecture.
+  committed to the orchestrator turn. This ADR reopens the path only
+  to draft and review decision artefacts; the per-step
+  `implement-plan` form 0001 considered is not adopted, and nothing
+  about the wider architecture is decided here.
 - **The parent drafts the ADR; or the parent writes the summary for
   the drafter; or the whole conversation goes to the drafter.**
   Rejected: each gives one agent more than one task, or lets the
@@ -188,24 +192,27 @@ the shape of ADR 0003's git-host modules.
 
 ## Consequences
 
-- ADR 0001's "rejected for now" orchestrator entry points to this ADR
-  as where the path was taken up.
-- ADR 0003's rationale that nothing checks an ADR but a human reading
-  it changes: a reviewer now checks it first. Its rule that a human
-  lands an ADR stands, and its plan merge "written and reviewed" now
-  means reviewed by this loop.
+- ADR 0001's "rejected for now" entry now notes the commitment and
+  that this ADR uses subagents to draft and review artefacts; its
+  directive mechanism stands. ADR 0001's parking of orchestrated
+  landing (in ADR 0003) and of reactive skill-building (in ADR 0002)
+  is not reopened here, so those statements stand.
+- ADR 0003's rationale for a human landing an ADR now names this
+  review and rests on what only a human can confirm. Its rules are
+  unchanged. The review in its "written and reviewed" plan merge is
+  the one this ADR defines.
 - When an ADR's status flips to `accepted` stays with #66. This ADR
   requires only that review finishes before the human is asked to
   accept, which is no later than the merge.
 - ADR 0006 deferred escalate-don't-thrash to the orchestration work.
   The review loop now has a bounded escalation route of its own; the
   general route stays deferred.
-- Every ADR now has a written upstream: its discovery note, or else
+- Every ADR written under this loop has a written upstream: its
+  discovery note, or else
   the confirmed summary in its introducing commit. The summary adds
   no edge to ADR 0004's graph, and ADR 0004's trailer table is
   unchanged.
-- Each round costs at least one extra subagent run, on a model that
-  should be at least as strong as the drafter's.
+- Each round costs at least one extra subagent run.
 - Open, for the orchestration work: what else a run should record as
   signal, for future iterations and for communication between agents.
 - Out of scope, and deferred:
@@ -214,8 +221,8 @@ the shape of ADR 0003's git-host modules.
     probably its own ADR, after orchestration.
   - The orchestration architecture, including reviewers as agent
     definitions; and whether myelin later builds separate harnesses
-    for specific tasks, of which the conversation adapter is the
-    first adapter.
+    for specific tasks and what they should record. The conversation
+    adapter is the first harness adapter.
   - The merge-verdict hook that would read the review record.
   - Who makes revision commits, and the eval approach, are left to
     the plan.
@@ -223,8 +230,9 @@ the shape of ADR 0003's git-host modules.
 ## References
 
 - `docs/adr/0001-artifact-embedded-skill-directives.md` — the subagent
-  orchestrator it parked, which this ADR takes up in its smallest
-  form; and the drift problem that rules out a per-turn log.
+  orchestrator it parked, which this ADR reopens for drafting and
+  reviewing decision artefacts only; and the drift problem that rules
+  out a per-turn log.
 - `docs/adr/0003-git-workflow.md` — the host-module pattern the
   conversation adapter copies; the "written and reviewed" plan merge
   this loop defines; the human-lands-an-ADR rule this leaves in place.

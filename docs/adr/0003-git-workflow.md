@@ -296,20 +296,21 @@ agent lands itself.
 The line is drawn by what can check the artefact. A plan is reviewed
 against its ADR, a skill against its eval scenarios, code against its
 tests; each has a check other than a person reading it. An ADR is the
-thing those checks are made against. An agent reviewer can check it
-for consistency (ADR 0008), but only a human can check it against
-what was intended, so a human lands it. On 2026-09-23 an agent opened and merged a
-revision of this ADR within the same minute and then removed the
-discovery note it derived from, on the strength of an acceptance that
-had not happened; the text turned out to be fine, which is not the
-point. Both facts that select this rule are readable from the branch
-without judgement, so the script that lands enforces it, and until
-that script exists the skill body states it.
+thing those checks are made against. An agent reviewer checks it
+for consistency and against the human's confirmed summary (ADR 0008),
+but only a human can confirm it says what they meant, so a human
+lands it. On 2026-09-23 an agent opened and merged a revision of this
+ADR within the same minute and then removed the discovery note it
+derived from, on the strength of an acceptance that had not happened;
+the text turned out to be fine, which is not the point. Both facts
+that select this rule are readable from the branch without judgement,
+so the script that lands enforces it, and until that script exists
+the skill body states it.
 
 ### A plan merges when it is written
 
 A plan's branch is merged as soon as the plan is written and
-reviewed (the review is ADR 0008's), before implementation against it begins. A plan is not held
+reviewed, before implementation against it begins. A plan is not held
 back until the work it describes is finished.
 
 Two things go wrong otherwise, both observed. ADR 0004 requires that
