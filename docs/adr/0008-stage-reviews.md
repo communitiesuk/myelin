@@ -124,9 +124,13 @@ summary, or an accepted ADR. A plan review that shows the ADR needs
 revising is the example. It also surfaces any High finding still open
 after 3 rounds. The loop does not resolve these itself.
 
-For an ADR, these can wait until the human is shown the reviewed
-draft. For a plan, which lands without a human, the loop stops and
-asks.
+Escalations are batched. A drafter or reviewer that finds one carries
+on to the end of its task. The parent collects every escalation from
+that draft or review and surfaces them together, each with its
+reason. For an ADR, they can wait until the human is shown the
+reviewed draft. For a plan, which lands without a human, the loop
+pauses after the draft or review that raised them, before the next
+round or the landing, until the human answers.
 
 ### The review record is in git
 
