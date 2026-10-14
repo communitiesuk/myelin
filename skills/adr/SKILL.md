@@ -26,19 +26,20 @@ Read every ADR in `docs/adr/` before writing a new one. The tree holds only curr
 ```yaml
 ---
 title: <the question this ADR answers, matches the H1>
-status: proposed
 date: YYYY-MM-DD
 ---
 ```
 
 - **title**: phrased as the question the ADR answers, ending in a question mark. Matches the H1.
-- **status**: `proposed` | `accepted`.
 - **date**: ISO date the ADR was first written. Never updated on later edits — git history is authoritative for that.
+- There is no `status` field. Where an ADR is says whether it is accepted (see "Proposed and accepted"). Do not add one.
 
-## Status lifecycle
+## Proposed and accepted
 
-- **proposed**: written but not yet agreed. May change during discussion.
-- **accepted**: agreed. This is the current decision of record. May or may not be implemented yet — implementation state is tracked in the corresponding `plans/` entry, not here.
+- **Proposed**: not yet on the trunk. The ADR is on its own branch (the branch that adds it), and in that branch's pull request once one is open. It may change during review.
+- **Accepted**: on the trunk. It is the current decision of record, and it stays accepted while a revision of it is proposed on another branch. It may or may not be implemented yet. Implementation state is tracked in the corresponding `plans/` entry, not here.
+- **The human's merge is the act of accepting.** The merge commit records who accepted and when. There is nothing to set or flip.
+- **Not accepting** is either asking for changes, after which work continues on the branch, or closing the pull request unmerged. An ADR whose pull request is closed unmerged was not accepted and is no longer proposed. It never reaches the trunk.
 
 A decision that is reversed outright is deleted, not marked. The commit that deletes it says why.
 
@@ -55,7 +56,7 @@ An ADR is not frozen at merge. When the answer to its question changes, edit it 
   The value is the repository-relative path of the ADR. The commit body says, in sentences, what changed and why. Trailer and body are both mandatory.
 - When a revision reverses an adopted path, add an entry to the Alternatives section summarising the reversal: what was previously decided and why it was reversed. That is what stops the next author retrying it; the full prior text is in history.
 - On the same branch, every plan in the tree whose `adr:` field names this ADR is either revised to match or set to `deferred` with a reason naming the revision. No plan targets a decision that has changed under it.
-- `Revises` is for changes to what an accepted ADR decides. A typo fix carries no trailer, and nor does an edit to a `proposed` ADR, which is still being drafted.
+- `Revises` is for changes to what an accepted ADR decides. A typo fix carries no trailer, and nor does an edit made on the ADR's own branch before it merges, which is still drafting.
 
 ## The introducing commit
 
