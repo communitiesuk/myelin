@@ -15,7 +15,7 @@ Related: `plans/0011-stage-reviews.md` (ADR 0008), implemented after this one.
 
 ## Steps
 
-The trunk is `dev` (resolved by `git-workflow`; `workflow.trunk` is unset). Branching, the `Derives-From: plans/0010-remove-adr-status.md` trailer on the implementation branch's first commit, and landing all follow `git-workflow`. The plans skill puts two commits in fixed places. The first implementation change flips this plan's `status` from `draft` to `in-progress` in the same commit. The commit in Step 7 deletes this plan. Nothing else here fixes commit boundaries.
+The trunk is `dev` (resolved by `git-workflow`; `workflow.trunk` is unset). All of Steps 1 to 7 are done on one implementation branch, cut from `dev`, and land in one merge. Branching, the `Derives-From: plans/0010-remove-adr-status.md` trailer on the implementation branch's first commit, and landing all follow `git-workflow`. The plans skill puts two commits in fixed places. The first implementation change flips this plan's `status` from `draft` to `in-progress` in the same commit. The commit in Step 7 deletes this plan. Nothing else here fixes commit boundaries.
 
 No commit made under this plan carries a `Revises` trailer. None of these edits changes what any ADR decides.
 
@@ -67,7 +67,7 @@ prints exactly eight lines: seven `-status: accepted` and one `-status: proposed
 `evals/scenario-0/task.md`:
 
 - Delete the line `status: accepted` (line 18) from the fixture ADR `docs/adr/0001-which-database.md`.
-- In the section ``## The existing record: `docs/adr/0001-which-database.md` ``, after the sentence ending `already exists in the project with the content below.`, insert:
+- In the section ``## The existing record: `docs/adr/0001-which-database.md` ``, insert this as a new sentence immediately after the sentence ending `already exists in the project with the content below.`, in the same paragraph:
 
   ```markdown
   The record was accepted and has been on the project's main branch for some time.
@@ -115,7 +115,7 @@ Check:
 ```sh
 for f in evals/scenario-0/criteria.json evals/scenario-1/criteria.json; do jq -e . "$f" >/dev/null && echo "$f ok"; done
 jq '.checklist | length' evals/scenario-1/criteria.json        # 12
-grep -nE 'title, status|status value|status field is set|status validity|proposed or accepted|three-field' evals/scenario-0 evals/scenario-1 -r   # no output
+grep -rnE 'title, status,? and date|status value|status field is set|status validity|proposed or accepted|three-field' evals/scenario-0 evals/scenario-1   # no output
 grep -n '^status:' evals/scenario-0/task.md                    # no output
 grep -nE 'status|as `accepted`' evals/git-workflow-*/task.md   # no output
 grep -nE '^status: (proposed|accepted)' evals/git-workflow-*/setup.sh   # no output
@@ -180,7 +180,7 @@ Before writing a plan, verify a corresponding ADR exists in `docs/adr/` and is a
 with
 
 ```markdown
-Before writing a plan, verify a corresponding ADR exists in `docs/adr/`, either accepted (on the trunk) or proposed (on its own branch, with that branch's pull request open). Accepted is better. An ADR carries no status field; where it is says which (see the `adr` skill). `git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md` succeeds if and only if the ADR is on the trunk. An ADR whose pull request was closed unmerged is neither. Treat it as absent. If no ADR exists:
+Before writing a plan, verify a corresponding ADR exists in `docs/adr/`, either accepted (on the trunk) or proposed (on its own branch, the branch that adds it, whether or not its pull request is open yet). Accepted is better. An ADR carries no status field; where it is says which (see the `adr` skill). `git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md` succeeds if and only if the ADR is on the trunk. An ADR whose pull request was closed unmerged is neither proposed nor accepted; treat it as absent. If no ADR exists:
 ```
 
 Keep the numbered list that follows unchanged. The plan frontmatter's own `status` field (`draft` | `in-progress` | `deferred`) is a plan's status, not an ADR's, and does not change.
@@ -189,7 +189,8 @@ Check:
 
 ```sh
 grep -c 'at least `proposed`' skills/plans/SKILL.md             # 0
-grep -c 'either accepted (on the trunk) or proposed' skills/plans/SKILL.md   # 1
+grep -c 'either accepted (on the trunk) or proposed (on its own branch' skills/plans/SKILL.md   # 1
+grep -c 'git cat-file -e <trunk>:docs/adr/' skills/plans/SKILL.md           # 1
 ```
 
 ### Step 5: Update the README's status caveat
@@ -206,7 +207,7 @@ with
 Decisions in `docs/adr/` on the trunk are the current line
 ```
 
-Leave the rest of the paragraph alone. Also leave lines 44 and 56 ("an accepted ADR", "the accepted ADR"): they stay true when accepted means "on the trunk".
+Leave the rest of the paragraph alone. Also leave lines 44 and 56 ("an accepted ADR", "the accepted ADR").
 
 Check: `grep -c 'marked `accepted`' README.md` prints `0`.
 
@@ -222,12 +223,12 @@ Leave the following alone:
 
 - `proposed` used as a verb about pull requests in `skills/git-workflow/` (the `SKILL.md` exit-code 3 text, `references/RULES.md`, `scripts/git-workflow`, `scripts/tests/land.sh`).
 - The `status` fields of discovery notes and plans.
-- The narrative mentions in `docs/discovery/0003-escalation-and-orchestration.md` (line 138) and `docs/discovery/0004-skill-freshness-and-distribution.md` (line 214).
+- Narrative mentions of status in `docs/discovery/`.
 - `plans/0007-history-based-artefact-numbering.md`.
 
 ### Step 7: Complete the plan
 
-Delete `plans/0010-remove-adr-status.md` in the final commit on the last implementation branch. That commit carries this trailer:
+Delete `plans/0010-remove-adr-status.md` in the final commit on the implementation branch. That commit carries this trailer:
 
 ```
 Completes: plans/0010-remove-adr-status.md
@@ -237,7 +238,7 @@ Its body says, in sentences, what the plan produced: the ADRs lost their `status
 
 ## Verification
 
-Run these on the implementation branch before landing, with `RANGE=dev..HEAD` and `DIFF=dev...HEAD`. After landing, run them again with `M` set to the merge commit, `RANGE=M^1..M^2` and `DIFF=M^1...M^2`. Every check reads the tree or history, so deleting the plan file in Step 7 removes no evidence.
+All the work is on the single implementation branch, so these ranges cover all of it. Run these checks on that branch before landing, with `RANGE=dev..HEAD` and `DIFF=dev...HEAD`. After landing, run them again with `M` set to the merge commit, `RANGE=M^1..M^2` and `DIFF=M^1...M^2`. Every check reads the tree or history, so deleting the plan file in Step 7 removes no evidence.
 
 1. Every ADR's frontmatter is exactly `title` and `date`. The loop in Step 1 prints `title date` for every file in `docs/adr/`.
 2. The ADR edits removed the status lines and nothing else. `git diff -U0 $DIFF -- docs/adr/ | grep -E '^[-+]' | grep -vE '^(---|\+\+\+) '` prints exactly eight lines: seven `-status: accepted` and one `-status: proposed`.
@@ -247,7 +248,7 @@ Run these on the implementation branch before landing, with `RANGE=dev..HEAD` an
 6. The evals no longer require or instruct a status field and still parse. The Step 2 checks pass, including `tessl eval lint evals/` printing `9 scenarios valid`.
 7. The README caveat no longer refers to a status. The Step 5 check passes.
 8. The sweep in Step 6 prints exactly the six fixture lines listed there.
-9. The plan is complete. `test ! -e plans/0010-remove-adr-status.md` succeeds on the trunk, and `git log dev --format='%(trailers:key=Completes,valueonly)' | grep -x 'plans/0010-remove-adr-status.md'` prints one line.
+9. The plan is complete. Before landing: `test ! -e plans/0010-remove-adr-status.md` succeeds on the branch, and `git log $RANGE --format='%(trailers:key=Completes,valueonly)' | grep -x 'plans/0010-remove-adr-status.md'` prints one line. After landing only: `git cat-file -e dev:plans/0010-remove-adr-status.md` fails, and `git log dev --format='%(trailers:key=Completes,valueonly)' | grep -x 'plans/0010-remove-adr-status.md'` prints one line.
 
 ## Progress notes
 
