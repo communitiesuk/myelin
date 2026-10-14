@@ -106,7 +106,11 @@ Concrete shape of the mechanism:
   moves the project from "a plugin composed of skills" toward "a
   bespoke agent harness" before we have evidence that the underlying
   idea of artifact-embedded directives works. Parked as a follow-up if
-  the cheaper mechanism shows signal.
+  the cheaper mechanism shows signal. Since 2026-10-14 the project has
+  committed to moving beyond a plugin composed of skills, and ADR 0008
+  uses subagents to draft and review artefacts. That is not evidence
+  about directives: the drift question here is still open, and the
+  directive mechanism stands.
 - **Structured re-read protocol** ("re-open plan.md at each
   step"). Effectively subsumed by per-step directives — the wrapper
   block being at each code step is functionally a mandate to
