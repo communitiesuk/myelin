@@ -80,14 +80,20 @@ session, goes through the summariser and confirmation like any
 conversation. With neither a labelled summary nor a human to confirm
 one, the agent stops and asks.
 
-When no human is available, an escalation, or a High finding still
-open after 3 rounds, makes the agent stop and report it, as it stops
-and asks when there is no summary.
+With no human available, the agent stops and reports at the point
+where it would surface an escalation or a High still open after 3
+rounds: for an ADR, once the loop has finished; for a plan, at the
+decision point of the round that raised it.
 
 ### Rounds
 
 Each round runs a fresh drafter and a fresh reviewer, then the parent
 decides. No subagent is resumed from an earlier round.
+
+A round is a draft or revision by a fresh drafter followed by a
+review by a fresh reviewer. Round 1 is the first draft and its
+review. A High found in round N is fixed by round N+1's drafter and
+confirmed fixed or reopened by round N+1's reviewer.
 
 - **Drafter.** Gets the upstream and, after the first round, the
   current draft and the decisions recorded in earlier rounds. It
@@ -96,25 +102,36 @@ decides. No subagent is resumed from an earlier round.
   decisions, so it checks the draft against settled decisions rather
   than flagging them. It surfaces its findings and exits.
 - **Parent.** Once both have reported, decides on both lists together,
-  in one place, and records the decisions in the round's commit. They
-  reach the next drafter as the recorded output of that round.
+  in one place, and records the decisions in the round's record, in
+  the next commit on the branch (see the review record below). The
+  decisions recorded in earlier rounds reach later drafters and
+  reviewers as those rounds' output.
 
 The parent makes no decisions before the first draft.
 
+When the loop stops with issues or Medium or Low findings the parent
+decided to act on, a fresh drafter applies them in a closing pass. It
+gets the upstream, the draft and the recorded decisions. The pass is
+not a round and is not re-reviewed; the parent checks that the change
+matches the recorded decisions.
+
 **The reviewer is independent.** It gets the artefact, its upstream
 sources and the recorded decisions, never the drafter's or the
-parent's reasoning. Recorded decisions are a round's output, not
-reasoning.
+parent's reasoning. The record of a decision, including a short
+reason for not acting on a finding, is a round's output and goes to
+later drafters and reviewers. The parent's deliberation beyond the
+record does not.
 
 ### The parent owns the loop
 
 Once the summary is confirmed, the parent decides on every issue and
-finding, and has the draft revised and re-reviewed without asking the
-human. Choices the summary did not settle are the parent's, because
-they revise nothing the human has agreed or seen; the parent makes
-them at a round's decision point, like any other. It has each Medium
-or Low finding fixed, in a later round or the closing pass below, or
-records in the review record why not. The human next sees the
+finding, and has the draft revised, and re-reviewed where the stop
+rule requires, without asking the human. Choices the summary did not
+settle are the parent's, because they revise nothing the human has
+agreed or seen; the parent makes them at a round's decision point,
+like any other. It has each Medium or Low finding fixed, in a later
+round or the closing pass above, or records in the review record why
+not. The human next sees the
 artefact drafted and reviewed, together with that record.
 
 ### Each stage checks what it adds
@@ -147,18 +164,8 @@ checked.
 **The round limit and the stop criteria are temporary**, to be
 revisited with evidence from the run logs.
 
-A round is a draft or revision by a fresh drafter followed by a
-review by a fresh reviewer. Round 1 is the first draft and its
-review. A High found in round N is fixed by round N+1's drafter and
-confirmed fixed or reopened by round N+1's reviewer. Only High
-findings trigger another round. Stop after a round whose review
-leaves no High open. Run at most 3 rounds, counting the first.
-
-When the loop stops with Medium or Low findings the parent decided to
-fix, a fresh drafter applies them in a closing pass. It gets the
-upstream, the draft and the recorded decisions. The pass is not a
-round and is not re-reviewed; the parent checks that the change
-matches the recorded decisions.
+Only High findings trigger another round. Stop after a round whose
+review leaves no High open. Run at most 3 rounds, counting the first.
 
 ### Escalation scope
 
@@ -166,7 +173,9 @@ The parent surfaces a finding to the human only when acting on it
 would change something the human has already agreed: the confirmed
 summary, or an accepted ADR. A plan review that shows the ADR needs
 revising is the example. It also surfaces any High finding still open
-after 3 rounds. The loop does not resolve these itself.
+after 3 rounds. The loop does not resolve these itself; with no human
+available, the agent stops and reports them as "When no human can
+confirm" sets out.
 
 Escalations are batched. A drafter or reviewer that finds one carries
 on to the end of its task. The parent collects every escalation from
@@ -178,9 +187,12 @@ the next round or the landing, until the human answers.
 
 ### The review record is in git
 
-Each round's commit on the artefact's branch carries, in its body,
-the issues and findings and the parent's decision on each, so the
-record is in git history whatever the host. It carries no trailer.
+Each round's record, the issues and findings and the parent's
+decision on each, goes in the body of the next commit on the
+artefact's branch: the next round's revision or the closing pass, or
+a commit of its own if nothing follows. The closing pass's commit
+records the parent's check. So the record is in git history whatever
+the host. It carries no trailer.
 Where there is a pull request, its description repeats the record, so
 a future merge hook can read it.
 
@@ -203,8 +215,9 @@ the shape of ADR 0003's git-host modules.
   dialogue out itself, unfiltered. This is a degraded mode: it costs
   output tokens, copies verbatim poorly, and risks the parent leaving
   things out.
-- The summary records which mode produced it, or that it was
-  supplied labelled.
+- The summary records which mode produced it. For a labelled summary,
+  the commit that carries it records that it was supplied labelled,
+  outside the summary text; the labelled text itself is never edited.
 - Anything the parent works out has to be stated in the conversation,
   because the summariser sees only the dialogue.
 
@@ -268,7 +281,8 @@ the shape of ADR 0003's git-host modules.
 - ADR 0003's rationale for a human landing an ADR now names this
   review and rests on what only a human can confirm. Its rules are
   unchanged. The review in its "written and reviewed" plan merge is
-  the one this ADR defines.
+  the one this ADR defines, including a closing pass checked by the
+  parent, not re-reviewed.
 - When an ADR is accepted, and how that is recorded, is ADR 0009's:
   the human's merge. This ADR requires only that review finishes
   before the human is asked to accept, which is no later than the
@@ -277,10 +291,12 @@ the shape of ADR 0003's git-host modules.
   The review loop now has a bounded escalation route of its own; the
   general route stays deferred.
 - Every ADR written under this loop has a written upstream: its
-  discovery note, or else
-  the confirmed summary in its introducing commit. The summary adds
-  no edge to ADR 0004's graph, and ADR 0004's trailer table is
-  unchanged.
+  discovery note, or else the confirmed summary in its introducing
+  commit. The summary adds no edge to ADR 0004's graph, and
+  ADR 0004's trailer table is unchanged.
+- A revision of an accepted ADR carries `Revises` on its first
+  revising commit; later round commits on the same revision branch
+  are drafting of that revision and carry no trailer.
 - Each round costs at least two subagent runs, a fresh drafter and a
   fresh reviewer.
 - Open, for the orchestration work: what else a run should record as
