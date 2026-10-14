@@ -52,8 +52,7 @@ both surface, in rounds, until the stop rule below is met.
 - **Plan.** Upstream is the ADR. Drafter writes the plan, the review
   loop runs, the plan lands.
 - **ADR.** Upstream is a confirmed summary (or discovery note) plus
-  any changes requested at acceptance, each recorded in its own
-  commit quoting the accepted text. Parent → summariser subagent →
+  any changes requested at acceptance. Parent → summariser subagent →
   human confirms the summary → drafter → review loop → human
   acceptance.
   - The summariser's one task is to decide which parts of the
@@ -64,9 +63,10 @@ both surface, in rounds, until the stop rule below is met.
     changes in it after confirmation is confirmed again before
     drafting.
   - The confirmed summary is the ADR's written upstream, even where
-    there is no discovery note. The drafter works from it and what the
-    rounds below add, nothing else, and the reviewer checks the ADR
-    against it: does the ADR say what the human decided?
+    there is no discovery note. The drafter works from the upstream
+    and the decisions recorded in rounds, nothing else, and the
+    reviewer checks the ADR against the upstream: does the ADR say
+    what the human decided?
   - The review loop finishes before the human is asked to accept.
   - The summary lives in the body of the ADR's introducing commit.
 
@@ -91,13 +91,15 @@ the round that raised it.
 
 A round is a draft or revision by a fresh drafter, then a review by
 a fresh reviewer, then the parent's decisions. No subagent is resumed
-from an earlier round. Round 1 is the first draft and its review. A
-High found in round N is fixed by round N+1's drafter and confirmed
-fixed or reopened by round N+1's reviewer.
+from an earlier round. Round 1 is the first draft (or, after a
+restart, the revision applying the change) and its review. A High
+found in round N is fixed by round N+1's drafter and confirmed fixed
+or reopened by round N+1's reviewer.
 
-- **Drafter.** Gets the upstream and, after the first round, the
-  current draft and the decisions recorded in earlier rounds. It
-  drafts or revises, surfaces the issues it finds, and exits.
+- **Drafter.** Gets the upstream and, after the first draft, the
+  current draft and the decisions recorded in earlier rounds,
+  including any earlier loop. It drafts or revises, surfaces the
+  issues it finds, and exits.
 - **Reviewer.** Gets the upstream, the draft and the same recorded
   decisions, so it checks the draft against settled decisions rather
   than reopening them, except that it may flag a recorded parent
@@ -119,9 +121,11 @@ matches the recorded decisions.
 
 For an ADR, changes requested at acceptance are the human's
 decisions and join the upstream. Where one differs from the confirmed
-summary it takes precedence, and a reviewer does not flag it as
-contradicting the upstream. A change requested at acceptance restarts
-the loop at round 1, under the same rules.
+summary or from an earlier change, the later one takes precedence,
+and a reviewer does not flag it as contradicting the upstream. A
+change requested at acceptance restarts the loop at round 1, under
+the rules above (round limit, stop rule, escalation and closing
+pass). When it finishes, the human is asked to accept again.
 
 **The reviewer is independent.** It gets the artefact, its upstream
 sources and the recorded decisions, never the drafter's or the
@@ -137,10 +141,11 @@ finding, except those Escalation scope sends to the human, and has
 the draft revised, and re-reviewed where the stop rule requires,
 without asking the human. Choices the summary did not settle are the
 parent's, because they revise nothing the human has agreed or seen;
-the parent makes them at a round's decision point, like any other. It has each Medium or Low
-finding fixed, in a later round or the closing pass above, or records
-in the review record why not. The human next sees the artefact
-drafted and reviewed, together with that record.
+the parent makes them at a round's decision point, like any other.
+It has each Medium or Low finding fixed, in a later round or the
+closing pass above, or records in the review record why not. The
+human next sees the artefact drafted and reviewed, together with that
+record.
 
 ### Each stage checks what it adds
 
@@ -268,14 +273,7 @@ the shape of ADR 0003's git-host modules.
 - **The parent appends to a dialogue log every turn.** Rejected: it
   depends on per-turn model discipline, the drift problem of ADR 0001.
   **Waiting for a cross-harness standard**: none is reliable today.
-- **The parent decides before the first draft, and resumes the same
-  drafter between rounds.** How the loop first ran in practice: this
-  ADR as first written had the drafter work from the upstream "and
-  nothing else", and gave the parent's decisions no time or route.
-  Rejected for the rounds above, which put decisions at one fixed
-  point after the issues are in, give each subagent one small task,
-  and stop any drafter carrying reasoning forward from earlier
-  rounds.
+- **Deciding before drafting; resuming drafters.** Rejected: Rounds.
 - **The parent's decisions as part of the upstream, presented before
   drafting, with the reviewer flagging any that contradict the
   summary.** Not chosen as a whole: overtaken by the round structure
@@ -288,11 +286,7 @@ the shape of ADR 0003's git-host modules.
   doubtful where evals are one turn. **Rewriting the affected evals to
   score the summary and the stop**: honest about the behaviour, but
   loses their coverage of ADR drafting.
-- **For changes requested at acceptance: a closing pass, not
-  reviewed; or a reviewed round counted against the rounds left.**
-  Not chosen: the first leaves the change unreviewed; the second was
-  replaced by the restart, because its exceptions kept producing edge
-  cases.
+- **Acceptance changes as a closing pass or counted round.** Restart.
 
 ## Consequences
 
@@ -309,15 +303,16 @@ the shape of ADR 0003's git-host modules.
 - When an ADR is accepted, and how that is recorded, is ADR 0009's:
   the human's merge. This ADR requires only that review finishes
   before the human is asked to accept, which is no later than the
-  merge.
+  merge, and that a change requested at acceptance restarts the
+  loop.
 - ADR 0006 deferred escalate-don't-thrash to the orchestration work.
   The review loop now has a bounded escalation route of its own; the
   general route stays deferred.
 - Every ADR written under this loop has a written upstream: its
   discovery note, or else the confirmed summary in its introducing
-  commit, plus any changes requested at acceptance, each in its own
-  commit quoting the accepted text. The summary adds no edge to ADR 0004's graph, and
-  ADR 0004's trailer table is unchanged.
+  commit, plus any changes requested at acceptance. The summary adds
+  no edge to ADR 0004's graph, and ADR 0004's trailer table is
+  unchanged.
 - A revision of an accepted ADR carries `Revises` on its first
   revising commit; later round commits on the same revision branch
   are drafting of that revision and carry no trailer.
