@@ -205,9 +205,10 @@ the shape of ADR 0003's git-host modules.
   review and rests on what only a human can confirm. Its rules are
   unchanged. The review in its "written and reviewed" plan merge is
   the one this ADR defines.
-- When an ADR's status flips to `accepted` stays with #66. This ADR
-  requires only that review finishes before the human is asked to
-  accept, which is no later than the merge.
+- When an ADR is accepted, and how that is recorded, is ADR 0009's:
+  the human's merge. This ADR requires only that review finishes
+  before the human is asked to accept, which is no later than the
+  merge.
 - ADR 0006 deferred escalate-don't-thrash to the orchestration work.
   The review loop now has a bounded escalation route of its own; the
   general route stays deferred.
