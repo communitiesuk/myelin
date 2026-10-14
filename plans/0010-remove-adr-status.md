@@ -51,12 +51,14 @@ for f in docs/adr/*.md; do printf '%s: ' "$f"; awk 'NR==1&&/^---$/{f=1;next} f&&
 prints `title date` for all nine files, and
 
 ```sh
-git diff -U0 -- docs/adr/ | grep -E '^[-+]' | grep -vE '^(---|\+\+\+) '
+git diff -U0 dev...HEAD -- docs/adr/ | grep -E '^[-+]' | grep -vE '^(---|\+\+\+) '
 ```
 
-prints exactly eight lines: seven `-status: accepted` and one `-status: proposed`.
+run after committing, prints exactly eight lines: seven `-status: accepted` and one `-status: proposed`.
 
 ### Step 2: Update the evals that require or instruct a `status` field
+
+The line numbers in Steps 2 and 3 and Verification 4 are those of `dev` when this plan was written. If `dev` has changed these files since, re-derive the line numbers from the quoted text.
 
 `evals/scenario-0/criteria.json`:
 
@@ -139,10 +141,13 @@ Change only the three places listed here, in the "Frontmatter", "Status lifecycl
    - There is no `status` field. Where an ADR is says whether it is accepted (see "Proposed and accepted"). Do not add one.
    ```
 2. **The `## Status lifecycle` section.** Rename the heading to `## Proposed and accepted`. Replace its two `proposed`/`accepted` bullets with the following text, and keep the existing closing paragraph ("A decision that is reversed outright is deleted, not marked. The commit that deletes it says why."):
-   - **Proposed**: not yet on the trunk. The ADR is on its own branch (the branch that adds it) and that branch's open pull request. It may change during review.
+
+   ```markdown
+   - **Proposed**: not yet on the trunk. The ADR is on its own branch (the branch that adds it), and in that branch's pull request once one is open. It may change during review.
    - **Accepted**: on the trunk. It is the current decision of record, and it stays accepted while a revision of it is proposed on another branch. It may or may not be implemented yet. Implementation state is tracked in the corresponding `plans/` entry, not here.
    - **The human's merge is the act of accepting.** The merge commit records who accepted and when. There is nothing to set or flip.
    - **Not accepting** is either asking for changes, after which work continues on the branch, or closing the pull request unmerged. An ADR whose pull request is closed unmerged was not accepted and is no longer proposed. It never reaches the trunk.
+   ```
 3. **Revising an ADR section, last bullet.** Replace
 
    ```markdown
@@ -209,7 +214,7 @@ Decisions in `docs/adr/` on the trunk are the current line
 
 Leave the rest of the paragraph alone. Also leave lines 44 and 56 ("an accepted ADR", "the accepted ADR").
 
-Check: `grep -c 'marked `accepted`' README.md` prints `0`.
+Check: ``grep -c 'marked `accepted`' README.md`` prints `0`.
 
 ### Step 6: Sweep for remaining ADR-status references
 
@@ -221,7 +226,7 @@ This prints exactly the six fixture lines that Step 2 leaves alone: `evals/plan-
 
 Leave the following alone:
 
-- `proposed` used as a verb about pull requests in `skills/git-workflow/` (the `SKILL.md` exit-code 3 text, `references/RULES.md`, `scripts/git-workflow`, `scripts/tests/land.sh`).
+- `proposed` used as a verb about pull requests in `skills/git-workflow/` (the `SKILL.md` exit-code 3 text, `scripts/git-workflow`, `scripts/tests/land.sh`).
 - The `status` fields of discovery notes and plans.
 - Narrative mentions of status in `docs/discovery/`.
 - `plans/0007-history-based-artefact-numbering.md`.
