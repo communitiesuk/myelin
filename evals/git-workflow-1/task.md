@@ -21,7 +21,7 @@ the choice — sample the heartbeats at the ingest edge now, or wait on a
 two-quarter firmware rollout — and stopped there, because recording the
 decision was someone else's job.
 
-That decision has now been taken. The team will **sample 3.x firmware
+Confirmed summary: the team will **sample 3.x firmware
 heartbeats at the ingest edge, keeping one in twelve**, rather than wait
 for the firmware rollout. One in twelve leaves a heartbeat roughly every
 minute, which is inside the tolerance both runbooks need for liveness,
