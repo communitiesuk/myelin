@@ -1,6 +1,6 @@
 ---
 title: Review ADRs and plans before the next stage consumes them
-status: draft
+status: in-progress
 adr: 0008
 date: 2026-10-14
 deferred_reason: null
@@ -1117,4 +1117,14 @@ scenarios.
   then fail a correct run. adr-0's closing-pass criterion requires a
   `Closing pass.` commit instead. The closing pass is therefore
   exercised only when a review raises something actionable, which is
-  a known coverage gap to watch in the run logs.
+  a known coverage gap to watch in the run logs. A fresh drafter then
+  made adr-0's criterion conditional: a `Closing pass.` commit if the
+  last record acts on anything, otherwise `Next: stop`.
+- 2026-10-15, Step 0: all four checks as expected (Completes count 1,
+  exit=1, accepted, 55 tests, 0 failed). The eval runner's solution
+  directory is not reliably a git repository: run
+  `01a120c6-39f6-721a-9e45-99f7d3bbf6dd`'s tasks for scenario-2,
+  scenario-3, scenario-4 and skill-forge-0 tell the agent to
+  initialise one "if one does not already exist", and scenario-0 and
+  scenario-1 do not mention git. The shared block's rule for a path
+  outside any git repository therefore applies there.
