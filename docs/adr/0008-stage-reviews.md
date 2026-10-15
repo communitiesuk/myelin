@@ -37,7 +37,7 @@ extraction on the session that produced this ADR gave 31 KB of
 dialogue from a 1.1 MB transcript.
 
 This revision was prompted by plan 0011's adr-1 eval, which tested
-the stop for an unlabelled decision with no human: the cheap model
+the stop for an unconfirmed decision with no human: the cheap model
 scored 0, then 30 after a wording fix.
 
 ## Decision
@@ -58,19 +58,18 @@ both surface, in rounds, until the stop rule below is met.
 - **ADR.** Upstream is a summary (or discovery note) plus any changes
   requested at acceptance. Parent → summariser subagent → drafter →
   review loop → human acceptance.
-  - An explicit request from the human to write the ADR, or a
-    labelled summary, starts drafting. Without either, the agent does
-    not draft but asks the human, and with no human available it
-    stops and reports. What must not happen is drafting before the
-    conversation has reached a decision, while the human is still
-    exploring. The `adr` skill's trigger, which fires only when a
+  - An explicit request from the human to write the ADR starts
+    drafting. Without one, the agent does not draft but asks the
+    human, and with no human available it stops and reports. What
+    must not happen is drafting before the conversation has reached
+    a decision, while the human is still exploring. The `adr` skill's trigger, which fires only when a
     decision is ready, and facilitated-discovery's step of asking
     whether the human is ready to decide guard against it. Neither is
     deterministic, and no prompt can be; if both fail, the result is
     an unmerged branch, not a wrong decision of record, because only
     the human merges.
-  - The summariser always runs on the conversation, unless the
-    decision is labelled (see A labelled summary). Its one task is to
+  - The summariser always runs on the conversation; in a one-turn
+    task, the conversation is the task text. Its one task is to
     decide which parts of the conversation are relevant to the ADR's
     question. The parent does not filter. The summariser's text
     reaches the drafter verbatim; the parent never edits it on its
@@ -91,21 +90,12 @@ both surface, in rounds, until the stop rule below is met.
   - The summary lives in the body of the ADR's introducing commit, or
     of a revision's first revising commit.
 
-### A labelled summary
-
-A statement labelled "Confirmed summary:" is the summary: there is no
-summariser step. The labelled text goes to the drafter verbatim, and
-the parent does not edit it. A task can supply one itself, as in a
-one-turn eval. **Only the label counts.** An unlabelled statement,
-such as "ADR: we've decided X because Y" at the start of a session,
-goes through the summariser like any conversation.
-
 ### When no human is available
 
-An explicit but unlabelled request to write the ADR goes ahead with
-no human available: the summariser runs, the drafter drafts, the
-review loop runs, and the agent opens the pull request and stops,
-with nothing merged. It does not stop and wait.
+An explicit request to write the ADR goes ahead with no human
+available: the summariser runs, the drafter drafts, the review loop
+runs, and the agent opens the pull request and stops, with nothing
+merged. It does not stop and wait.
 
 With no human available, the agent stops and reports at the point
 where it would surface an escalation (see Escalation scope): for an
@@ -219,9 +209,9 @@ escalated (see Escalation scope).
 The parent surfaces to the human:
 
 - a finding whose fix would change something the human has already
-  agreed (a labelled summary, or one the human approved, changes
-  requested at acceptance, or an accepted ADR, for example a plan
-  review that shows the ADR needs revising);
+  agreed (a summary the human approved, changes requested at
+  acceptance, or an accepted ADR, for example a plan review that
+  shows the ADR needs revising);
 - a High still open after round 3; and
 - any reviewer finding that a recorded parent decision contradicts
   the upstream.
@@ -271,9 +261,7 @@ the shape of ADR 0003's git-host modules.
   dialogue out itself, unfiltered. This is a degraded mode: it costs
   output tokens, copies verbatim poorly, and risks the parent leaving
   things out.
-- The summary records which mode produced it. For a labelled summary,
-  the commit that carries it records that it was supplied labelled,
-  outside the summary text; the labelled text itself is never edited.
+- The summary records which mode produced it.
 - Anything the parent works out has to be stated in the conversation,
   because the summariser sees only the dialogue.
 
@@ -330,18 +318,24 @@ the shape of ADR 0003's git-host modules.
   as something the human can ask for. **Reading "before it is time"
   as before the human has approved the summary**: not chosen; the
   human meant before a decision is reached.
-- **A deterministic check for the "Confirmed summary:" label.** Not
-  chosen: the agent writes the summary and could add the label
-  itself, so the check would prove a step happened, not that the
-  human confirmed anything.
+- **A "Confirmed summary:" label, whose text goes to the drafter
+  with no summariser.** This ADR as earlier revised adopted it so a
+  one-turn task, such as an eval, could supply a confirmed summary
+  under the strict confirmation gate. Reversed: that gate is gone,
+  so an explicit request starts drafting and the summariser runs on
+  whatever conversation there is; and the label was the one path
+  that skipped the summariser, which no prompt can stop a parent
+  taking by labelling its own text. Wording the human wants exact is
+  said in the conversation, which the summariser quotes. **A
+  deterministic check for the label**: not chosen, since the agent
+  could add the label itself.
 - **With no human to confirm: an unlabelled written decision counts
   as the summary, with no summariser; the eval harness answers the
   confirmation; or the affected evals score the summary and the
   stop.** Part of the earlier revision, which weighed these against
   its stop for an unlabelled decision with no human, and chose the
-  label and the stop. This revision reverses that stop, so the eval
-  options no longer arise. The label rule stands: without a marker,
-  an agent could treat a casual remark as a written decision.
+  label and the stop. This revision reverses both, so these options
+  no longer arise.
 - **For plan 0011's adr-1 failure: run it on Sonnet to find a model
   floor; one more wording attempt on the cheap model; or accept it
   as a known gap and relax the plan's gate.** Not chosen: the
