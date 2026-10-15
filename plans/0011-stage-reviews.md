@@ -1162,3 +1162,15 @@ scenarios.
   comparison cannot separate an edit's effect from this noise; the
   adr skill's 84 to 88 in Step 5 is single samples too. Evidence for
   how quality checks should be gated.
+- 2026-10-15, Step 9: four scenarios authored by an implementation
+  subagent (the first attempt was cut off by a network error after the
+  four setup.sh files; a fresh one verified and finished them). Fixture
+  checks fail in an empty directory and pass after setup.sh (plans-0
+  33/33, plans-1 31/31, adr-0 18/18, adr-1 18/18). `tessl eval lint`:
+  13 scenarios valid; each criteria.json totals 100. Choices: task
+  framing in plan-numbering-0's layout; the plans-0 fixture steps carry
+  the directive wrapper so its absence does not crowd out D1-D4;
+  "after the last record" ignores the landing merge; the parent's check
+  is the `Checked by the parent:` line the shared block prescribes;
+  adr-0's labelled block is embedded in its context for the
+  byte-for-byte comparison.

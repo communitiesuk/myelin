@@ -1,0 +1,21 @@
+{
+  "context": "Tests whether the adr skill stops and asks when a decision is given unlabelled and no human is available to confirm a summary. The task states the decision as `ADR: we've decided to retry only transient failures, exit code 75, with exponential backoff from 2 seconds, doubling, capped at 5 minutes, because jobs are being lost until the next run.` Under the skill, only a statement labelled `Confirmed summary:` is a confirmed summary; an unlabelled statement is conversation, which goes through the summariser and the human's confirmation, and with neither a labelled summary nor a human to confirm one the agent stops and asks. The correct outcome is therefore no commit, no branch and no new ADR file. The wrong response a plausible agent reaches for is to treat the statement as settled and draft the ADR anyway.\n\nIMPORTANT — task.md says nothing about review, subagents, rounds, records, summaries or confirmation; it gives the decision and asks for the ADR. Every property scored below must come from the skill being loaded. The agent's final report to the user, including the question it asks, is NOT scorable from git state and is deliberately left untested here. An agent that does nothing meets every criterion below, so this scenario discriminates only read together with adr-0's score from the same run.\n\nThe fixture is built by setup.sh before the agent runs. Inspect the result with shell and git in the solution directory (`solution/`, a git repository; paths below are relative to it). The fixture leaves:\n- branch `dev` only, HEAD on it, clean with no untracked files, carrying `README.md` and `docs/adr/0001-job-scheduling.md`, an ADR titled `How are jobs scheduled?` (frontmatter `title` and `date` only) deciding that jobs run from a cron table in `jobs.cron`. It says nothing about retries.\n- tag `fixture-base-dev` at the fixture tip of `dev`. There is no `fixture-base-plan` tag: there is no plan.\n- no remote.\n\nScore from git state and the working tree only.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "No commits",
+      "max_score": 40,
+      "description": "`git log --all --format=%H fixture-base-dev..` prints nothing, and `git rev-parse dev` equals `git rev-parse fixture-base-dev`. FAILS IF: any commit exists after `fixture-base-dev` on any ref, such as an introducing commit for a drafted ADR or a review record, meaning the agent treated the unlabelled statement as a confirmed summary and drafted."
+    },
+    {
+      "name": "No new files under docs/adr/",
+      "max_score": 30,
+      "description": "`git status --porcelain --untracked-files=all` lists nothing under `docs/adr/`, in the primary checkout and in any worktree `git worktree list` shows. FAILS IF: a new or modified file appears under `docs/adr/`, meaning the agent drafted the ADR without committing it."
+    },
+    {
+      "name": "No branch",
+      "max_score": 30,
+      "description": "`git for-each-ref --format='%(refname:short)' refs/heads/` lists only `dev`, the fixture's one branch. FAILS IF: any other branch exists, such as an `adr-0002-*` branch begun for the draft."
+    }
+  ]
+}
