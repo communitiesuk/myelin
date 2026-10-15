@@ -63,12 +63,15 @@ note exists:
    instructions, and the dialogue file's path and the ADR's question as
    its inputs. Do not summarise yourself.
 3. Show the human the summary verbatim, as the exact text the drafter
-   will receive, and ask them to confirm it. If any of it changes
-   afterwards, show the changed text and have it confirmed again
-   before drafting.
+   will receive, and ask them to confirm it. **Then stop: end your
+   turn.** Do not begin the branch, draft or commit until the human
+   has confirmed it. If any of it changes afterwards, show the changed
+   text and have it confirmed again before drafting.
 
-With neither a labelled summary nor a human to confirm one, stop and
-ask.
+A request to write the ADR is not a confirmation, and nor is a
+decision stated in the request without the label. With neither a
+labelled summary nor the human's confirmation, draft nothing: stop,
+ask, and end your turn.
 
 Anything you work out that the ADR needs must be said in the
 conversation, because the summariser sees only the dialogue.

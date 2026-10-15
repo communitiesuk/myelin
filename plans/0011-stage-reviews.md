@@ -1174,3 +1174,20 @@ scenarios.
   is the `Checked by the parent:` line the shared block prescribes;
   adr-0's labelled block is embedded in its context for the
   byte-for-byte comparison.
+- 2026-10-15, Step 10, first pass (deepseek-v4.1-flash, one run each):
+  plans-0 baseline 30, skill 100 (`01a13ef2`); plans-1 35, 100
+  (`01a13efc`); adr-0 15, 100 (`01a13f04`); adr-1 70, 0 (`01a13f0c`).
+  Regressions against the v0.3.0 medians of 100: scenario-0 94
+  (`01a13f1b`), scenario-1 99 (`01a13f26`), git-workflow-0 100
+  (`01a13f3a`), git-workflow-1 100 (`01a13f4a`), plan-numbering-0 100
+  (`01a13f5f`); none below 90. Runs cost 28 to 67 credits each, not
+  the 10 to 20 this plan estimated.
+- adr-1 failed with the skill: given an unlabelled decision and no
+  human, the agent ran the whole loop (5 commits on an ADR branch in a
+  worktree) instead of stopping. The fixture is sound; the skill told
+  the agent to ask for confirmation but never to end its turn, and the
+  task's "Write the ADR" pulled the other way. Revised during
+  implementation, with the human's agreement: the adr skill's
+  confirmation step now says "Then stop: end your turn", and that a
+  request to write the ADR, or an unlabelled decision, is not a
+  confirmation. adr-1 and adr-0 are re-run on it.
