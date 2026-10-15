@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# claude-code-dialogue — the Claude Code adapter that writes a session's
+# dialogue for the summariser subagent (ADR 0008).
+#
+# Usage:
+#   bash claude-code-dialogue <session-id> <project-path> <out-file>
+#   bash claude-code-dialogue --help
+#
+# Locates the session transcript at
+#   ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/<encoded>/<session-id>.jsonl
+# where <encoded> is <project-path> with every character outside
+# [A-Za-z0-9] replaced by "-". If that file does not exist, it uses the
+# single file matching projects/*/<session-id>.jsonl under the same
+# root; none, or more than one, is "not found".
+#
+# Writes <out-file> in the format of references/dialogue.md, with
+# "Mode: adapter (claude-code)" on line 2: human messages (including
+# those the human sent while a turn was running), assistant prose, and
+# questions with their answers, in conversation order. Tool calls and
+# output, reasoning, subagent (sidechain) entries and harness-injected
+# entries are left out.
+#
+# Exit codes:
+#   0  written
+#   1  transcript not found or unreadable, or jq missing; nothing is
+#      written to <out-file>, so the caller falls back
+#   2  usage error
+#
+# The transcript format is internal to Claude Code and undocumented, and
+# may change between versions. The fixtures were modelled on
+# "2.1.296 (Claude Code)".
+set -u
+echo "claude-code-dialogue: not implemented" >&2
+exit 99
