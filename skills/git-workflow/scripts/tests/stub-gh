@@ -10,6 +10,8 @@
 # failure — so a caller that still passes the flag reproduces the
 # worktree-cleanup bug. "repo view" reports merge settings from
 # GH_STUB_SQUASH.
+# "pr view" reports an open pull request, printing its URL, only when
+# GH_STUB_PR=open; it ignores --json and --jq. "pr edit" succeeds.
 set -u
 printf '%s\n' "$*" >> "${GH_STUB_LOG:?}"
 case "${1:-} ${2:-}" in
@@ -46,5 +48,9 @@ case "${1:-} ${2:-}" in
     esac
     exit 0 ;;
   "repo view") printf '{"squashMergeAllowed":%s,"rebaseMergeAllowed":false}\n' "${GH_STUB_SQUASH:-false}"; exit 0 ;;
+  "pr view")
+    [ "${GH_STUB_PR:-none}" = open ] || { echo "no pull requests found for branch" >&2; exit 1; }
+    echo "https://github.com/example/repo/pull/7"; exit 0 ;;
+  "pr edit") exit 0 ;;
   *) echo "stub gh: unsupported: $*" >&2; exit 1 ;;
 esac
