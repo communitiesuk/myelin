@@ -1140,3 +1140,9 @@ scenarios.
   missed two of the human's messages. It also kept `isMeta` entries
   (subagent hand-backs) as `### Human`. Test 5 now spares a human's
   queued message and test 11 covers it.
+- 2026-10-15, Step 2 smoke test on this session's transcript (Claude
+  Code 2.1.296): exit=0; line 2 `Mode: adapter (claude-code)`; 0
+  tool or thinking lines. Transcript 5,233,502 bytes, dialogue 109,627
+  bytes, 37 `### Human` blocks. The human's mid-turn message is
+  present (1); subagent hand-backs are absent (0). shellcheck reports
+  only SC2016 on the single-quoted jq filter, which is intended.
