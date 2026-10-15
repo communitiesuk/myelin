@@ -4,8 +4,6 @@
 
 TechCorp's Python Flask REST API is being abused by a handful of clients sending far more requests than expected, degrading response times for all users. After reviewing the options, the engineering team has settled on token bucket rate limiting backed by Redis: each client IP address gets a configurable bucket of tokens that refills at a fixed rate; once the bucket empties, the API returns HTTP 429 Too Many Requests with a `Retry-After` header. The Redis connection URL and per-route token bucket parameters (capacity and refill rate) will be configurable via environment variables.
 
-Confirmed summary: the API is rate limited per client IP address with a token bucket backed by Redis. A client whose bucket is empty gets HTTP 429 Too Many Requests with a `Retry-After` header. The Redis connection URL and each route's bucket capacity and refill rate come from environment variables.
-
 Redis is already deployed and available in the infrastructure. The codebase is a standard Python Flask application; no rate limiting code exists yet. The team is ready to begin implementation and wants everything set up to move quickly.
 
 ## Output Specification

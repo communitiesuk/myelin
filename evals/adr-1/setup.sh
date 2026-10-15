@@ -3,34 +3,33 @@
 # Fixture for evals/adr-1.
 #
 # The same repository as adr-0: a job runner with one accepted ADR, on
-# `dev`, clean, and no remote. The task gives the same decision, but
-# unlabelled ("ADR: we've decided ..."). Under the adr skill an
-# unlabelled statement is conversation: it goes through the summariser
-# and the human's confirmation, and with no human to confirm a summary
-# the agent stops and asks. Every criterion scores what the agent did
-# NOT do, so this scenario discriminates only read together with adr-0.
+# `dev`, clean, and no remote. The task gives the same decision as a
+# plain sentence ("ADR: we've decided ...") and asks for the ADR. Under
+# the adr skill an explicit request starts drafting even with no human:
+# the summariser runs on the task text, the drafter drafts, the review
+# loop runs, and the agent stops at the pull-request step.
 #
-#   - `dev` is tagged `fixture-base-dev`, so "no commits"
-#     (`git log --all fixture-base-dev..` empty) and "dev unchanged" are
-#     decidable. An agent that drafts anyway leaves a commit and fails.
-#   - HEAD on `dev`, clean, with no untracked files, so any new file
-#     under `docs/adr/` in `git status` is the agent's; an agent that
-#     drafts without committing fails there.
-#   - `dev` is the only branch, so any branch the agent begins shows up
-#     in `git for-each-ref refs/heads/`.
-#   - ADR 0001 answers a different question (when jobs run), so nothing
-#     in the repository already settles retries and lets the agent skip
-#     the confirmation.
-#   - No remote, as in adr-0, so the two scenarios differ only in the
-#     label.
+#   - `dev` is tagged `fixture-base-dev`, so "dev unchanged" and "the
+#     first commit after the fork point" are decidable. An agent that
+#     merges its ADR into `dev` fails the first criterion.
+#   - HEAD on `dev`, clean, with no untracked files, so every commit,
+#     branch and file the scorer finds is the agent's.
+#   - `dev` is the only branch, so the agent's `adr-0002-*` branch is
+#     the one `git for-each-ref` finds.
+#   - ADR 0001 answers a different question (when jobs run), so the new
+#     ADR is numbered 0002 and nothing in the repository already
+#     settles retries.
+#   - No remote, as in adr-0: the branch cannot be proposed as a pull
+#     request, so git-workflow keeps it and stops; the "branch still
+#     exists and `git remote` prints nothing" criterion fails if the
+#     agent deletes the branch or invents a remote.
 #   - ADR frontmatter has `title` and `date` only, as in adr-0, so the
-#     two fixtures are identical and only the task's label differs.
-#   - README.md says ADRs live under `docs/adr/`, so an agent that
-#     drafts writes there and the `docs/adr/` status criterion sees it.
-#   - A fixed local identity (`Ledger Maintainers`), so an agent that
-#     drafts can commit with no global git identity, and its commit
-#     shows up in `git log --all fixture-base-dev..` rather than
-#     failing silently.
+#     two fixtures are identical and only the task's wording differs.
+#   - README.md says ADRs live under `docs/adr/`, so the location comes
+#     from the repository, not the task.
+#   - A fixed local identity (`Ledger Maintainers`), so the agent's
+#     commits succeed with no global git identity and the commit-based
+#     criteria (the summary markers, the record) can be scored.
 #
 # There is deliberately no `fixture-base-plan` tag: there is no plan.
 # Nothing here is decoration.

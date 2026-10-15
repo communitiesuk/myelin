@@ -44,7 +44,7 @@
     },
     {
       "name": "Revising commit carries trailer and reason",
-      "description": "If the agent committed its work, the commit that changes the decision ends with a trailer of the form 'Revises: docs/adr/0001-which-database.md' and has a body, in sentences, saying what changed and why (the move from SQLite to PostgreSQL and the reasons). A commit with the trailer but no reason, or a reason but no trailer, fails this check. If no commit was made, this check is not applicable and scores full Exactly one commit on the branch carries Revises: the first commit that changes the ADR, whose body also carries the confirmed summary between the lines '# Confirmed decision summary' and '# End of confirmed decision summary'. Later commits on the branch carry no Revises.",
+      "description": "If the agent committed its work, the commit that changes the decision ends with a trailer of the form 'Revises: docs/adr/0001-which-database.md' and has a body, in sentences, saying what changed and why (the move from SQLite to PostgreSQL and the reasons). A commit with the trailer but no reason, or a reason but no trailer, fails this check. If no commit was made, this check is not applicable and scores full. Exactly one commit on the branch carries Revises: the first commit that changes the ADR, whose body also carries the summary between the lines '# Confirmed decision summary' and '# End of confirmed decision summary'. Later commits on the branch carry no Revises.",
       "max_score": 10
     }
   ]

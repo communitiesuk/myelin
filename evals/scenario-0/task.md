@@ -6,8 +6,6 @@ Your team has been running a small internal project management tool on SQLite si
 
 Since then the team has grown from three to eighteen engineers, and the situation has changed significantly. Concurrent write contention during busy deploy windows is causing intermittent lock errors. The operations team is asking for proper backups and point-in-time recovery — capabilities that aren't feasible at the operational level they now need from SQLite. After evaluating the options, the team has reached a clear decision to migrate to PostgreSQL, which offers the concurrency model and operational tooling they need.
 
-Confirmed summary: the tool moves from SQLite to PostgreSQL. Concurrent writes during busy deploy windows now cause intermittent lock errors, and operations need proper backups and point-in-time recovery, which SQLite cannot give at the level they now need.
-
 Before the migration work begins, the decision should be captured so future contributors understand what the project's database decision now is and why it changed.
 
 ## The existing record: `docs/adr/0001-which-database.md`

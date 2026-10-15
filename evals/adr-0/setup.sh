@@ -4,9 +4,9 @@
 #
 # Builds the repository the agent is dropped into, BEFORE the agent runs:
 # a job runner with one accepted ADR, on `dev`, clean, and no remote. The
-# task asks for a new ADR and gives its decision as a labelled
-# `Confirmed summary:` fenced block; the adr skill must carry that block
-# verbatim into the introducing commit, run the review loop, and stop
+# task asks for a new ADR and gives its decision as a list with no
+# label; the adr skill must run the summariser on the task text, carry
+# its summary into the introducing commit, run the review loop, and stop
 # short of merging, because a decision is accepted by a human's merge.
 #
 #   - ADR 0001 (jobs run from a cron table in `jobs.cron`) is the only
