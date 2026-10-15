@@ -23,20 +23,38 @@ deferred_reason: null
   - Acceptance is ADR 0009's, implemented by plan 0010 (`8a95933`).
     The restart rule is Step 5.
   - ADR 0006's general escalation route stays deferred. No step.
-  - The written upstream and the summary's home: Step 5.
+  - The written upstream and the summary's home: Step 5, brought in
+    line with the revised ADR by Step 9a.
+  - Drafting need not wait for the human; an explicit request starts
+    it: Step 9a.
   - `Revises` on the first revising commit only: Steps 5 and 8.
   - Two subagent runs per round: Steps 5 and 6.
   - Out of scope (reviews of tests and code, the orchestration
-    architecture, the merge-verdict hook): no step.
+    architecture, the merge-verdict hook, a deterministic gate on the
+    human's confirmation, an eval for drafting mid-exploration): no
+    step.
   - Left to the plan: the parent makes every commit (Steps 5 and 6);
-    the eval approach is Steps 8 to 10.
+    the eval approach is Steps 8 to 10, with Step 9a.
+- ADR 0008 was revised twice after this plan landed, in PR #89. Step
+  9a brings the implementation in line with it as it now stands.
 
 ## Steps
 
 All work happens on the branch `git-workflow` begins for this plan
 (`begin plans/0011-stage-reviews.md`) after the plan has landed. The
 commit for Step 1 also flips this plan's `status` to `in-progress`.
-Only Step 10 spends tessl eval credits, and it says how many.
+Step 10 spends tessl eval credits, and says how many. The quality
+reviews in Steps 5, 6 and 9a spend 10 credits each.
+
+Steps 0 to 9 are done, and the first pass of Step 10 has run (see
+Progress notes). Their text below is what was implemented, kept as
+history. ADR 0008's revisions in PR #89 removed the
+`Confirmed summary:` label, made the summariser always run, made the
+human's approval of the summary optional, and made an explicit request
+run to the pull request with no human. Step 9a brings the
+implementation in line with that. Where Step 9a and an earlier step
+differ, Step 9a governs. The remaining work is Step 9a, Step 10's
+second pass, and Step 11.
 
 Paths that begin `skills/adr/` ship with the `adr` skill. Paths that
 begin `skills/plans/` ship with the `plans` skill.
@@ -293,6 +311,10 @@ diff <(c skills/adr/references/review.md) <(c skills/plans/references/review.md)
 Commit: `Add the ADR and plan reviewer briefs`.
 
 ### Step 5 — Add the drafting and review loop to the `adr` skill
+
+Done in `813f7ad`, and changed in `332886a`. Step 9a replaces the
+labelled summary (5c, 5d), the confirmation step (5d) and "the
+confirmed summary" (5b, 5d, 5e).
 
 Edit `skills/adr/SKILL.md`. Its `description` line is unchanged.
 
@@ -746,6 +768,9 @@ Run `bash skills/git-workflow/scripts/tests/run.sh`. Expect
 
 ### Step 8 — Label the confirmed decision in the existing scenarios
 
+Done in `06ffaf7`. Step 9a removes the labels and keeps the
+scenario-0 criterion.
+
 Under Step 5, an ADR task without a `Confirmed summary:` label stops
 and asks. Label the decision in each scenario that writes an ADR.
 
@@ -785,6 +810,8 @@ tessl eval lint evals/                                                          
 Commit: `Label the confirmed decision in the ADR-writing scenarios`.
 
 ### Step 9 — Author the new eval scenarios
+
+Done in `9010bef`. Step 9a repurposes `adr-0` and `adr-1`.
 
 > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
@@ -989,59 +1016,468 @@ scenarios than before. Commit:
 `Add eval scenarios for the stage-review loop`. They are red. No
 credits are spent here.
 
+### Step 9a — Bring the implementation in line with the revised ADR 0008
+
+ADR 0008 as revised in PR #89: only an explicit request from the human
+starts drafting; the summariser always runs on the conversation, which
+in a one-turn task is the task text; there is no `Confirmed summary:`
+label; the human's approval of the summary is optional, on the human's
+request; with no human and an explicit request, the agent runs to the
+pull request and stops; and fallback covers an adapter that cannot
+produce the dialogue. Neither skill's `description` line changes.
+
+Define this helper for the checks below. It joins a file's lines with
+single spaces, so a phrase is found across line breaks:
+
+```sh
+flat() { tr '\n' ' ' < "$1" | tr -s ' '; }
+```
+
+**9a.1 — `skills/adr/SKILL.md`, outside the shared block.**
+
+(i) Replace everything from the line
+`### The upstream: a confirmed summary` up to, not including, the line
+`### The flow` with:
+
+~~~markdown
+### The upstream: the summary
+
+An ADR's upstream is the summary, plus the discovery note where one
+exists, plus any changes requested at acceptance. You never write the
+summary and never filter the conversation.
+
+**What starts drafting.** Only an explicit request from the human to
+write the ADR starts drafting. Without one, draft nothing: ask the
+human, or, with no human available, stop and report that no ADR was
+drafted, and why.
+
+**The summary.** The summariser always runs on the conversation, even
+when a discovery note exists. In a one-turn task, the conversation is
+the task text.
+
+1. Write the dialogue to a file in the session's temporary directory,
+   outside the repository, with the adapter:
+   `bash "$SKILL_DIR/scripts/claude-code-dialogue" "$CLAUDE_CODE_SESSION_ID" "<the directory the session started in>" "<file>"`.
+   Where the adapter cannot produce the dialogue (it exits 1,
+   `$CLAUDE_CODE_SESSION_ID` is unset, or the harness is not Claude
+   Code), write the dialogue out yourself in the format of
+   `references/dialogue.md`, unfiltered, with `Mode: fallback`. That
+   mode is degraded: copy verbatim and leave nothing out. Never commit
+   the dialogue file.
+2. Give a summariser subagent `references/summariser.md` as its
+   instructions, and the dialogue file's path and the ADR's question as
+   its inputs. Do not summarise yourself.
+3. Give the drafter the summariser's text verbatim. Never edit it on
+   your own initiative.
+
+**Approval, only when the human asks.** The human need not approve the
+summary before drafting, but may ask to. Then show the human the
+summary verbatim, as the exact text the drafter will receive, and
+draft only once the human approves it. If the human asks for changes,
+apply those changes and no others, show the changed text, and draft
+only once the human approves that.
+
+Anything you work out that the ADR needs must be said in the
+conversation, because the summariser sees only the dialogue.
+~~~
+
+This removes the labelled-summary paragraph, and the
+"Then stop: end your turn" wording and the paragraph after it added in
+`332886a`.
+
+(ii) In "### The flow", replace its last paragraph:
+
+~~~markdown
+With no human available, land, then stop and report: the pull request
+where there is one, and each escalation with its reason.
+~~~
+
+with:
+
+~~~markdown
+With no human available and an explicit request, run this flow to the
+pull request and stop: land, then report the pull request where there
+is one, and each escalation with its reason. Nothing is merged, and
+you do not wait for an answer.
+~~~
+
+(iii) In "### Changes requested at acceptance", replace
+`It takes precedence over the confirmed summary,` with
+`It takes precedence over the summary,`.
+
+(iv) In "## Revising an ADR", in the bullet that begins
+`On a revision branch`, replace `and the
+  confirmed summary, as the introducing commit does` with `and the
+  summary, as the introducing commit does`.
+
+(v) In "## The introducing commit", replace the paragraph that begins
+`Its body carries the confirmed summary verbatim` with:
+
+~~~markdown
+Its body carries the summary verbatim, between a line
+`# Confirmed decision summary` and a line
+`# End of confirmed decision summary`, before any trailers. The text
+between the markers is exactly what the drafter received, and its
+last line names the mode that produced it: `Mode: adapter (claude-code)`
+or `Mode: fallback`. Commit with
+`git commit --cleanup=whitespace -F <file>` so the heading lines
+survive. The summary adds no edge to the artefact graph and no trailer.
+~~~
+
+This removes the `Summary supplied labelled; no summariser ran.` line.
+The marker lines are unchanged, so earlier introducing commits and the
+scenario-0 criterion still match them.
+
+**9a.2 — The shared review-loop block**, in `skills/adr/SKILL.md` and
+`skills/plans/SKILL.md`, the same two edits in each file.
+
+(i) In "**A round.**" step 1, replace
+`commit carries its title, the confirmed summary and trailers where`
+with `commit carries its title, the summary and trailers where`.
+
+(ii) In "**Escalation.**", replace:
+
+~~~markdown
+- a finding whose fix would change something the human has already
+  agreed: the confirmed summary, a change requested at acceptance, or
+  an accepted ADR (for example, a plan review showing that the ADR
+  needs revising);
+~~~
+
+with:
+
+~~~markdown
+- a finding whose fix would change something the human has already
+  agreed: a summary the human approved, a change requested at
+  acceptance, or an accepted ADR (for example, a plan review showing
+  that the ADR needs revising);
+~~~
+
+**9a.3 — The reviewer briefs.** In the common text of
+`skills/adr/references/review.md` and
+`skills/plans/references/review.md`, under "## Escalations", replace:
+
+~~~markdown
+- a finding whose fix would change something the human has already
+  agreed: the confirmed summary, a change requested at acceptance, or
+  an accepted ADR (one on the trunk);
+~~~
+
+with:
+
+~~~markdown
+- a finding whose fix would change something the human has already
+  agreed: a summary the human approved, a change requested at
+  acceptance, or an accepted ADR (one on the trunk);
+~~~
+
+In `skills/adr/references/review.md` only, under "## What you check",
+replace `The upstream is the discovery note where one exists, the confirmed
+summary, and every change requested at acceptance.` with
+`The upstream is the summary, plus the discovery note where one
+exists, plus any changes requested at acceptance.`
+
+Checks for 9a.1 to 9a.3:
+
+```sh
+for f in skills/adr/SKILL.md skills/plans/SKILL.md skills/adr/references/review.md skills/plans/references/review.md; do flat "$f" | grep -oiE 'labelled|end your turn|confirmed summary' | wc -l; done   # expect 0 for each
+flat skills/adr/SKILL.md | grep -o 'the summary, plus the discovery note where one exists, plus any changes requested at acceptance' | wc -l   # expect 1
+flat skills/adr/references/review.md | grep -o 'the summary, plus the discovery note where one exists, plus any changes requested at acceptance' | wc -l   # expect 1
+flat skills/adr/SKILL.md | grep -o 'Only an explicit request from the human to write the ADR starts drafting' | wc -l   # expect 1
+flat skills/adr/SKILL.md | grep -o 'The summariser always runs on the conversation' | wc -l                            # expect 1
+flat skills/adr/SKILL.md | grep -o 'The human need not approve the summary before drafting, but may ask to' | wc -l   # expect 1
+flat skills/adr/SKILL.md | grep -o 'Where the adapter cannot produce the dialogue' | wc -l                             # expect 1
+flat skills/adr/SKILL.md | grep -o 'run this flow to the pull request and stop' | wc -l                               # expect 1
+for f in skills/adr/SKILL.md skills/plans/SKILL.md skills/adr/references/review.md skills/plans/references/review.md; do flat "$f" | grep -o 'agreed: a summary the human approved' | wc -l; done   # expect 1 for each
+grep -c '^`# Confirmed decision summary` and a line$' skills/adr/SKILL.md   # expect 1: the marker lines are unchanged
+```
+
+Then re-run Step 6's `block` check and Step 4's `c` check (each prints
+`same`), Verification's `description` check (`exit=1`), and
+`bash skills/adr/scripts/tests/run.sh` (`11 tests, 0 failed`).
+
+Run `tessl review run quality skills/adr` and
+`tessl review run quality skills/plans` (10 credits each) and record
+both scores in Progress notes. Each is not lower than its score before
+Steps 5 and 6 (84 for each, from 5a and from the mean of 6a's two
+runs), allowing the 4-point spread between identical runs that Step
+6's note records.
+
+Commit: `Bring the adr and plans skills in line with the revised ADR 0008`,
+its body giving the quality scores.
+
+**9a.4 — `evals/adr-0/`: a structured decision with no label.**
+
+In `task.md`, replace everything from line 9
+(`The job runner needs a decision on retrying failed jobs.`) to the
+end of the file with:
+
+~~~markdown
+The job runner needs a decision on retrying failed jobs. Jobs fail on
+transient network errors and are lost until the next scheduled run.
+The team's discussion ended here:
+
+- Decided: "Retry only transient failures, exit code 75, with
+  exponential backoff from 2 seconds, doubling, capped at 5 minutes."
+- Decided: "A job that fails permanently is moved to `dead/`."
+- Proposed, not agreed: a retry budget of 3 attempts.
+- Rejected: retrying every failure, because a permanent failure would
+  loop.
+- Deferred: alerting on dead jobs.
+
+## Output Specification
+
+Write the ADR.
+~~~
+
+Its labels differ from the summariser's headings, so a summary copied
+from the task fails the heading criterion below.
+
+Replace `scenario.json` with:
+
+```json
+{ "description": "Writing an ADR from an explicit request that gives a structured decision with no label, with no remote and no human: the adr skill must run the summariser on the task text and carry its summary, with its headings and a Mode: line, between the summary markers in the introducing commit, leave the proposed-only retry budget out of the decision, run the review loop and record round 1 in an empty commit, apply or stop at the closing pass, and stop at the pull-request step, leaving the branch unmerged for the human's acceptance." }
+```
+
+In `criteria.json`, replace the `context` with the string below,
+written as JSON with each line break as `\n`:
+
+~~~text
+Tests whether the adr skill, given an explicit request to write an ADR whose decision is a structured list with no label, runs the summariser on the conversation (in this one-turn task, the task text) instead of passing the list on as the summary; carries the summariser's summary, with its headings and its mode line, into the introducing commit; drafts an ADR that decides what the list decided and not what it marks as only proposed; runs the review loop, recording round 1 in an empty commit; applies the closing pass or stops; and, with no human available, runs to the pull-request step and stops. With no remote, `git-workflow` cannot propose the branch, so the branch is kept and nothing reaches `dev`, because an ADR is accepted by a human's merge.
+
+IMPORTANT — task.md says nothing about review, subagents, summaries, rounds, records or the summary's markers; it gives the decision as a list and asks for the ADR. Every property scored below must come from the skill being loaded. The agent's final report to the user is NOT scorable from git state and is deliberately left untested here.
+
+The fixture is built by setup.sh before the agent runs. Inspect the result with shell and git in the solution directory (`solution/`, a git repository; paths below are relative to it). The fixture leaves:
+- branch `dev` only, HEAD on it, clean, carrying `README.md` and `docs/adr/0001-job-scheduling.md`, an ADR titled `How are jobs scheduled?` (frontmatter `title` and `date` only) deciding that jobs run from a cron table in `jobs.cron`. It says nothing about retries.
+- tag `fixture-base-dev` at the fixture tip of `dev`. There is no `fixture-base-plan` tag: there is no plan.
+- no remote.
+
+The task gives the decision as this list (shown here between the lines BEGIN and END, which are not part of it):
+BEGIN
+- Decided: "Retry only transient failures, exit code 75, with
+  exponential backoff from 2 seconds, doubling, capped at 5 minutes."
+- Decided: "A job that fails permanently is moved to `dead/`."
+- Proposed, not agreed: a retry budget of 3 attempts.
+- Rejected: retrying every failure, because a permanent failure would
+  loop.
+- Deferred: alerting on dead jobs.
+END
+Its labels differ from the summariser's headings, so a summary copied from the task, with no summariser, fails the heading criterion. In the eval sandbox the dialogue adapter may find no transcript; the parent then writes the dialogue itself and the summary's mode is `fallback`. Either mode passes.
+
+Definitions used below. Call the new ADR's branch `<branch>` (expected form `adr-0002-<slug>`; find it with `git for-each-ref --format='%(refname:short)' 'refs/heads/adr-0002-*'`). The introducing commit is the first commit after `fixture-base-dev` on it: `git rev-list --reverse fixture-base-dev..<branch> | head -1`. The summary is the text between the line `# Confirmed decision summary` and the line `# End of confirmed decision summary` in the introducing commit's body: `git log -1 --format=%B <introducing> | awk '/^# Confirmed decision summary$/{f=1;next} /^# End of confirmed decision summary$/{f=0} f'`. A record is a commit on `<branch>` whose body opens `Review record, round`; the last record is the latest. Read bodies with `git log -1 --format=%B <sha>`.
+
+Score from git state and the working tree only.
+~~~
+
+Replace its `checklist` with these eight criteria, in this order
+(name, `max_score`, `description`):
+
+1. `A new ADR 0002 on its own branch, dev unchanged`, 15: unchanged
+   from the current file.
+2. `A summariser's summary between its markers`, 20:
+   ``In the introducing commit's body there is a line `# Confirmed decision summary` and a later line `# End of confirmed decision summary`. In the summary between them, the lines `#### Question`, `#### Context`, `#### Decided`, `#### Proposed, not confirmed`, `#### Rejected or not chosen` and `#### Out of scope / deferred` appear in that order, each on a line of its own. FAILS IF: either marker line is missing (for example stripped by a commit without `--cleanup=whitespace`); any heading is missing or out of order; the task's list was copied in as the summary, meaning no summariser ran; or the summary appears only in a later commit.``
+3. `Summariser mode, not supplied labelled`, 10:
+   ``The summary's last non-blank line is exactly `Mode: adapter (claude-code)` or `Mode: fallback`, and no line anywhere in the introducing commit's body contains `supplied labelled`. FAILS IF: the summary has no mode line, or it is not the summary's last non-blank line; it names another mode; or the body says the summary was supplied labelled, meaning the agent skipped the summariser.``
+4. `The ADR decides what was decided, not the proposed budget`, 15:
+   ``PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: `git show <branch>:docs/adr/0002-<slug>.md` decides retrying only transient failures (exit code 75) with exponential backoff from 2 seconds, doubling, capped at 5 minutes, and decides that a job that fails permanently is moved to `dead/`; and it does not decide a retry budget or a maximum number of attempts — nowhere does it state that a job is retried 3 times, or any other number of times, as decided. Mentioning a budget as an open question, an alternative not chosen, or something deferred is acceptable. FAILS IF: either decided rule is missing or changed; or the ADR decides a fixed number of attempts, which the task marks as proposed, not agreed.``
+5. `Round 1 is recorded with severities, decisions and models`, 15:
+   unchanged.
+6. `The closing pass, or a stop`, 10: unchanged.
+7. `Records and the closing pass carry no artefact-graph trailer`, 5:
+   unchanged.
+8. `The branch is kept and no remote was invented`, 10: unchanged.
+
+In `setup.sh`, replace header lines 7 to 10, from
+`# task asks for a new ADR and gives its decision as a labelled` to
+`# short of merging, because a decision is accepted by a human's merge.`,
+with:
+
+```sh
+# task asks for a new ADR and gives its decision as a list with no
+# label; the adr skill must run the summariser on the task text, carry
+# its summary into the introducing commit, run the review loop, and stop
+# short of merging, because a decision is accepted by a human's merge.
+```
+
+**9a.5 — `evals/adr-1/`: a plain-sentence explicit request runs to the
+pull-request step.** `task.md` is unchanged.
+
+Replace `scenario.json` with:
+
+```json
+{ "description": "Asked to write an ADR whose decision is a plain sentence (\"ADR: we've decided ...\"), with no human and no remote: the adr skill must go ahead rather than stop, running the summariser on the task text and carrying its summary with a Mode: line in the introducing commit, drafting an ADR that decides what the sentence decided, recording review round 1 in an empty commit, and stopping at the pull-request step, with dev untouched and the branch kept." }
+```
+
+In `criteria.json`, replace the `context` with the string below,
+written as JSON with each line break as `\n`:
+
+~~~text
+Tests whether the adr skill, given an explicit request to write an ADR whose decision is a plain sentence and no human available, goes ahead: it runs the summariser on the conversation (in this one-turn task, the task text), drafts, runs the review loop, and runs to the pull-request step and stops. The task states the decision as `ADR: we've decided to retry only transient failures, exit code 75, with exponential backoff from 2 seconds, doubling, capped at 5 minutes, because jobs are being lost until the next run.` and ends `Write the ADR.` Under the skill, an explicit request starts drafting and the human's approval of the summary is optional, so the agent neither stops to ask nor waits. With no remote, `git-workflow` cannot propose the branch, so the branch is kept and nothing reaches `dev`, because an ADR is accepted by a human's merge.
+
+IMPORTANT — task.md says nothing about review, subagents, summaries, rounds, records or the summary's markers; it gives the decision and asks for the ADR. Every property scored below must come from the skill being loaded. The agent's final report to the user is NOT scorable from git state and is deliberately left untested here.
+
+The fixture is built by setup.sh before the agent runs. Inspect the result with shell and git in the solution directory (`solution/`, a git repository; paths below are relative to it). The fixture leaves:
+- branch `dev` only, HEAD on it, clean with no untracked files, carrying `README.md` and `docs/adr/0001-job-scheduling.md`, an ADR titled `How are jobs scheduled?` (frontmatter `title` and `date` only) deciding that jobs run from a cron table in `jobs.cron`. It says nothing about retries.
+- tag `fixture-base-dev` at the fixture tip of `dev`. There is no `fixture-base-plan` tag: there is no plan.
+- no remote.
+
+In the eval sandbox the dialogue adapter may find no transcript; the parent then writes the dialogue itself and the summary's mode is `fallback`. Either mode passes.
+
+Definitions used below. Call the new ADR's branch `<branch>` (expected form `adr-0002-<slug>`; find it with `git for-each-ref --format='%(refname:short)' 'refs/heads/adr-0002-*'`). The introducing commit is the first commit after `fixture-base-dev` on it: `git rev-list --reverse fixture-base-dev..<branch> | head -1`. The summary is the text between the line `# Confirmed decision summary` and the line `# End of confirmed decision summary` in the introducing commit's body: `git log -1 --format=%B <introducing> | awk '/^# Confirmed decision summary$/{f=1;next} /^# End of confirmed decision summary$/{f=0} f'`. A record is a commit on `<branch>` whose body opens `Review record, round`. Read bodies with `git log -1 --format=%B <sha>`.
+
+Score from git state and the working tree only.
+~~~
+
+Replace its `checklist` with these five criteria, in this order:
+
+1. `A new ADR 0002 on its own branch, dev unchanged`, 15: the
+   description of adr-0's criterion of the same name, word for word.
+2. `A summariser-mode summary in the introducing commit`, 25:
+   ``In the introducing commit's body there is a line `# Confirmed decision summary` and a later line `# End of confirmed decision summary`; the summary's last non-blank line is exactly `Mode: adapter (claude-code)` or `Mode: fallback`; and no line anywhere in the body contains `supplied labelled`. FAILS IF: either marker line is missing (for example stripped by a commit without `--cleanup=whitespace`); the summary has no mode line, or it is not the summary's last non-blank line; the body says the summary was supplied labelled; or the summary appears only in a later commit.``
+3. `The ADR decides what the sentence decided`, 25:
+   ``PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: `git show <branch>:docs/adr/0002-<slug>.md` decides retrying only transient failures, identified by exit code 75, with exponential backoff from 2 seconds, doubling, capped at 5 minutes, and gives as a reason that jobs are lost until the next run; and it does not decide a retry budget or a maximum number of attempts, which the sentence does not decide. Mentioning a budget as an open question or something deferred is acceptable. FAILS IF: any of the decided rules is missing or changed; or the ADR decides a fixed number of attempts.``
+4. `Round 1 is recorded with severities, decisions and models`, 20:
+   the description of adr-0's criterion of the same name, word for
+   word.
+5. `The branch is kept and no remote was invented`, 15: the description
+   of adr-0's criterion of the same name, word for word.
+
+In `setup.sh`, replace header lines 5 to 33, from
+`# The same repository as adr-0:` to `#     failing silently.`, with:
+
+```sh
+# The same repository as adr-0: a job runner with one accepted ADR, on
+# `dev`, clean, and no remote. The task gives the same decision as a
+# plain sentence ("ADR: we've decided ...") and asks for the ADR. Under
+# the adr skill an explicit request starts drafting even with no human:
+# the summariser runs on the task text, the drafter drafts, the review
+# loop runs, and the agent stops at the pull-request step.
+#
+#   - `dev` is tagged `fixture-base-dev`, so "dev unchanged" and "the
+#     first commit after the fork point" are decidable. An agent that
+#     merges its ADR into `dev` fails the first criterion.
+#   - HEAD on `dev`, clean, with no untracked files, so every commit,
+#     branch and file the scorer finds is the agent's.
+#   - `dev` is the only branch, so the agent's `adr-0002-*` branch is
+#     the one `git for-each-ref` finds.
+#   - ADR 0001 answers a different question (when jobs run), so the new
+#     ADR is numbered 0002 and nothing in the repository already
+#     settles retries.
+#   - No remote, as in adr-0: the branch cannot be proposed as a pull
+#     request, so git-workflow keeps it and stops; the "branch still
+#     exists and `git remote` prints nothing" criterion fails if the
+#     agent deletes the branch or invents a remote.
+#   - ADR frontmatter has `title` and `date` only, as in adr-0, so the
+#     two fixtures are identical and only the task's wording differs.
+#   - README.md says ADRs live under `docs/adr/`, so the location comes
+#     from the repository, not the task.
+#   - A fixed local identity (`Ledger Maintainers`), so the agent's
+#     commits succeed with no global git identity and the commit-based
+#     criteria (the summary markers, the record) can be scored.
+```
+
+The two `setup.sh` edits change comments only; no command changes.
+
+**9a.6 — Remove the `Confirmed summary: ` labels added in Step 8.**
+
+- `evals/git-workflow-0/task.md` and `evals/git-workflow-1/task.md`,
+  line 24: replace `Confirmed summary: the team will **sample 3.x firmware`
+  with `That decision has now been taken. The team will **sample 3.x firmware`,
+  the original wording.
+- `evals/scenario-0/task.md`: delete line 9 (the paragraph that begins
+  `Confirmed summary: the tool moves`) and the blank line after it.
+- `evals/scenario-1/task.md`: delete line 7 (the paragraph that begins
+  `Confirmed summary: the API is rate limited`) and the blank line
+  after it.
+- `evals/scenario-0/criteria.json`, the criterion
+  `Revising commit carries trailer and reason`: keep its Revises and
+  markers check, and set its `description` to the original text
+  followed by this, keeping `max_score` 10:
+  `. Exactly one commit on the branch carries Revises: the first commit that changes the ADR, whose body also carries the summary between the lines '# Confirmed decision summary' and '# End of confirmed decision summary'. Later commits on the branch carry no Revises.`
+  The original text ends `scores full`, so the result reads
+  `... scores full. Exactly one commit ...`.
+
+Checks for 9a.4 to 9a.6, from the repository root:
+
+```sh
+grep -rlF 'Confirmed summary' evals/ ; echo "exit=$?"                                           # expect exit=1
+git diff 06ffaf7~1 -- evals/git-workflow-0/task.md evals/git-workflow-1/task.md evals/scenario-0/task.md evals/scenario-1/task.md | wc -l   # expect 0
+git diff 06ffaf7~1 -- evals/scenario-0/criteria.json | grep -c '^+ '                           # expect 1
+grep -c 'the summary between the lines' evals/scenario-0/criteria.json                         # expect 1
+grep -c '^- Decided: ' evals/adr-0/task.md                                                      # expect 2
+jq '[.checklist[].max_score] | add' evals/adr-0/criteria.json evals/adr-1/criteria.json         # expect 100, then 100
+jq '.checklist | length' evals/adr-0/criteria.json evals/adr-1/criteria.json                    # expect 8, then 5
+git diff -U0 -- evals/adr-0/setup.sh evals/adr-1/setup.sh | grep -E '^[-+]' | grep -vE '^(\+\+\+|---) ' | grep -vE '^[-+]#' ; echo "exit=$?"   # expect exit=1
+r="$PWD"; for s in adr-0 adr-1; do d="$(mktemp -d)"; (cd "$d" && bash "$r/evals/$s/setup.sh") && git -C "$d" rev-parse --verify -q fixture-base-dev >/dev/null && echo "$s ok"; done   # expect adr-0 ok, adr-1 ok
+tessl eval lint evals/                                                                          # expect 13 scenarios valid, no errors
+```
+
+Commits, in this order:
+`Repurpose adr-0 and adr-1 for the revised ADR 0008` (9a.4 and 9a.5),
+then `Remove the Confirmed summary labels from the ADR-writing scenarios`
+(9a.6). This step spends no eval credits; its two quality reviews
+spend 20.
+
 ### Step 10 — Run the evals (spends credits)
 
-> Spends tessl eval credits: 10 per scenario execution on this pin,
-> 130 for the runs below. Re-runs are capped at 2 per new scenario
-> (40 each, 160 in all) and at three repeats per regression scenario
-> (20 each, up to 100), so at most 390 in all. Run one
-> scenario at a time; never run the whole `evals/` directory. Before
-> each run, `tessl eval lint evals/<scenario>` reports one scenario
-> (free).
+> Spends tessl eval credits. The runs so far cost 24 to 67 credits
+> each, 464 in all for 11 runs (Progress notes), in place of the 10
+> per execution this step first estimated: 24 to 67 for a run with its
+> baseline arm, 28 to 40 for a regression run without one. The second
+> pass below is six runs, about 300 credits at most (two paired runs
+> at up to 70, four regression runs at up to 40). Re-runs are capped at
+> 2 per new scenario (up to 70 each) and at one `-n 2` re-run per
+> regression scenario (up to 80 each), so the second pass spends at
+> most about 900. Run one scenario at a time; never run the whole
+> `evals/` directory. Before each run, `tessl eval lint evals/<scenario>`
+> reports one scenario (free).
 
 Every run uses `--agent claude --model deepseek-v4.1-flash`, the
 release pin, and `--context .`.
 
-**New scenarios**, each with its baseline arm (2 executions, 20
-credits each):
+**First pass, done.** `plans-0`, `plans-1`, `adr-0` and `adr-1` each
+with its baseline arm; `scenario-0`, `scenario-1`, `git-workflow-0`,
+`git-workflow-1` and `plan-numbering-0` with `--skip-baseline`; then
+`adr-1` and `adr-0` again after `332886a`. Run ids, scores and costs
+are in Progress notes. The first-pass scores of `plans-0`, `plans-1`
+and `plan-numbering-0` stand; they are not re-run.
+
+**Second pass, after Step 9a.** The new scenarios, each with its
+baseline arm:
 
 ```sh
-tessl eval run evals/plans-0 --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 plans-0" --wait --json --yes
-tessl eval run evals/plans-1 --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 plans-1" --wait --json --yes
-tessl eval run evals/adr-0   --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 adr-0"   --wait --json --yes
-tessl eval run evals/adr-1   --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 adr-1"   --wait --json --yes
+tessl eval run evals/adr-0 --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 adr-0 after 9a" --wait --json --yes
+tessl eval run evals/adr-1 --context . --agent claude --model deepseek-v4.1-flash --label "plan 0011 adr-1 after 9a" --wait --json --yes
 ```
 
-**Regressions**, one run each, no baseline (10 credits each), for
-`scenario-0`, `scenario-1`, `git-workflow-0`, `git-workflow-1` and
-`plan-numbering-0`:
+The regressions, one run each, no baseline, for `scenario-0`,
+`scenario-1`, `git-workflow-0` and `git-workflow-1`:
 
 ```sh
-tessl eval run evals/<scenario> --context . --skip-baseline --agent claude --model deepseek-v4.1-flash --label "plan 0011 regression <scenario>" --wait --json --yes
+tessl eval run evals/<scenario> --context . --skip-baseline --agent claude --model deepseek-v4.1-flash --label "plan 0011 regression <scenario> after 9a" --wait --json --yes
 ```
 
 Their baselines are the v0.3.0 medians (tag message, Gate 3 run
 `01a120c6-39f6-721a-9e45-99f7d3bbf6dd`, deepseek-v4.1-flash): 100 for
-each of the five. Plan 0010's criteria changes (`1bec91b`) postdate
-those medians. A scenario more than 10 points below its baseline (the
-release skill's threshold), so below 90, is re-run with `-n 2` (20
-credits) and judged on the median of its three scored repeats.
+each. Plan 0010's criteria changes (`1bec91b`) postdate those medians.
+A scenario more than 10 points below its baseline (the release
+skill's threshold), so below 90, is re-run with `-n 2` and judged on
+the median of its three scored repeats.
 
-Record every run id, model and score in Progress notes and in the
-body of the commit that records them,
+Record every run id, model, score and cost, from both passes, in
+Progress notes and in the body of the commit that records them,
 `Record plan 0011 Step 10: eval runs`. Outcomes:
 
 - A new scenario whose skill arm does not score above its baseline
   does not discriminate. Fix the fixture, not the criteria, in a
   commit of its own titled `Fix the <scenario> fixture`, and name that
-  commit in `Record plan 0011 Step 10: eval runs`. Re-run
-  that scenario only, at most twice. If the agent under eval could not start
-  subagents, record that and set this plan `deferred` with that
+  commit in `Record plan 0011 Step 10: eval runs`. Re-run that
+  scenario only, at most twice. If the agent under eval could not
+  start subagents, record that and set this plan `deferred` with that
   reason.
-- A regression scenario whose median is below 90 for a reason the
-  label in Step 8 does not cover is an escalation to the maintainer.
-  Record it, set this plan `deferred` with that reason, and do not
-  change the scenario further.
+- A regression scenario whose median is below 90 is an escalation to
+  the maintainer. Record it, set this plan `deferred` with that
+  reason, and do not change the scenario further.
 
 ### Step 11 — Complete the plan
 
@@ -1056,7 +1492,7 @@ scenarios.
 
 ## Verification
 
-- `bash skills/adr/scripts/tests/run.sh` prints `10 tests, 0 failed`,
+- `bash skills/adr/scripts/tests/run.sh` prints `11 tests, 0 failed`,
   and `bash skills/git-workflow/scripts/tests/run.sh` prints
   `56 tests, 0 failed`. Both re-run from the tree at any time.
 - `grep -c -- '--fill-verbose' skills/git-workflow/scripts/hosts/github`
@@ -1070,6 +1506,13 @@ scenarios.
   `evals/{plans-0,plans-1,adr-0,adr-1}/{task.md,scenario.json,criteria.json,setup.sh}`.
 - The shared loop is one mechanism, word for word: the `block` check
   in Step 6 prints `same`, and the `c` check in Step 4 prints `same`.
+- The skills match the revised ADR 0008: every check for 9a.1 to 9a.3
+  in Step 9a gives its expected output. In particular no label, no
+  `supplied labelled` line and no "end your turn" remain, and the
+  escalation items in both skills and both briefs read
+  `a summary the human approved`.
+- No scenario carries a label: every check for 9a.4 to 9a.6 in Step 9a
+  gives its expected output.
 - Neither skill's `description` changed:
 
   ```sh
@@ -1083,20 +1526,25 @@ scenarios.
   least `1`, and `grep -c 'CLAUDE_SESSION_ID}' skills/adr/SKILL.md`
   prints `0`.
 - `tessl review run quality skills/adr` and
-  `tessl review run quality skills/plans` score no lower than before
-  Steps 5 and 6 (a review, not a `tessl eval run`).
-- Step 2's smoke figures, Step 5f's live check and Step 10's run ids
-  are in commit bodies, so they survive this plan's deletion. Each run
-  is re-readable with `tessl eval view <id>`.
-- **Completion gate:** each of `plans-0`, `plans-1`, `adr-0` and
-  `adr-1` scores higher with its skill than without, and each of the
-  five regression scenarios has a median of 90 or more.
+  `tessl review run quality skills/plans`, run after Step 9a, score no
+  lower than before Steps 5 and 6 (84 for each), allowing the 4-point
+  spread between identical runs (a review, not a `tessl eval run`).
+- Step 2's smoke figures, Step 5f's live check, Step 9a's quality
+  scores and Step 10's run ids are in commit bodies, so they survive
+  this plan's deletion. Each run is re-readable with
+  `tessl eval view <id>`.
+- **Completion gate:** `plans-0` and `plans-1` score higher with their
+  skill than without on their first-pass runs, and `adr-0` and `adr-1`
+  on their second-pass runs, after Step 9a. `scenario-0`, `scenario-1`,
+  `git-workflow-0` and `git-workflow-1` each have a median of 90 or
+  more on their second-pass runs, and `plan-numbering-0` on its
+  first-pass run.
 - Not part of the gate, and checkable only after this plan completes:
   the first ADR and the first plan written after it each have, on
-  their branch, an introducing commit (for the ADR, with the confirmed
-  summary between its markers) followed by commits whose bodies open
-  `Review record, round N.`; where a pull request exists, its
-  description contains those records.
+  their branch, an introducing commit (for the ADR, with the
+  summariser's summary and its `Mode:` line between its markers)
+  followed by commits whose bodies open `Review record, round N.`;
+  where a pull request exists, its description contains those records.
 
 ## Progress notes
 
@@ -1191,3 +1639,34 @@ scenarios.
   confirmation step now says "Then stop: end your turn", and that a
   request to write the ADR, or an unlabelled decision, is not a
   confirmation. adr-1 and adr-0 are re-run on it.
+- 2026-10-15, Step 10, after `332886a` (deepseek-v4.1-flash): adr-1
+  baseline 70, skill 30 (`01a13f72`); adr-0 15, 100 (`01a13f81`). The
+  scorer found the agent still treated the unlabelled decision as a
+  confirmed summary. Costs, from `tessl eval list`: the 11 runs so far
+  cost 24 to 67 credits each, 464 in all; 24 to 67 for a run with its
+  baseline arm, 28 to 40 for a regression run without one.
+- 2026-10-15: ADR 0008 was revised twice in PR #89, merged to `dev` at
+  `6d127a5` and into this branch at `e63867a`. The first revision
+  (`7794daf`) made an explicit request start drafting, the summary's
+  approval optional, and an explicit request with no human run to the
+  pull request. The second, a change requested at acceptance
+  (`cc2c281`, applied in `36b994b`), removed the `Confirmed summary:`
+  label, so the summariser always runs. Neither revision revised this
+  plan, or set it `deferred`, on its own branch, as ADR 0004's
+  "Revising an ADR revises its plans" requires: plan 0011 on `dev`
+  still describes the label and the stop for an unconfirmed summary.
+  This revision is made on the implementation branch instead. It adds
+  Step 9a and Step 10's second pass, and updates Verification. Step
+  9a reverses `332886a`'s wording and Step 8's labels, and removes the
+  `Summary supplied labelled` line listed among the implementation
+  choices above.
+- Implementation choices made in this revision, where the revised ADR
+  leaves them open: the summary's marker lines keep their names,
+  `# Confirmed decision summary` and
+  `# End of confirmed decision summary`, so earlier introducing
+  commits and scenario-0's criterion still match; adr-0 gives its
+  decision as a list whose labels differ from the summariser's
+  headings, so a copied summary is detectable; adr-1's task is
+  unchanged; and `plans-0`, `plans-1` and `plan-numbering-0` are not
+  re-run, although 9a.2 changes two lines of the `plans` skill's
+  shared block.
