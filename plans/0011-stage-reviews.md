@@ -299,9 +299,10 @@ record its score in Progress notes.
 and body are both mandatory.`, insert:
 
 ~~~markdown
-- On a revision branch, the first revising commit carries `Revises`
-  and, in its body, the confirmed summary, as the introducing commit
-  does (see "The introducing commit"). Later commits on the same branch,
+- On a revision branch, the first revising commit carries `Revises`,
+  and its body carries both the reason (what changed and why) and the
+  confirmed summary, as the introducing commit does (see "The
+  introducing commit"). Later commits on the same branch,
   round records and revisions alike, are drafting of that revision and
   carry no trailer: the `Revises` edge is added by exactly one commit.
 ~~~
@@ -321,10 +322,21 @@ survive. The summary adds no edge to the artefact graph and no trailer.
 ~~~
 
 **5d.** After the "## Before writing" section, before "## Location
-and naming", insert this section, followed by
+and naming", insert these two sections, followed by
 the shared block in 5e:
 
 ~~~markdown
+## If you are a drafter subagent
+
+You draft or revise the artefact your task names, from the inputs it
+gives you.
+
+- Edit files, and never commit: the parent makes every commit.
+- End your report with a numbered list of the issues you found:
+  ambiguities in the upstream, conflicts with a recorded decision or
+  with this skill, and choices you made that nothing settles.
+- Finish the whole task, even after you find an escalation.
+
 ## Drafting and review
 
 If you are a drafter or reviewer subagent, skip this section.
@@ -376,7 +388,8 @@ conversation, because the summariser sees only the dialogue.
 ### The flow
 
 1. Settle the upstream, above.
-2. Begin the ADR's branch (`git-workflow`).
+2. Begin the ADR's branch (`git-workflow`), unless you are already on
+   it with an unreviewed draft.
 3. Run the review loop below. Round 1's draft is the introducing
    commit, or, for a revision of an accepted ADR, the first revising
    commit.
@@ -464,8 +477,9 @@ not hold.
 1. A fresh drafter drafts or revises. Commit the draft. Round 1's is
    the introducing commit (or a revision's first revising commit). A
    later round's is titled `Revise <path> (round N draft)`. A draft
-   commit carries only its title, plus the confirmed summary and
-   trailers where this skill requires them; never reasoning. An
+   commit carries its title, the confirmed summary and trailers where
+   this skill requires them, and the body a `Revises` commit requires
+   (what changed and why); never the drafter's deliberation or yours. An
    unreviewed draft already on the branch is round 1's draft: the loop
    starts at its review, and round 1's record gives the drafter as
    `not a subagent`.
@@ -567,16 +581,29 @@ Edit `skills/plans/SKILL.md`. Its `description` line is unchanged.
 and record its score.
 
 **6b.** After the "## Location and naming" section, before
-"## Frontmatter", insert:
+"## Frontmatter", insert these two sections, the first word for word
+as in 5d:
 
 ~~~markdown
+## If you are a drafter subagent
+
+You draft or revise the artefact your task names, from the inputs it
+gives you.
+
+- Edit files, and never commit: the parent makes every commit.
+- End your report with a numbered list of the issues you found:
+  ambiguities in the upstream, conflicts with a recorded decision or
+  with this skill, and choices you made that nothing settles.
+- Finish the whole task, even after you find an escalation.
+
 ## Drafting and review
 
 If you are a drafter or reviewer subagent, skip this section.
 
 A plan's upstream is its ADR.
 
-1. Begin the plan's branch (`git-workflow`).
+1. Begin the plan's branch (`git-workflow`), unless you are already
+   on it with an unreviewed draft.
 2. Run the review loop below. Round 1's draft is the introducing
    commit, with its `Derives-From` trailer.
 3. A plan lands without a human. When a round raises an escalation,
@@ -716,8 +743,7 @@ Run `bash skills/git-workflow/scripts/tests/run.sh`. Expect
 ### Step 8 — Label the confirmed decision in the existing scenarios
 
 Under Step 5, an ADR task without a `Confirmed summary:` label stops
-and asks. Label the decision in each scenario that writes an ADR. Each
-edit is data in a task, not code.
+and asks. Label the decision in each scenario that writes an ADR.
 
 - `evals/git-workflow-0/task.md` and `evals/git-workflow-1/task.md`,
   line 24: replace `That decision has now been taken. The team will **sample 3.x firmware`
@@ -761,8 +787,9 @@ Commit: `Label the confirmed decision in the ADR-writing scenarios`.
 Create four scenarios, each with `task.md`, `scenario.json`,
 `criteria.json` (a `weighted_checklist` totalling 100) and a
 `setup.sh` fixture in the shape of `evals/plan-numbering-0/setup.sh`:
-trunk `dev`, no remote, a fixed local identity, the fixture's base
-tagged `fixture-base-dev`, ADRs with `title` and `date` frontmatter
+trunk `dev`, no remote, a fixed local identity. Unlike that fixture,
+which tags its base `fixture-base`, each tags the tip of `dev` as
+`fixture-base-dev`. ADRs have `title` and `date` frontmatter
 only. Each `setup.sh` header says what each fixture element lets fail.
 No `task.md` mentions review, subagents, rounds or records; those
 must come from the skill.
@@ -861,9 +888,9 @@ Criteria, scored from git:
 | D1, D2 and D3 each appear as a finding in a record | 20 |
 | `plans/0001-forecast-source.md` as merged into `dev` has no on-disk cache, logs the choice to stdout, has no step that deletes what Verification reads, and implements the 6-hour rule | 20 |
 | A round is recorded after the last round whose draft fixed a High, and it reports each of those Highs `confirmed fixed`; no more than 3 rounds are recorded | 15 |
-| Every record names the drafter's and the reviewer's models; round 1's gives the drafter as `not a subagent` | 5 |
-| Every Medium or Low a record decides to act on is fixed by a later round's draft or by a commit after the last record whose body opens `Closing pass.` and records the parent's check; no other commit after the last record changes the plan | 10 |
-| No record or closing-pass commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
+| Precondition: scores 0 unless a record exists. Every record names the drafter's and the reviewer's models; round 1's gives the drafter as `not a subagent` | 5 |
+| Precondition: scores 0 unless a record exists. Every Medium or Low a record decides to act on is fixed by a later round's draft or by a commit after the last record whose body opens `Closing pass.` and records the parent's check; no other commit after the last record changes the plan | 10 |
+| Precondition: scores 0 unless a record exists. No record or closing-pass commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
 | `dev` ends in a two-parent merge of the plan branch, and `git diff fixture-base-dev dev -- docs/adr/` is empty | 10 |
 
 #### `evals/plans-1/` — an escalation with no human stops the loop
@@ -884,9 +911,9 @@ Criteria:
 | --- | --- |
 | Precondition: the plan branch exists with a commit after `fixture-base-plan`. Then `dev` equals `fixture-base-dev`: nothing landed | 25 |
 | A commit after `fixture-base-plan` on the plan branch has a record body whose `Escalated:` entry names the conflict between logging to stdout and writing nothing to stdout, with either reason: the fix would change the accepted ADR, or a High is still open after round 3 | 30 |
-| No commit on the plan branch follows the commit that records the escalation | 15 |
+| Precondition: scores 0 unless a commit on the plan branch records the escalation. No commit on the plan branch follows it | 15 |
 | That record's `Escalated:` line is not `none`, and it has the line `Next: stopped for the human.` | 20 |
-| No branch changes `docs/adr/`: `git log --all fixture-base-dev.. -- docs/adr/` is empty | 10 |
+| Precondition: scores 0 unless the plan branch has a commit after `fixture-base-plan`. No branch changes `docs/adr/`: `git log --all fixture-base-dev.. -- docs/adr/` is empty | 10 |
 
 #### `evals/adr-0/` — an ADR drafted from a labelled summary
 
@@ -928,10 +955,10 @@ Criteria:
 | A new `docs/adr/0002-*.md` exists on an `adr-0002-*` branch, and `dev` equals `fixture-base-dev` | 15 |
 | In the first commit after `fixture-base-dev` on that branch, the text between `# Confirmed decision summary` and `# End of confirmed decision summary` equals the fenced block byte for byte, ignoring leading and trailing blank lines | 25 |
 | That body has a line containing `supplied labelled` outside the two markers, and no line between them begins `Mode:` | 10 |
-| The ADR does not decide a retry budget or a maximum number of attempts | 10 |
+| Precondition: scores 0 unless the new ADR exists on its branch. The ADR does not decide a retry budget or a maximum number of attempts | 10 |
 | A later commit's body opens `Review record, round 1.` with severities, decisions, and the drafter's and reviewer's models | 15 |
-| The closing pass: if the last record decides to act on any issue or finding, a commit after it has a body opening `Closing pass.` that records the parent's check, and no other commit after the record changes the ADR; if it decides to act on none, its `Next:` line reads `stop` | 10 |
-| No record or closing-pass commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
+| The closing pass: if the last record decides to act on any issue or Medium or Low finding, a commit after it has a body opening `Closing pass.` that records the parent's check and applies those decisions; if it decides to act on none, its `Next:` line reads `stop`. Either way, no other commit after the record changes the ADR | 10 |
+| Precondition: scores 0 unless a record exists. No record or closing-pass commit carries `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons` | 5 |
 | The branch still exists and `git remote` prints nothing | 10 |
 
 #### `evals/adr-1/` — an unlabelled decision with no human stops and asks
@@ -948,6 +975,10 @@ Criteria:
 | No commits: `git log --all fixture-base-dev..` is empty, and `dev` equals `fixture-base-dev` | 40 |
 | No new files: `git status --porcelain --untracked-files=all` lists nothing under `docs/adr/` | 30 |
 | No branch: `git for-each-ref refs/heads/` lists only the fixture's branches | 30 |
+
+An agent that does nothing meets every adr-1 criterion, so adr-1
+discriminates only paired with adr-0 in the same run: read its score
+together with adr-0's from the same Step 10 pass.
 
 Check: `tessl eval lint evals/` reports no errors and four more
 scenarios than before. Commit:
@@ -997,7 +1028,9 @@ body of the commit that records them,
 `Record plan 0011 Step 10: eval runs`. Outcomes:
 
 - A new scenario whose skill arm does not score above its baseline
-  does not discriminate. Fix the fixture, not the criteria, and re-run
+  does not discriminate. Fix the fixture, not the criteria, in a
+  commit of its own titled `Fix the <scenario> fixture`, and name that
+  commit in `Record plan 0011 Step 10: eval runs`. Re-run
   that scenario only, at most twice. If the agent under eval could not start
   subagents, record that and set this plan `deferred` with that
   reason.
@@ -1039,6 +1072,8 @@ scenarios.
   git diff "$(git merge-base dev HEAD)" HEAD -- skills/adr/SKILL.md skills/plans/SKILL.md | grep -E '^[-+]description:' ; echo "exit=$?"   # expect exit=1
   ```
 
+- `grep -c '^## If you are a drafter subagent$' skills/adr/SKILL.md skills/plans/SKILL.md`
+  prints `1` for each.
 - `grep -rn '^status:' docs/adr/ skills/adr/SKILL.md` prints nothing.
 - `grep -c 'CLAUDE_CODE_SESSION_ID' skills/adr/SKILL.md` prints at
   least `1`, and `grep -c 'CLAUDE_SESSION_ID}' skills/adr/SKILL.md`
@@ -1071,3 +1106,15 @@ scenarios.
   titles; the parent making every commit; the shared block kept
   identical by a diff check; `propose` rewriting an open pull
   request's description; and the eval approach of Steps 8 to 10.
+- Closing pass after round 3: the planted Low that only appears once
+  D2 is fixed was tried and not used, because it cannot be made
+  reliable. The candidate was a line elsewhere in the plan naming
+  step 5 or `run.log`, true before D2's fix and stale after it.
+  Whether it shows up depends on how the drafter fixes D2: a drafter
+  that removes step 5 often corrects the text that names it in the
+  same revision. It also needs the round that raises it to be the
+  last. A plans-0 criterion requiring a `Closing pass.` commit could
+  then fail a correct run. adr-0's closing-pass criterion requires a
+  `Closing pass.` commit instead. The closing pass is therefore
+  exercised only when a review raises something actionable, which is
+  a known coverage gap to watch in the run logs.
