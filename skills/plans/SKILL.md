@@ -35,6 +35,168 @@ This rule is not stylistic — it enforces that decisions get recorded *before* 
   (The `adr` skill counts `ls docs/adr/` instead, and correctly, because ADRs stay in the tree.)
 - **Cross-link**: frontmatter `adr:` field points to the ADR. The slug does not need to match the ADR's slug, though matching often reads well.
 
+## If you are a drafter subagent
+
+You draft or revise the artefact your task names, from the inputs it
+gives you.
+
+- Edit files, and never commit: the parent makes every commit.
+- End your report with a numbered list of the issues you found:
+  ambiguities in the upstream, conflicts with a recorded decision or
+  with this skill, and choices you made that nothing settles.
+- Finish the whole task, even after you find an escalation.
+
+## Drafting and review
+
+If you are a drafter or reviewer subagent, skip this section.
+
+A plan's upstream is its ADR.
+
+1. Begin the plan's branch (`git-workflow`), unless you are already
+   on it with an unreviewed draft.
+2. Run the review loop below. Round 1's draft is the introducing
+   commit, with its `Derives-From` trailer.
+3. A plan lands without a human. When a round raises an escalation,
+   pause at that round's decision point. Commit its record, with each
+   escalation and its reason under `Escalated:` and
+   `Next: stopped for the human.`, then surface the escalations
+   together and wait, before the next round or the landing. A plan
+   review showing that the ADR needs revising is an escalation.
+4. The human's answer is the human's decision. Record it in an empty
+   commit titled `Record the human's answer on <path>`, whose body
+   opens as "The record" below gives for the human's answer, and
+   quotes it.
+   It is part of round N's record. The loop then continues where it
+   paused, under the stop rule; an answer does not restart it.
+5. With no human available, stop and report at that decision point,
+   after committing the record. Name each escalation and its reason,
+   and say the plan has not landed.
+6. Land (`git-workflow` `land`) only when the loop has stopped, any
+   closing pass is committed, and no escalation is unanswered.
+
+<!-- review-loop:begin -->
+### The review loop
+
+The loop runs whenever this skill drafts an artefact or revises what
+one decides. It does not run for a typo fix.
+
+**Roles.** Each subagent has one small task, and every subagent is
+fresh: none is resumed from an earlier round.
+
+- You, the **parent**, run the loop. You never draft and never
+  review. You make every commit on the artefact's branch; drafters and
+  reviewers edit or read files and never commit.
+- A **drafter** subagent drafts or revises the artefact. Its
+  instructions are this skill; the repository, and what this skill
+  tells it to read, are part of those instructions, not of the
+  upstream. Its report ends with a numbered list of
+  the issues it found: ambiguities in the upstream, conflicts with a
+  recorded decision or with this skill, and choices it made that
+  nothing settles. A cheaper model may draft.
+- A **reviewer** subagent reviews the draft. Its instructions are
+  `references/review.md`. Its model is at least as strong as the
+  drafter's. It never edits the artefact.
+
+**Inputs.** The upstream is what the artefact is checked against. The
+recorded decisions are the bodies of the commits on the branch since
+the fork point (`git log --format=%B <trunk>..HEAD`), which hold every
+round's record, including any earlier loop's.
+
+| Subagent | Gets |
+| --- | --- |
+| Drafter, round 1 of the first loop | the upstream |
+| Drafter, every other round, and the closing pass | the upstream, the current draft, the recorded decisions |
+| Reviewer, every round | the upstream, the draft, the recorded decisions |
+
+No subagent gets your reasoning, or any deliberation the record does
+not hold.
+
+**A round.**
+
+1. A fresh drafter drafts or revises. Commit the draft. Round 1's is
+   the introducing commit (or a revision's first revising commit). A
+   later round's is titled `Revise <path> (round N draft)`. A draft
+   commit carries its title, the confirmed summary and trailers where
+   this skill requires them, and the body a `Revises` commit requires
+   (what changed and why); never the drafter's deliberation or yours. An
+   unreviewed draft already on the branch is round 1's draft: the loop
+   starts at its review, and round 1's record gives the drafter as
+   `not a subagent`.
+2. A fresh reviewer reviews the committed draft.
+3. When both have reported, and not before, decide on both lists
+   together. Make no decision before the first draft. Each High is
+   fixed by the next round's drafter. Each Medium or Low is fixed in a
+   later round or the closing pass, or the record says why not. A
+   choice the upstream did not settle is yours. Collect every
+   escalation.
+4. Commit the round's record before anything else happens on the
+   branch, as an empty commit
+   (`git commit --allow-empty --cleanup=whitespace -F <file>`) titled
+   `Record review round N of <path>`.
+
+**The record.** Its body, in this order:
+
+```
+Review record, round N.
+Models: drafter <model>, reviewer <model>[, summariser <model>].
+Drafter's issues: each numbered, with "Decided:" and a short reason.
+Reviewer's findings: each numbered, with its severity, "Decided:" and a short reason.
+Highs from round N-1: each "confirmed fixed" or "reopened".
+Superseded: each recorded decision a change requested at acceptance contradicts.
+Escalated: each with its reason, or "none".
+Next: round N+1, closing pass, stop, or stopped for the human.
+```
+
+Every record's first line has this form, its suffixes in this order:
+`Review record, round N.`; after the K-th restart,
+`Review record, round N, restart K.`; for the human's answer, add
+`, the human's answer` last, as in
+`Review record, round N, restart K, the human's answer.`
+
+It carries no artefact-graph trailer (`Derives-From`, `Revises`,
+`Consumed-By`, `Completes`, `Abandons`).
+
+Outside any git repository, run the loop and report the records
+instead of committing them.
+
+**Stop rule (provisional).** Only High findings trigger another round.
+Stop after a round whose review leaves no High open. Run at most 3
+rounds, counting the first. If a High is still open after round 3, the
+loop ends and that High is escalated.
+
+**The closing pass.** When the loop stops with issues or Medium or Low
+findings you decided to act on, a fresh drafter applies them. The pass
+is not a round and is not re-reviewed. Check that the change matches
+the recorded decisions and does nothing else; if it does not, a fresh
+drafter redoes the pass. Commit it titled
+`Apply the closing pass to <path>`, its body opening `Closing pass.`,
+then the drafter's model, each decision applied, and
+`Checked by the parent: the change matches the recorded decisions and nothing else.`
+
+**Escalation.** Surface these to the human, and do not resolve them
+yourself:
+
+- a finding whose fix would change something the human has already
+  agreed: the confirmed summary, a change requested at acceptance, or
+  an accepted ADR (for example, a plan review showing that the ADR
+  needs revising);
+- a High still open after round 3;
+- a reviewer finding that a recorded decision of yours contradicts the
+  upstream.
+
+Escalations are batched. A drafter or reviewer that finds one carries
+on to the end of its task. Surface all of a round's escalations
+together, each with its reason, at the point this skill names.
+
+**With no human available**, as in a one-turn task, stop and report
+at that point, naming each escalation and its reason. Make no further
+round commit.
+
+**The pull request.** Where there is one, its description is every
+commit's message and body, so it repeats every round's record. `land`
+writes it, and rewrites it when the branch lands again.
+<!-- review-loop:end -->
+
 ## Frontmatter
 
 ```yaml

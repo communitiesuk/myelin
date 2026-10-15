@@ -1153,3 +1153,12 @@ scenarios.
 - 2026-10-15, Step 5: `tessl review run quality skills/adr` 84% before
   (5a), 88% after (5g), 10 credits each. 5f: `printenv
   CLAUDE_CODE_SESSION_ID | grep -cE '^[0-9a-f-]{36}$'` printed 1.
+- 2026-10-15, Step 6: `tessl review run quality skills/plans` measured
+  82% and 86% on the unchanged skill (runs `01a13e2a`, `01a13e2b`; the
+  first was started by a command the human interrupted) and 83% and
+  83% after the edit (`01a13e97` and one more). The mean moved 84 to 83,
+  inside the 4-point spread between identical runs, so 6d is taken as
+  met within run-to-run variation. A single "not lower than before"
+  comparison cannot separate an edit's effect from this noise; the
+  adr skill's 84 to 88 in Step 5 is single samples too. Evidence for
+  how quality checks should be gated.
