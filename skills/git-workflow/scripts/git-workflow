@@ -28,7 +28,10 @@
 #
 # Host modules live in hosts/<name> beside this script. Each is an
 # executable taking one of:
-#   propose <branch>    open a pull request for the pushed branch
+#   propose <branch> <trunk>
+#                       open a pull request for the pushed branch onto the
+#                       trunk, or rewrite the open one's description; it
+#                       carries every commit's message and body
 #   merge <branch>      merge it with a merge commit, never squash or rebase
 #   settings            print whether the host allows squash and rebase merges
 #
