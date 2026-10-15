@@ -1146,3 +1146,10 @@ scenarios.
   bytes, 37 `### Human` blocks. The human's mid-turn message is
   present (1); subagent hand-backs are absent (0). shellcheck reports
   only SC2016 on the single-quoted jq filter, which is intended.
+- 2026-10-15, Step 3: the summariser brief adds two lines beyond the
+  plan's text, both from the summariser prompts used in this session:
+  the human's version wins where they changed a proposal, and the
+  human is referred to as "the human", with no inferred pronouns.
+- 2026-10-15, Step 5: `tessl review run quality skills/adr` 84% before
+  (5a), 88% after (5g), 10 credits each. 5f: `printenv
+  CLAUDE_CODE_SESSION_ID | grep -cE '^[0-9a-f-]{36}$'` printed 1.
