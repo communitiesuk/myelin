@@ -32,46 +32,46 @@ If you are a drafter or reviewer subagent, skip this section.
 The harness states this skill's base directory when it loads the
 skill. Call that `$SKILL_DIR`.
 
-### The upstream: a confirmed summary
+### The upstream: the summary
 
-An ADR's upstream is its confirmed summary, with its discovery note
-where one exists, plus every change requested at acceptance. You never
-write the summary and never filter the conversation.
+An ADR's upstream is the summary, plus the discovery note where one
+exists, plus any changes requested at acceptance. You never write the
+summary and never filter the conversation.
 
-**A labelled summary.** When the task gives a statement labelled
-`Confirmed summary:`, that statement is the confirmed summary. There
-is no summariser and no wait. Only the label counts. The labelled text
-runs from after the label to the end of its paragraph; where the label
-ends its line and a fenced block follows, it is that block's contents.
-Give it to the drafter verbatim and never edit it. An unlabelled
-statement, such as "ADR: we've decided X because Y" at the start of a
-session, is conversation: it goes through the summariser and
-confirmation below.
+**What starts drafting.** Only an explicit request from the human to
+write the ADR starts drafting. Without one, draft nothing: ask the
+human, or, with no human available, stop and report that no ADR was
+drafted, and why.
 
-**Otherwise**, wherever there is a conversation, even when a discovery
-note exists:
+**The summary.** The summariser always runs on the conversation, even
+when a discovery note exists. In a one-turn task, the conversation is
+the task text.
 
 1. Write the dialogue to a file in the session's temporary directory,
    outside the repository, with the adapter:
    `bash "$SKILL_DIR/scripts/claude-code-dialogue" "$CLAUDE_CODE_SESSION_ID" "<the directory the session started in>" "<file>"`.
-   On exit 1, when `$CLAUDE_CODE_SESSION_ID` is unset, or in a harness
-   other than Claude Code, write the dialogue out yourself in the
-   format of `references/dialogue.md`, unfiltered, with
-   `Mode: fallback`. That mode is degraded: copy verbatim and leave
-   nothing out. Never commit the dialogue file.
+   Where the adapter cannot produce the dialogue (it exits 1, it
+   writes a dialogue with no `### Human` block,
+   `$CLAUDE_CODE_SESSION_ID` is unset, or the harness is not Claude
+   Code), write the dialogue out yourself in the format of
+   `references/dialogue.md`, unfiltered, with `Mode: fallback`. That
+   mode is degraded: copy verbatim and leave nothing out. Never commit
+   the dialogue file.
 2. Give a summariser subagent `references/summariser.md` as its
    instructions, and the dialogue file's path and the ADR's question as
    its inputs. Do not summarise yourself.
-3. Show the human the summary verbatim, as the exact text the drafter
-   will receive, and ask them to confirm it. **Then stop: end your
-   turn.** Do not begin the branch, draft or commit until the human
-   has confirmed it. If any of it changes afterwards, show the changed
-   text and have it confirmed again before drafting.
+3. Give the drafter the summariser's text verbatim. Never edit it on
+   your own initiative.
 
-A request to write the ADR is not a confirmation, and nor is a
-decision stated in the request without the label. With neither a
-labelled summary nor the human's confirmation, draft nothing: stop,
-ask, and end your turn.
+An ADR's round-1 record names the summariser's model in its `Models:`
+line: `Models: drafter <model>, reviewer <model>, summariser <model>.`
+
+**Approval, only when the human asks.** The human need not approve the
+summary before drafting, but may ask to. Then show the human the
+summary verbatim, as the exact text the drafter will receive, and
+draft only once the human approves it. If the human asks for changes,
+apply those changes and no others, show the changed text, and draft
+only once the human approves that.
 
 Anything you work out that the ADR needs must be said in the
 conversation, because the summariser sees only the dialogue.
@@ -90,13 +90,15 @@ conversation, because the summariser sees only the dialogue.
    reason. Review finishes before the human is asked to accept; the
    human's merge accepts.
 
-With no human available, land, then stop and report: the pull request
-where there is one, and each escalation with its reason.
+With no human available and an explicit request, run this flow to the
+pull request and stop: land, then report the pull request where there
+is one, and each escalation with its reason. Nothing is merged, and
+you do not wait for an answer.
 
 ### Changes requested at acceptance
 
 A change the human requests at acceptance is the human's decision and
-joins the upstream. It takes precedence over the confirmed summary,
+joins the upstream. It takes precedence over the summary,
 over any earlier change, and over any recorded decision of yours that
 it contradicts.
 
@@ -162,7 +164,7 @@ not hold.
 1. A fresh drafter drafts or revises. Commit the draft. Round 1's is
    the introducing commit (or a revision's first revising commit). A
    later round's is titled `Revise <path> (round N draft)`. A draft
-   commit carries its title, the confirmed summary and trailers where
+   commit carries its title, the summary and trailers where
    this skill requires them, and the body a `Revises` commit requires
    (what changed and why); never the drafter's deliberation or yours. An
    unreviewed draft already on the branch is round 1's draft: the loop
@@ -223,9 +225,9 @@ then the drafter's model, each decision applied, and
 yourself:
 
 - a finding whose fix would change something the human has already
-  agreed: the confirmed summary, a change requested at acceptance, or
-  an accepted ADR (for example, a plan review showing that the ADR
-  needs revising);
+  agreed: a summary the human approved, a change requested at
+  acceptance, or an accepted ADR (for example, a plan review showing
+  that the ADR needs revising);
 - a High still open after round 3;
 - a reviewer finding that a recorded decision of yours contradicts the
   upstream.
@@ -285,7 +287,7 @@ An ADR is not frozen at merge. When the answer to its question changes, edit it 
   The value is the repository-relative path of the ADR. The commit body says, in sentences, what changed and why. Trailer and body are both mandatory.
 - On a revision branch, the first revising commit carries `Revises`,
   and its body carries both the reason (what changed and why) and the
-  confirmed summary, as the introducing commit does (see "The
+  summary, as the introducing commit does (see "The
   introducing commit"). Later commits on the same branch,
   round records and revisions alike, are drafting of that revision and
   carry no trailer: the `Revises` edge is added by exactly one commit.
@@ -297,12 +299,12 @@ An ADR is not frozen at merge. When the answer to its question changes, edit it 
 
 The first commit on the ADR's branch carries `Derives-From: <path>` for each discovery note the ADR derives from, where one exists — one trailer per note. Direct upstreams only.
 
-Its body carries the confirmed summary verbatim, between a line
+Its body carries the summary verbatim, between a line
 `# Confirmed decision summary` and a line
-`# End of confirmed decision summary`, before any trailers. For a
-labelled summary, the next line after the closing marker is
-`Summary supplied labelled; no summariser ran.` Otherwise the
-summary's own last line names the mode that produced it. Commit with
+`# End of confirmed decision summary`, before any trailers. The text
+between the markers is exactly what the drafter received, and its
+last line names the mode that produced it: `Mode: adapter (claude-code)`
+or `Mode: fallback`. Commit with
 `git commit --cleanup=whitespace -F <file>` so the heading lines
 survive. The summary adds no edge to the artefact graph and no trailer.
 

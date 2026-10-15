@@ -34,8 +34,8 @@ For each High in the previous round's record, a line saying
 A separate list, each with its reason:
 
 - a finding whose fix would change something the human has already
-  agreed: the confirmed summary, a change requested at acceptance, or
-  an accepted ADR (one on the trunk);
+  agreed: a summary the human approved, a change requested at
+  acceptance, or an accepted ADR (one on the trunk);
 - a recorded decision of the parent's that contradicts the upstream.
 
 Finish the whole review before you report. Do not stop at the first

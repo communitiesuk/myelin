@@ -34,8 +34,8 @@ For each High in the previous round's record, a line saying
 A separate list, each with its reason:
 
 - a finding whose fix would change something the human has already
-  agreed: the confirmed summary, a change requested at acceptance, or
-  an accepted ADR (one on the trunk);
+  agreed: a summary the human approved, a change requested at
+  acceptance, or an accepted ADR (one on the trunk);
 - a recorded decision of the parent's that contradicts the upstream.
 
 Finish the whole review before you report. Do not stop at the first
@@ -43,8 +43,8 @@ escalation. Never edit the draft.
 
 ## What you check
 
-The upstream is the discovery note where one exists, the confirmed
-summary, and every change requested at acceptance. Check internal
+The upstream is the summary, plus the discovery note where one
+exists, plus any changes requested at acceptance. Check internal
 consistency; consistency with the upstream (does the ADR say what the
 human decided?) and with earlier ADRs, including the closed paths in
 their Alternatives sections and their revision history; and that the

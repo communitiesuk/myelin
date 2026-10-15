@@ -116,7 +116,7 @@ not hold.
 1. A fresh drafter drafts or revises. Commit the draft. Round 1's is
    the introducing commit (or a revision's first revising commit). A
    later round's is titled `Revise <path> (round N draft)`. A draft
-   commit carries its title, the confirmed summary and trailers where
+   commit carries its title, the summary and trailers where
    this skill requires them, and the body a `Revises` commit requires
    (what changed and why); never the drafter's deliberation or yours. An
    unreviewed draft already on the branch is round 1's draft: the loop
@@ -177,9 +177,9 @@ then the drafter's model, each decision applied, and
 yourself:
 
 - a finding whose fix would change something the human has already
-  agreed: the confirmed summary, a change requested at acceptance, or
-  an accepted ADR (for example, a plan review showing that the ADR
-  needs revising);
+  agreed: a summary the human approved, a change requested at
+  acceptance, or an accepted ADR (for example, a plan review showing
+  that the ADR needs revising);
 - a High still open after round 3;
 - a reviewer finding that a recorded decision of yours contradicts the
   upstream.
