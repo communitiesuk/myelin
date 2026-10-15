@@ -36,6 +36,10 @@ Handing the summariser the conversation is feasible: a trial
 extraction on the session that produced this ADR gave 31 KB of
 dialogue from a 1.1 MB transcript.
 
+This revision was prompted by plan 0011's adr-1 eval, which tested
+the stop for an unlabelled decision with no human: the cheap model
+scored 0, then 30 after a wording fix.
+
 ## Decision
 
 One mechanism covers ADRs and plans. What differs between artefact
@@ -54,8 +58,10 @@ both surface, in rounds, until the stop rule below is met.
 - **ADR.** Upstream is a summary (or discovery note) plus any changes
   requested at acceptance. Parent → summariser subagent → drafter →
   review loop → human acceptance.
-  - An explicit request from the human to write the ADR starts
-    drafting. What must not happen is drafting before the
+  - An explicit request from the human to write the ADR, or a
+    labelled summary, starts drafting. Without either, the agent does
+    not draft but asks the human, and with no human available it
+    stops and reports. What must not happen is drafting before the
     conversation has reached a decision, while the human is still
     exploring. The `adr` skill's trigger, which fires only when a
     decision is ready, and facilitated-discovery's step of asking
@@ -66,11 +72,14 @@ both surface, in rounds, until the stop rule below is met.
   - The summariser always runs on the conversation, unless the
     decision is labelled (see A labelled summary). Its one task is to
     decide which parts of the conversation are relevant to the ADR's
-    question. The parent does not filter.
+    question. The parent does not filter. The summariser's text
+    reaches the drafter verbatim; the parent never edits it on its
+    own initiative.
   - The human need not approve the summary before drafting, but may
     ask to. Then the human approves the exact summary text the
-    drafter receives, and anything the parent changes in it after
-    approval is approved again before drafting.
+    drafter receives. If the human asks for changes when approving,
+    the parent applies those changes and no others, and the human
+    approves the changed text before drafting.
   - The summary, with any changes requested at acceptance, is the
     ADR's written upstream, even where there is no discovery note.
     The drafter works from the upstream and, after the first draft,
@@ -95,8 +104,8 @@ goes through the summariser like any conversation.
 
 An explicit but unlabelled request to write the ADR goes ahead with
 no human available: the summariser runs, the drafter drafts, the
-review loop runs, and the agent stops at the pull request, with
-nothing merged. It does not stop and wait.
+review loop runs, and the agent opens the pull request and stops,
+with nothing merged. It does not stop and wait.
 
 With no human available, the agent stops and reports at the point
 where it would surface an escalation (see Escalation scope): for an
@@ -163,8 +172,8 @@ every issue and finding, except those Escalation scope sends to the
 human, and has the draft revised, and re-reviewed where the stop rule
 requires, without asking the human. Choices the upstream did not
 settle are the parent's, because they revise nothing the human has
-agreed or seen; the parent makes them at a round's decision point,
-like any other. It has each Medium or Low finding fixed, in a later
+agreed; the parent makes them at a round's decision point, like any
+other. It has each Medium or Low finding fixed, in a later
 round or the closing pass above, or records in the review record why
 not. The human next sees the artefact drafted and reviewed, together
 with that record.
@@ -210,9 +219,9 @@ escalated (see Escalation scope).
 The parent surfaces to the human:
 
 - a finding whose fix would change something the human has already
-  agreed (a summary they labelled or approved, changes requested at
-  acceptance, or an accepted ADR, for example a plan review that
-  shows the ADR needs revising);
+  agreed (a labelled summary, or one the human approved, changes
+  requested at acceptance, or an accepted ADR, for example a plan
+  review that shows the ADR needs revising);
 - a High still open after round 3; and
 - any reviewer finding that a recorded parent decision contradicts
   the upstream.
@@ -326,13 +335,18 @@ the shape of ADR 0003's git-host modules.
   itself, so the check would prove a step happened, not that the
   human confirmed anything.
 - **With no human to confirm: an unlabelled written decision counts
-  as the summary, with no summariser.** Rejected for the label:
-  without a marker, an agent could treat a casual remark as a
-  written decision.
-  **The eval harness answers the confirmation**: more realistic, but
-  doubtful where evals are one turn. **Rewriting the affected evals to
-  score the summary and the stop**: honest about the behaviour, but
-  loses their coverage of ADR drafting.
+  as the summary, with no summariser; the eval harness answers the
+  confirmation; or the affected evals score the summary and the
+  stop.** Part of the earlier revision, which weighed these against
+  its stop for an unlabelled decision with no human, and chose the
+  label and the stop. This revision reverses that stop, so the eval
+  options no longer arise. The label rule stands: without a marker,
+  an agent could treat a casual remark as a written decision.
+- **For plan 0011's adr-1 failure: run it on Sonnet to find a model
+  floor; one more wording attempt on the cheap model; or accept it
+  as a known gap and relax the plan's gate.** Not chosen: the
+  human's reframing of the gates, which this revision records,
+  replaced all three.
 - **Changes requested at acceptance as an unreviewed closing pass, or
   as a reviewed round counted against those left.** Not chosen: the
   first leaves the change unreviewed; the second, accepted for a time,
@@ -363,7 +377,7 @@ the shape of ADR 0003's git-host modules.
   a revision's first revising commit), plus any changes requested at
   acceptance. The summary adds no edge to ADR 0004's graph, and ADR
   0004's trailer table is unchanged.
-- Drafting no longer waits for the human. Drafting started too early
+- Drafting need not wait for the human. Drafting started too early
   costs subagent runs and an unmerged branch, not a wrong decision of
   record: under ADR 0003 only the human merges an ADR, and that merge
   is the check that the ADR says what the human decided.
@@ -386,6 +400,8 @@ the shape of ADR 0003's git-host modules.
   - The merge-verdict hook that would read the review record.
   - A deterministic gate on the human's confirmation, such as a hook
     that reads the transcript for a human turn after the summary.
+  - An eval for gate (a), that no ADR is drafted mid-exploration,
+    which belongs to facilitated-discovery.
   - Who makes revision commits, and the eval approach, are left to
     the plan.
 
