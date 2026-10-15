@@ -157,8 +157,8 @@ Fixtures are hand-written `.jsonl` files under
 3. Tool results are dropped, except a question's answer.
 4. `isSidechain: true` entries are dropped.
 5. Harness-injected entries are dropped: `isMeta: true`, user text
-   that starts with `<`, and entries of type `attachment`,
-   `queue-operation` and `system`.
+   that starts with `<`, and entries of type `attachment` (except a
+   human's queued message, test 11), `queue-operation` and `system`.
 6. An `AskUserQuestion` call becomes `### Question` with its question
    text and options, and its answer becomes the `### Answer` that
    follows.
@@ -171,11 +171,15 @@ Fixtures are hand-written `.jsonl` files under
 10. Not found exits 1 and leaves no `<out-file>`. Missing arguments
     exit 2. `--help` exits 0 and names the three arguments and the
     exit codes.
+11. A message the human sent while a turn was running, stored as an
+    `attachment` of type `queued_command` with `origin.kind` `human`,
+    becomes a `### Human` block in order. Queued task notifications
+    are dropped.
 
 Red commit: `Test the Claude Code dialogue adapter` (tests and
 fixtures). Check: `bash skills/adr/scripts/tests/run.sh` prints
-`10 tests, 10 failed`. Then write the adapter. Check: it prints
-`10 tests, 0 failed`.
+`11 tests, 11 failed`. Then write the adapter. Check: it prints
+`11 tests, 0 failed`.
 
 Before the green commit, smoke it once on this session's real
 transcript, writing to the session's temporary directory:
@@ -1128,3 +1132,11 @@ scenarios.
   initialise one "if one does not already exist", and scenario-0 and
   scenario-1 do not mention git. The shared block's rule for a path
   outside any git repository therefore applies there.
+- 2026-10-15, Step 2: revised during implementation. A message the
+  human sends while a turn is running is not a `user` entry in Claude
+  Code 2.1.296's transcript but an `attachment` of type
+  `queued_command` with `origin.kind` `human`. The prototype dropped
+  every attachment, so its extracts for this session's summaries
+  missed two of the human's messages. It also kept `isMeta` entries
+  (subagent hand-backs) as `### Human`. Test 5 now spares a human's
+  queued message and test 11 covers it.
