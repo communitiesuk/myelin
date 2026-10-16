@@ -11,12 +11,16 @@ Plans are the action side of the ADR/plan pair. Where an ADR captures *what was 
 
 **Plans always derive from ADRs. Projects can only implement what has been decided.**
 
-Before writing a plan, verify a corresponding ADR exists in `docs/adr/`, either accepted (on the trunk) or proposed (on its own branch, the branch that adds it, whether or not its pull request is open yet). Accepted is better. An ADR carries no status field; where it is says which (see the `adr` skill). `git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md` succeeds if and only if the ADR is on the trunk. An ADR whose pull request was closed unmerged is neither proposed nor accepted; treat it as absent. If no ADR exists:
+Before writing a plan, verify that its ADR is accepted: on the trunk, in `docs/adr/`. An ADR carries no status field; where it is says which (see the `adr` skill). `git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md` succeeds if and only if the ADR is on the trunk. Outside any git repository there is no trunk, so no ADR is accepted.
+
+If the ADR is only proposed, on its own branch or in its pull request, do not write the plan. Say that the plan waits for the ADR's acceptance, the human's merge, and stop. An ADR whose pull request was closed unmerged is neither proposed nor accepted; treat it as absent. If no ADR exists:
 
 1. Stop.
 2. Discuss what needs to be done with the user, confirming decisions to capture.
-3. Write the ADR first using the `adr` skill.
-4. Then return to write the plan.
+3. Say that an ADR is needed first, and ask whether to write it; the `adr` skill starts only on the human's explicit request.
+4. Write the plan once the ADR is accepted.
+
+Asked only for a plan, with no human available, stop and report that an ADR is needed first. Write neither the ADR nor the plan.
 
 Every plan's frontmatter must include an `adr:` field pointing to the ADR it implements. A plan without an `adr:` link is invalid and should be rejected in review.
 
@@ -299,6 +303,6 @@ If while writing a plan you find yourself justifying *why* a choice was made, th
 
 ## Do not
 
-- Do not write a plan without a corresponding ADR. Stop and write the ADR first.
+- Do not write a plan until its ADR is accepted; do not write the ADR unless asked.
 - Do not leave a finished or abandoned plan in the tree.
 - Do not edit the ADR from within the plan's commits. Cross-references only.
