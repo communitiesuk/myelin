@@ -2115,3 +2115,15 @@ summary until this branch lands.
   adr-0's, each with a precondition, and the existing criteria are
   scaled down to keep the rest; 9b.2 and 9b.3 are one commit; and the
   third pass, adr-0 included, runs without baseline arms.
+- 2026-10-16, Step 10 second and third passes (deepseek-v4.1-flash).
+  Second pass, after Step 9a: adr-0 baseline 0, skill 100
+  (`01a140a2`); adr-1 22, 100 (`01a140b0`); plans-0 30, 100
+  (`01a140bb`); plans-1 35, 100 (`01a140c8`); scenario-0 96
+  (`01a140cd`); git-workflow-0 100 (`01a140f3`); git-workflow-1 90
+  (`01a14102`); plan-numbering-0 100 (`01a14110`); scenario-1 timed
+  out twice at 30 minutes (`01a140d7`, `01a14357`). Third pass, after
+  Step 9b, no baselines: scenario-1 100 in 5.5 minutes (`01a14396`);
+  plans-0 100 (`01a1439c`); plan-numbering-0 100 (`01a143a9`); adr-0
+  100 (`01a143bc`). Quality: adr 88%, plans 87% after 9a and 88% after
+  9b. The completion gate holds. Credits across all three passes and
+  the quality reviews: about 1,100.
