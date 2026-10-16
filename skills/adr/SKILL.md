@@ -23,6 +23,12 @@ gives you.
 - End your report with a numbered list of the issues you found:
   ambiguities in the upstream, conflicts with a recorded decision or
   with this skill, and choices you made that nothing settles.
+- Aim for concision and consistency, but do not let them hold you up.
+- When you revise existing text, act only on the recorded decisions
+  and any change you are applying. Apply each by cutting text where
+  that loses no fidelity, consistency or verifiability; then by
+  replacing it, which includes correcting it, aiming to lower the
+  character count. Add text only as a last resort.
 - Finish the whole task, even after you find an escalation.
 
 ## Drafting and review
