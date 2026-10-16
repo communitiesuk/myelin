@@ -1709,3 +1709,11 @@ summary until this branch lands.
   unchanged; and `plans-0`, `plans-1` and `plan-numbering-0` join
   Step 10's second pass, because 9a.2 changes two lines of the `plans`
   skill's shared block.
+- 2026-10-16, Step 10 second pass: git-workflow-1 scored 90, against
+  100 in the first pass. 6 points were the scorer judging identical
+  path-shift evidence differently (worktree "prunable", bare origin
+  unreachable). 4 points came from the fork-point criterion checking
+  the branch tip for the discovery note, which the agent had correctly
+  consumed (`Consumed-By`, per facilitated-discovery). With the human's
+  agreement, the criterion now checks the first commit's tree, as
+  git-workflow-0's equivalent already did. Not re-run: it passes at 90.
