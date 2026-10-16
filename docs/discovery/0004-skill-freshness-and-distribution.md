@@ -201,6 +201,23 @@ Still open:
   no personal copy shadows a repo copy. Non-myelin personal skills were
   left untouched. This is the near-term mitigation above, not the
   decision; the sequencing question against containers remains.
+- **2026-10-16.** The dev-mode procedure's project-scope
+  `tessl install file:.` was tried and fails (tessl 0.115.0). It
+  copies the whole repository into `.tessl/plugins/`, including
+  gitignored files (weeknotes) and worktrees, where `tessl plugin pack`
+  takes only the manifest, README, LICENSE and skills. A second install
+  recurses into the previous snapshot until `ENAMETOOLONG`. The
+  repository's `vendored` mode also meant the snapshot was meant to be
+  committed. Replaced by a project-scope install from GitHub `dev` in
+  managed mode (`communitiesuk/myelin`, 280 KB, gitignored), refreshed
+  by a tracked `SessionStart` hook (`.claude/hooks/refresh-myelin.sh`,
+  about 2 s) that restores `tessl.json`'s pinned commit when it was
+  clean. A GitHub install must list its skills (`--skill`) for tessl's
+  security review, and `tessl update` fails on it for that reason, so
+  the hook re-runs the full install. The hook also gives worktree
+  sessions their own install. Agents load merged `dev`, not a branch
+  in flight; a refresh mid-session takes effect at a skill's next
+  invocation.
 
 ## References
 
