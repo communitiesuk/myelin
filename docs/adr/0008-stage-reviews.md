@@ -36,13 +36,14 @@ Handing the summariser the conversation is feasible: a trial
 extraction on the session that produced this ADR gave 31 KB of
 dialogue from a 1.1 MB transcript.
 
-This revision was prompted by what the shipped reviews cover. The
-reviews the maintainer ran by hand also ran a plan's checks, checked
-its references against the repository and checked form; the briefs
-do not. And nothing in the loop pushes towards cutting: this ADR grew
-to about 430 lines over four revisions in two days, and plan 0011 to
-2,117 lines over more than ten review passes. Many of the added
-clauses were fixes for findings.
+This revision was prompted by the reviewer briefs, the files that
+tell each reviewer what to check. The reviews the maintainer ran by
+hand also ran a plan's checks, checked its references against the
+repository and checked form; the briefs do not. And the loop bloats
+artefacts: findings were fixed by adding a clause to close each gap,
+and nothing pushed towards cutting. This ADR grew to about 430 lines
+over four revisions in two days, and plan 0011 to 2,117 lines over
+more than ten review passes.
 
 ## Decision
 
@@ -176,8 +177,11 @@ with that record.
 ### Each stage checks what it adds
 
 Each stage checks what it adds and relies on what upstream already
-checked. Both reviews also check form against the governing skill's
-rules, and either may find text unneeded: "cut it" is a finding.
+checked. Both reviews also check form, the artefact's conformance to
+its governing skill's structural rules (for an ADR, frontmatter,
+required sections, a question-shaped title and the forward-pointer;
+for a plan, frontmatter and verbatim wrappers), and either may find
+text unneeded: "cut it" is a finding.
 
 - **ADR review:** internal consistency; consistency with its upstream
   (the summary, plus the discovery note where one exists, plus any
@@ -197,14 +201,15 @@ rules, and either may find text unneeded: "cut it" is a finding.
   nothing cannot pass it, and nothing is scored from what the scorer
   cannot see.
 
-### Findings are fixed by correcting, not by adding
+### Findings are fixed by cutting, not by adding
 
 Concision is a general principle, weighted by role. A drafter aims for
 concision and consistency but does not let them hold it up. Any
 drafter revising existing text acts only on the recorded decisions and
-any change it applies, and fixes each by correcting, replacing or
-cutting text, in that order of preference; adding text is the last
-resort. An ADR drafted from now on is capped by the `adr` skill's
+any change it applies. It fixes each by cutting text where that loses
+no fidelity, consistency or verifiability, then by replacing, which
+includes correcting, aiming to lower the character count; adding text
+is the last resort. An ADR drafted from now on is capped by the `adr` skill's
 two-minute scanning guideline; going over it calls for cutting the
 new ADR, not splitting it. An existing ADR over it is a candidate for
 decomposition (#94).
