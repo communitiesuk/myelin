@@ -1,7 +1,22 @@
 {
   "name": "mhclg-aaai/myelin",
-  "mode": "vendored",
-  "dependencies": {},
+  "mode": "managed",
+  "dependencies": {
+    "communitiesuk/myelin": {
+      "version": "fe527e24971126b9d5de6c434b327370502878bf",
+      "source": "https://github.com/communitiesuk/myelin",
+      "include": {
+        "skills": [
+          "adr",
+          "plans",
+          "git-workflow",
+          "facilitated-discovery",
+          "test-first-workflow",
+          "skill-forge"
+        ]
+      }
+    }
+  },
   "agents": [
     "claude-code",
     "cursor"
