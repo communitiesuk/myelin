@@ -43,6 +43,9 @@ deferred_reason: null
     the eval approach is Steps 8 to 10, with Step 9a.
 - ADR 0008 was revised twice after this plan landed, in PR #89. Step
   9a brings the implementation in line with it as it now stands.
+- Step 9b carries out the human's decision of 2026-10-16, that a plan
+  waits for an accepted ADR. It changes the `plans` skill's check,
+  which ADR 0009 left to plan 0010, and no ADR's wording.
 
 ## Steps
 
@@ -59,8 +62,11 @@ history. ADR 0008's revisions in PR #89 removed the
 human's approval of the summary optional, and made an explicit request
 run to the pull request with no human. Step 9a brings the
 implementation in line with that. Where Step 9a and an earlier step
-differ, Step 9a governs. The remaining work is Step 9a, Step 10's
-second pass, and Step 11.
+differ, Step 9a governs. Step 9a is done (`db5cbbf`, `35bbf85`).
+Step 9b makes a plan wait for an accepted ADR, the human's decision of
+2026-10-16 (Progress notes), and changes scenario-1 to match. The
+remaining work is Step 9b, what is left of Step 10's second pass, its
+third pass, and Step 11.
 
 Paths that begin `skills/adr/` ship with the `adr` skill. Paths that
 begin `skills/plans/` ship with the `plans` skill.
@@ -1439,6 +1445,117 @@ then `Remove the Confirmed summary labels from the ADR-writing scenarios`
 (9a.6). This step spends no eval credits; its two quality reviews
 spend 20.
 
+### Step 9b — Plans wait for an accepted ADR
+
+The human's decision of 2026-10-16 (Progress notes): a plan waits for
+an accepted ADR. In a run like scenario-1, the agent writes the ADR,
+opens its pull request where it can, and stops; the plan comes after
+the human merges. scenario-1 becomes "ADR first, then stop". Its plan
+criteria are covered by the scenarios that start from an accepted
+ADR, `plans-0` and `plan-numbering-0`. No ADR's wording changes. The
+`plans` skill's `description` line and its shared review-loop block
+are unchanged. `evals/scenario-1/task.md` and `scenario.json` are
+unchanged.
+
+The checks below use `flat` from Step 9a. `b21f4b5` is the branch tip
+before this step.
+
+**9b.1 — `skills/plans/SKILL.md`, "## Foundational rule — plans always
+derive from ADRs".** Replace the paragraph that begins
+`Before writing a plan, verify a corresponding ADR exists in` and the
+numbered list after it, up to, not including, the paragraph that
+begins `Every plan's frontmatter must include`, with:
+
+~~~markdown
+Before writing a plan, verify that its ADR is accepted: on the trunk, in `docs/adr/`. An ADR carries no status field; where it is says which (see the `adr` skill). `git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md` succeeds if and only if the ADR is on the trunk. Outside any git repository there is no trunk, so no ADR is accepted.
+
+If the ADR is only proposed, on its own branch or in its pull request, do not write the plan. Say that the plan waits for the ADR's acceptance, the human's merge, and stop. An ADR whose pull request was closed unmerged is neither proposed nor accepted; treat it as absent. If no ADR exists:
+
+1. Stop.
+2. Discuss what needs to be done with the user, confirming decisions to capture.
+3. Write the ADR first using the `adr` skill.
+4. Write the plan once the ADR is accepted, not before. Until then, say that the plan waits for the ADR's acceptance, and stop.
+~~~
+
+This removes plan 0010's "either accepted (on the trunk) or proposed
+(on its own branch, the branch that adds it, whether or not its pull
+request is open yet)" and "Accepted is better", and the list's
+"Then return to write the plan". Items 1 to 3 are unchanged.
+
+Checks, from the repository root:
+
+```sh
+flat skills/plans/SKILL.md | grep -oE 'Accepted is better|or proposed \(on its own branch|whether or not its pull request is open yet|Then return to write the plan' | wc -l   # expect 0
+flat skills/plans/SKILL.md | grep -o "the plan waits for the ADR's acceptance" | wc -l                # expect 2
+flat skills/plans/SKILL.md | grep -o 'Write the plan once the ADR is accepted, not before' | wc -l    # expect 1
+flat skills/plans/SKILL.md | grep -o 'Outside any git repository there is no trunk, so no ADR is accepted' | wc -l   # expect 1
+grep -cF 'git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md' skills/plans/SKILL.md                   # expect 1
+git diff -U0 b21f4b5 -- skills/plans/SKILL.md | grep -c '^-[^-]'                                   # expect 2: the old paragraph and item 4
+sect() { sed '/^## Foundational rule/,/^## Location and naming$/d'; }
+diff <(git show b21f4b5:skills/plans/SKILL.md | sect) <(sect < skills/plans/SKILL.md) && echo same   # expect same: nothing outside the section changed
+```
+
+Then re-run Step 6's `block` check (`same`) and Verification's
+`description` check (`exit=1`).
+
+Run `tessl review run quality skills/plans` (10 credits) and record
+its score in Progress notes. It is not lower than 84, allowing the
+4-point spread between identical runs, as in Step 9a. If it is lower
+than that allows, record it in Progress notes and in this commit's
+body, escalate it to the human, and Step 11 waits until the human has
+answered.
+
+Commit: `Make plans wait for an accepted ADR`, its body quoting the
+human's decision and giving the quality score.
+
+**9b.2 — `evals/scenario-1/criteria.json`: the ADR, then stop.**
+
+Keep the first five criteria, the ADR's, with their names and
+descriptions unchanged, and set their `max_score`s:
+
+| Criterion | Was | Now |
+| --- | --- | --- |
+| `ADR file location and naming` | 8 | 12 |
+| `ADR frontmatter completeness` | 8 | 12 |
+| `ADR title is a question` | 6 | 9 |
+| `ADR body sections` | 10 | 15 |
+| `ADR content purity` | 8 | 12 |
+
+Each is 1.5 times its old score, so the ADR criteria keep their
+relative weights and total 60. Replace the seven plan criteria, from
+`Plan file location and naming` to `Progress notes section`, with this
+one, worth 40, the behaviour the change is for:
+
+```json
+{
+  "name": "No plan is written",
+  "description": "`plans/` contains no plan file: no file exists under `plans/` at the project root, in the working tree or, where the solution is a git repository, in any commit. Under the plans skill a plan waits for its ADR's acceptance, the human's merge, and the ADR written in this run is not accepted. An empty `plans/` directory, or none, passes. FAILS IF: any file exists under `plans/`; or the implementation plan the task asks for, ordered implementation steps for the rate limiter, is written anywhere else in the solution, such as a `PLAN.md`.",
+  "max_score": 40
+}
+```
+
+Replace the `context` with:
+
+```text
+Tests whether the agent recognizes that an implementation plan requires a prior ADR, creates the ADR first with the correct structure and conventions, and then stops without writing the plan. Under the plans skill a plan waits for its ADR's acceptance: the ADR on the trunk, by a human's merge. The ADR written in this run is not accepted, so although task.md asks for a plan, the plan waits for the ADR's acceptance and no plan is written.
+```
+
+Checks, from the repository root:
+
+```sh
+jq '[.checklist[].max_score] | add' evals/scenario-1/criteria.json                     # expect 100
+jq '.checklist | length' evals/scenario-1/criteria.json                                # expect 6
+jq -r '.checklist[] | "\(.max_score) \(.name)"' evals/scenario-1/criteria.json         # expect 12, 12, 9, 15, 12 for the five ADR criteria, in the order above, then 40 No plan is written
+d() { jq '.checklist[:5] | map(del(.max_score))'; }
+diff <(git show b21f4b5:evals/scenario-1/criteria.json | d) <(d < evals/scenario-1/criteria.json) && echo same   # expect same
+jq -r .context evals/scenario-1/criteria.json | grep -c "waits for the ADR's acceptance"   # expect 1
+git diff b21f4b5 -- evals/scenario-1/task.md evals/scenario-1/scenario.json | wc -l     # expect 0
+tessl eval lint evals/scenario-1                                                       # expect 1 scenario valid, no errors
+```
+
+Commit: `Make scenario-1 stop after the ADR`. This step spends no eval
+credits; its quality review spends 10.
+
 ### Step 10 — Run the evals (spends credits)
 
 > Spends tessl eval credits. The runs so far cost 24 to 67 credits
@@ -1449,7 +1566,9 @@ spend 20.
 > at up to 70, five regression runs at up to 40). Re-runs are capped at
 > 2 per new scenario (up to 70 each, 560 for the four) and at one
 > `-n 2` re-run per regression scenario (up to 80 each, 400 for the
-> five), so the second pass spends at most about 1,440. Run one scenario at a time; never run the whole
+> five), so the second pass spends at most about 1,440. The third
+> pass is three regression runs, up to 40 each, and at most one `-n 2`
+> re-run each, up to 80: at most about 360. Run one scenario at a time; never run the whole
 > `evals/` directory. Before each run, `tessl eval lint evals/<scenario>`
 > reports one scenario (free).
 
@@ -1488,12 +1607,35 @@ A scenario more than 10 points below its baseline (the release
 skill's threshold), so below 90, is re-run with `-n 2` and judged on
 the median of its three scored repeats.
 
-Record every run id, model, score and cost, from both passes, in
+scenario-1's second-pass runs timed out (Progress notes) and give it
+no second-pass score. Its gate is the third pass.
+
+**Third pass, after Step 9b.** `scenario-1`, as a regression on its
+new criteria, and `plans-0` and `plan-numbering-0`, to check 9b.1's
+change to the `plans` skill. One run each, no baseline: a baseline arm
+does not load the skill, so 9b.1 cannot change it.
+
+```sh
+tessl eval run evals/scenario-1 --context . --skip-baseline --agent claude --model deepseek-v4.1-flash --label "plan 0011 regression scenario-1 after 9b" --wait --json --yes
+tessl eval run evals/plans-0 --context . --skip-baseline --agent claude --model deepseek-v4.1-flash --label "plan 0011 regression plans-0 after 9b" --wait --json --yes
+tessl eval run evals/plan-numbering-0 --context . --skip-baseline --agent claude --model deepseek-v4.1-flash --label "plan 0011 regression plan-numbering-0 after 9b" --wait --json --yes
+```
+
+Expected output: each run finishes inside the platform's 30-minute
+limit and scores 90 or more. scenario-1's 90 is on its new criteria
+from 9b.2, so it is not compared with the v0.3.0 median, which was
+scored on the old ones. A run below 90 is re-run with `-n 2` and
+judged on the median of its three scored repeats. A run that times
+out is re-run once; a second timeout is an escalation to the human,
+recorded as for a median below 90.
+
+Record every run id, model, score and cost, from all three passes, in
 Progress notes and in the body of the commit that records them,
 `Record plan 0011 Step 10: eval runs`. Each run gives its expected
 output: `plans-0`, `plans-1`, `adr-0` and `adr-1` each score higher
-with the skill than on their baseline arm, and each regression
-scenario scores 90 or more. Outcomes:
+with the skill than on their baseline arm in the second pass, and each
+regression run, in the second pass and the third, scores 90 or more.
+Outcomes:
 
 - A new scenario whose skill arm does not score above its baseline
   does not discriminate. Fix the fixture, not the criteria, in a
@@ -1507,14 +1649,15 @@ scenario scores 90 or more. Outcomes:
   the skill in a commit of its own, recorded in Progress notes as
   `332886a` was, and re-run that scenario within the same cap; without
   that agreement, escalate it to the human. Never relax the criteria.
-- A regression scenario whose median is below 90 is an escalation to
-  the maintainer. Record it, set this plan `deferred` with that
-  reason, and do not change the scenario further.
+- A regression scenario whose median is below 90, in the second pass
+  or the third, is an escalation to the maintainer. Record it, set
+  this plan `deferred` with that reason, and do not change the
+  scenario further.
 
 ### Step 11 — Complete the plan
 
 When every Verification bullet holds, the completion gate included,
-and no escalation from Step 9a or Step 10 is unanswered, delete
+and no escalation from Step 9a, Step 9b or Step 10 is unanswered, delete
 `plans/0011-stage-reviews.md` in a commit titled
 `Complete plan 0011: stage reviews`, carrying
 `Completes: plans/0011-stage-reviews.md`, whose body says what the
@@ -1523,7 +1666,8 @@ dialogue adapter and summariser, the reviewer briefs, the pull
 request description that carries the record, the four eval
 scenarios, Step 9a's repurposing of `adr-0` and `adr-1`, and its
 removal of the `Confirmed summary:` labels from the ADR-writing
-scenarios. The last Verification bullet is checkable only after this
+scenarios, and Step 9b's rule that a plan waits for an accepted ADR,
+with scenario-1 changed to stop after the ADR. The last Verification bullet is checkable only after this
 commit, so Step 11 does not wait on it.
 
 The pull request description carries one line saying that plan 0011
@@ -1553,6 +1697,9 @@ summary until this branch lands.
   `a summary the human approved`.
 - No scenario carries a label: every check for 9a.4 to 9a.6 in Step 9a
   gives its expected output.
+- A plan waits for an accepted ADR, and scenario-1 stops after the
+  ADR: every check for 9b.1 and 9b.2 in Step 9b gives its expected
+  output.
 - Neither skill's `description` changed:
 
   ```sh
@@ -1565,19 +1712,22 @@ summary until this branch lands.
 - `grep -c 'CLAUDE_CODE_SESSION_ID' skills/adr/SKILL.md` prints at
   least `1`, and `grep -c 'CLAUDE_SESSION_ID}' skills/adr/SKILL.md`
   prints `0`.
-- `tessl review run quality skills/adr` and
-  `tessl review run quality skills/plans`, run after Step 9a, score no
+- `tessl review run quality skills/adr`, run after Step 9a, and
+  `tessl review run quality skills/plans`, run after Step 9b, score no
   lower than before Steps 5 and 6 (84 for each), allowing the 4-point
   spread between identical runs (a review, not a `tessl eval run`).
-- Step 2's smoke figures, Step 5f's live check, Step 9a's quality
-  scores and Step 10's run ids are in commit bodies, so they survive
+- Step 2's smoke figures, Step 5f's live check, Step 9a's and Step
+  9b's quality scores and Step 10's run ids are in commit bodies, so they survive
   this plan's deletion. Each run is re-readable with
   `tessl eval view <id>`.
 - **Completion gate:** `plans-0`, `plans-1`, `adr-0` and `adr-1`
   score higher with their skill than without on their second-pass
-  runs, after Step 9a. `scenario-0`, `scenario-1`, `git-workflow-0`,
+  runs, after Step 9a. `scenario-0`, `git-workflow-0`,
   `git-workflow-1` and `plan-numbering-0` each have a median of 90 or
-  more on their second-pass runs.
+  more on their second-pass runs. `scenario-1` has a median of 90 or
+  more on its third-pass run, after Step 9b, on its new criteria.
+  `plans-0`'s and `plan-numbering-0`'s third-pass runs are Step 10
+  checks: a median below 90 is an escalation, which Step 11 waits on.
 - Not part of the gate, and checkable only after this plan completes:
   the first ADR and the first plan written after it each have, on
   their branch, an introducing commit (for the ADR, with the
@@ -1717,3 +1867,24 @@ summary until this branch lands.
   consumed (`Consumed-By`, per facilitated-discovery). With the human's
   agreement, the criterion now checks the first commit's tree, as
   git-workflow-0's equivalent already did. Not re-run: it passes at 90.
+- 2026-10-16, Step 10 second pass: scenario-1 timed out twice at the
+  platform's 30-minute limit (runs `01a140d7` and `01a14357`), writing
+  an ADR and then a plan in one task. Neither run scored. The option
+  put to the human: the `plans` skill requires the ADR to be on the
+  trunk; in a run like scenario-1 the agent writes the ADR, opens its
+  pull request and stops, and the plan comes after the human merges;
+  scenario-1 becomes "ADR first, then stop", and its plan criteria
+  move to scenarios that start from an accepted ADR (plans-0 and
+  plan-numbering-0 already do). The human's decision: "go with option
+  1, plans wait for an accepted ADR". Step 9b carries it out and Step
+  10's third pass checks it.
+- No ADR's wording changes for this. The rule is the `plans` skill's,
+  whose check ADR 0009 left to plan 0010. Recording it in ADR 0009's
+  Consequences was considered and dropped, because a non-revising edit
+  to an accepted ADR cannot be landed (#74).
+- Implementation choices made in Step 9b, where the decision leaves
+  them open: outside any git repository no ADR is accepted, so no plan
+  is written; scenario-1's ADR criteria are scaled by 1.5 (to 60) and
+  "No plan is written" is worth 40; that criterion also fails a plan
+  written outside `plans/`; and the third pass runs without baseline
+  arms.
