@@ -23,6 +23,12 @@ gives you.
 - End your report with a numbered list of the issues you found:
   ambiguities in the upstream, conflicts with a recorded decision or
   with this skill, and choices you made that nothing settles.
+- Aim for concision and consistency, but do not let them hold you up.
+- When you revise existing text, act only on the recorded decisions
+  and any change you are applying. Apply each by cutting text where
+  that loses no fidelity, consistency or verifiability; then by
+  replacing it, which includes correcting it, aiming to lower the
+  character count. Add text only as a last resort.
 - Finish the whole task, even after you find an escalation.
 
 ## Drafting and review
@@ -319,7 +325,7 @@ After the frontmatter and `#` H1:
 5. **Consequences** — what this makes easier, what it rules out, what will need to be revisited.
 6. **References** — each ADR whose decision this one relies on or constrains, with a phrase saying which, plus external material. References records what a decision uses; `Derives-From` on the introducing commit records what the artefact was produced from. The two are different relations.
 
-Omit sections that would be empty (except Forward-pointer, which is required). Keep it tight — a reader should be able to scan an ADR in under two minutes.
+Omit sections that would be empty (except Forward-pointer, which is required). Keep it tight — a reader should be able to scan an ADR in under two minutes. That caps a new ADR: one that goes over it is cut, not split. An existing ADR over it is a candidate for decomposition.
 
 ## Required forward-pointer
 

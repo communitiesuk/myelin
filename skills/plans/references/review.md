@@ -44,9 +44,18 @@ escalation. Never edit the draft.
 ## What you check
 
 The upstream is the ADR the plan implements. Rely on the ADR being
-consistent; do not review it. Check fidelity: everything the ADR
-decided is implemented, and nothing it did not decide. Check
-verifiability: for each assertion the plan requires, can it be
-observed afterwards, and does another step destroy the evidence? A
-plan that cannot be faithful without changing the ADR is an
-escalation.
+consistent; do not review it. Check the plan's internal consistency.
+Check fidelity: everything the ADR decided is implemented, and nothing
+it did not decide. Check verifiability by trying it: on a scratch copy
+of the repository, apply the plan's steps, then run its checks. Do not
+run `tessl eval run` or `tessl review run`, which spend credits; check
+that they are well formed instead (lint, paths, flags). Confirm that
+every file, line and quoted string the plan refers to exists as
+described. For each assertion the plan requires: can it be observed
+afterwards, and does another step destroy the evidence? Each eval
+assertion must discriminate: doing nothing cannot pass it, and nothing
+is scored from what the scorer cannot see. Check form against the
+rules in the `plans` skill's `SKILL.md`: for example, frontmatter,
+required sections and verbatim wrappers. Text the plan does not need
+is a finding: cut it. A plan that cannot be faithful without changing
+the ADR is an escalation.
