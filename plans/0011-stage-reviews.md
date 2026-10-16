@@ -44,8 +44,11 @@ deferred_reason: null
 - ADR 0008 was revised twice after this plan landed, in PR #89. Step
   9a brings the implementation in line with it as it now stands.
 - Step 9b carries out the human's decision of 2026-10-16, that a plan
-  waits for an accepted ADR. It changes the `plans` skill's check,
-  which ADR 0009 left to plan 0010, and no ADR's wording.
+  waits for an accepted ADR, and the human's answer the same day, that
+  asked for a plan with no ADR the agent writes neither, because ADR
+  0008 starts an ADR only on the human's explicit request. It changes
+  the `plans` skill's check, which ADR 0009 left to plan 0010, and no
+  ADR's wording.
 
 ## Steps
 
@@ -1448,14 +1451,18 @@ spend 20.
 ### Step 9b — Plans wait for an accepted ADR
 
 The human's decision of 2026-10-16 (Progress notes): a plan waits for
-an accepted ADR. In a run like scenario-1, the agent writes the ADR,
-opens its pull request where it can, and stops; the plan comes after
-the human merges. scenario-1 becomes "ADR first, then stop". Its plan
-criteria are covered by the scenarios that start from an accepted
-ADR, `plans-0` and `plan-numbering-0`. No ADR's wording changes. The
-`plans` skill's `description` line and its shared review-loop block
-are unchanged. `evals/scenario-1/task.md` and `scenario.json` are
-unchanged.
+an accepted ADR. The human's answer the same day: asked for a plan
+with no ADR, as in scenario-1, the agent writes neither. The `adr`
+skill starts only on the human's explicit request (ADR 0008), and a
+request for a plan is not one. The agent stops, discusses what needs
+to be done, and asks whether to write the ADR; with no human, it stops
+and reports that an ADR is needed first. scenario-1 becomes "no ADR,
+no plan, no branch". Its plan criteria are covered by the scenarios
+that start from an accepted ADR, `plans-0` and `plan-numbering-0`, and
+its ADR criteria by the scenarios that ask for an ADR, `adr-0` and
+`adr-1`. No ADR's wording changes. The `plans` skill's `description`
+line and its shared review-loop block are unchanged.
+`evals/scenario-1/task.md` and `scenario.json` are unchanged.
 
 The checks below use `flat` from Step 9a. `b21f4b5` is the branch tip
 before this step.
@@ -1473,24 +1480,29 @@ If the ADR is only proposed, on its own branch or in its pull request, do not wr
 
 1. Stop.
 2. Discuss what needs to be done with the user, confirming decisions to capture.
-3. Write the ADR first using the `adr` skill.
-4. Write the plan once the ADR is accepted, not before. Until then, say that the plan waits for the ADR's acceptance, and stop.
+3. Ask whether to write the ADR; the `adr` skill starts only on the human's explicit request.
+4. Write the plan once the ADR is accepted.
+
+With no human available, stop and report that an ADR is needed first. Write neither the ADR nor the plan.
 ~~~
 
 This removes plan 0010's "either accepted (on the trunk) or proposed
 (on its own branch, the branch that adds it, whether or not its pull
 request is open yet)" and "Accepted is better", and the list's
-"Then return to write the plan". Items 1 to 3 are unchanged.
+"Write the ADR first using the `adr` skill" and "Then return to write
+the plan". Items 1 and 2 are unchanged.
 
 Checks, from the repository root:
 
 ```sh
-flat skills/plans/SKILL.md | grep -oE 'Accepted is better|or proposed \(on its own branch|whether or not its pull request is open yet|Then return to write the plan' | wc -l   # expect 0
-flat skills/plans/SKILL.md | grep -o "the plan waits for the ADR's acceptance" | wc -l                # expect 2
-flat skills/plans/SKILL.md | grep -o 'Write the plan once the ADR is accepted, not before' | wc -l    # expect 1
+flat skills/plans/SKILL.md | grep -oE 'Accepted is better|or proposed \(on its own branch|whether or not its pull request is open yet|Write the ADR first using|Then return to write the plan' | wc -l   # expect 0
+flat skills/plans/SKILL.md | grep -o "the plan waits for the ADR's acceptance" | wc -l                # expect 1
+flat skills/plans/SKILL.md | grep -o 'Write the plan once the ADR is accepted\.' | wc -l             # expect 1
+flat skills/plans/SKILL.md | grep -o "the \`adr\` skill starts only on the human's explicit request" | wc -l   # expect 1
+flat skills/plans/SKILL.md | grep -o 'With no human available, stop and report that an ADR is needed first' | wc -l   # expect 1
 flat skills/plans/SKILL.md | grep -o 'Outside any git repository there is no trunk, so no ADR is accepted' | wc -l   # expect 1
 grep -cF 'git cat-file -e <trunk>:docs/adr/NNNN-<slug>.md' skills/plans/SKILL.md                   # expect 1
-git diff -U0 b21f4b5 -- skills/plans/SKILL.md | grep -c '^-[^-]'                                   # expect 2: the old paragraph and item 4
+git diff -U0 b21f4b5 -- skills/plans/SKILL.md | grep -c '^-[^-]'                                   # expect 3: the old paragraph, item 3 and item 4
 sect() { sed '/^## Foundational rule/,/^## Location and naming$/d'; }
 diff <(git show b21f4b5:skills/plans/SKILL.md | sect) <(sect < skills/plans/SKILL.md) && echo same   # expect same: nothing outside the section changed
 ```
@@ -1506,55 +1518,55 @@ body, escalate it to the human, and Step 11 waits until the human has
 answered.
 
 Commit: `Make plans wait for an accepted ADR`, its body quoting the
-human's decision and giving the quality score.
+human's decision and answer, and giving the quality score.
 
-**9b.2 — `evals/scenario-1/criteria.json`: the ADR, then stop.**
-
-Keep the first five criteria, the ADR's, with their names and
-descriptions unchanged, and set their `max_score`s:
-
-| Criterion | Was | Now |
-| --- | --- | --- |
-| `ADR file location and naming` | 8 | 12 |
-| `ADR frontmatter completeness` | 8 | 12 |
-| `ADR title is a question` | 6 | 9 |
-| `ADR body sections` | 10 | 15 |
-| `ADR content purity` | 8 | 12 |
-
-Each is 1.5 times its old score, so the ADR criteria keep their
-relative weights and total 60. Replace the seven plan criteria, from
-`Plan file location and naming` to `Progress notes section`, with this
-one, worth 40, the behaviour the change is for:
+**9b.2 — `evals/scenario-1/criteria.json`: no ADR, no plan, no
+branch.** Replace the twelve criteria, the five ADR criteria and the
+seven plan criteria, with these three, in this order:
 
 ```json
 {
-  "name": "No plan is written",
-  "description": "`plans/` contains no plan file: no file exists under `plans/` at the project root, in the working tree or, where the solution is a git repository, in any commit. Under the plans skill a plan waits for its ADR's acceptance, the human's merge, and the ADR written in this run is not accepted. An empty `plans/` directory, or none, passes. FAILS IF: any file exists under `plans/`; or the implementation plan the task asks for, ordered implementation steps for the rate limiter, is written anywhere else in the solution, such as a `PLAN.md`.",
+  "name": "No ADR is written",
+  "description": "`docs/adr/` contains no ADR file: no file exists under `docs/adr/` at the project root, in the working tree or, where the solution is a git repository, in any commit. Under the adr skill an ADR is written only on the human's explicit request, and task.md asks for a plan, not an ADR. An empty `docs/adr/` directory, or none, passes. FAILS IF: any file exists under `docs/adr/`; or an ADR for the rate limiter, a record of the token bucket decision with its context, alternatives or consequences, is written anywhere else in the solution.",
   "max_score": 40
+},
+{
+  "name": "No plan is written",
+  "description": "`plans/` contains no plan file: no file exists under `plans/` at the project root, in the working tree or, where the solution is a git repository, in any commit. Under the plans skill a plan needs an accepted ADR, one on the trunk, and none exists. An empty `plans/` directory, or none, passes. FAILS IF: any file exists under `plans/`; or the implementation plan the task asks for, ordered implementation steps for the rate limiter, is written anywhere else in the solution, such as a `PLAN.md`.",
+  "max_score": 40
+},
+{
+  "name": "No branch is created",
+  "description": "No git branch is created for an ADR or a plan. A solution that is not a git repository passes. Where it is one, it has at most one branch, and no branch whose name begins `adr-` or `plan`. FAILS IF: the solution's git repository has more than one branch, or any branch whose name begins `adr-` or `plan`.",
+  "max_score": 20
 }
 ```
+
+The ADR and the plan are worth 40 each, the behaviour the change is
+for; the branch is worth 20, because git-workflow begins a branch only
+for an ADR or a plan, so it mostly follows from the other two.
 
 Replace the `context` with:
 
 ```text
-Tests whether the agent recognizes that an implementation plan requires a prior ADR, creates the ADR first with the correct structure and conventions, and then stops without writing the plan. Under the plans skill a plan waits for its ADR's acceptance: the ADR on the trunk, by a human's merge. The ADR written in this run is not accepted, so although task.md asks for a plan, the plan waits for the ADR's acceptance and no plan is written.
+Tests whether the agent, asked for an implementation plan in a project with no ADR, writes neither the ADR nor the plan. Under the plans skill a plan needs an accepted ADR, one on the trunk, and none exists. Under the adr skill an ADR is written only on the human's explicit request, and task.md asks for a plan, not an ADR. With no human to ask whether to write the ADR, the agent stops and reports that an ADR is needed first, so no ADR file, no plan file and no new branch is the passing outcome. Known weakness: an agent that does nothing also passes. A positive test, that the agent says an ADR is needed and asks whether to write it, belongs with #90.
 ```
 
 Checks, from the repository root:
 
 ```sh
 jq '[.checklist[].max_score] | add' evals/scenario-1/criteria.json                     # expect 100
-jq '.checklist | length' evals/scenario-1/criteria.json                                # expect 6
-jq -r '.checklist[] | "\(.max_score) \(.name)"' evals/scenario-1/criteria.json         # expect 12, 12, 9, 15, 12 for the five ADR criteria, in the order above, then 40 No plan is written
-d() { jq '.checklist[:5] | map(del(.max_score))'; }
-diff <(git show b21f4b5:evals/scenario-1/criteria.json | d) <(d < evals/scenario-1/criteria.json) && echo same   # expect same
-jq -r .context evals/scenario-1/criteria.json | grep -c "waits for the ADR's acceptance"   # expect 1
+jq '.checklist | length' evals/scenario-1/criteria.json                                # expect 3
+jq -r '.checklist[] | "\(.max_score) \(.name)"' evals/scenario-1/criteria.json         # expect 40 No ADR is written, 40 No plan is written, 20 No branch is created
+jq -r .context evals/scenario-1/criteria.json | grep -c 'a plan needs an accepted ADR'  # expect 1
+jq -r .context evals/scenario-1/criteria.json | grep -c "only on the human's explicit request"   # expect 1
+jq -r .context evals/scenario-1/criteria.json | grep -c 'an agent that does nothing also passes.*#90'   # expect 1
 git diff b21f4b5 -- evals/scenario-1/task.md evals/scenario-1/scenario.json | wc -l     # expect 0
 tessl eval lint evals/scenario-1                                                       # expect 1 scenario valid, no errors
 ```
 
-Commit: `Make scenario-1 stop after the ADR`. This step spends no eval
-credits; its quality review spends 10.
+Commit: `Make scenario-1 expect no ADR, no plan and no branch`. This step
+spends no eval credits; its quality review spends 10.
 
 ### Step 10 — Run the evals (spends credits)
 
@@ -1611,7 +1623,7 @@ scenario-1's second-pass runs timed out (Progress notes) and give it
 no second-pass score. Its gate is the third pass.
 
 **Third pass, after Step 9b.** `scenario-1`, as a regression on its
-new criteria, and `plans-0` and `plan-numbering-0`, to check 9b.1's
+new criteria from 9b.2 (no ADR, no plan, no branch), and `plans-0` and `plan-numbering-0`, to check 9b.1's
 change to the `plans` skill. One run each, no baseline: a baseline arm
 does not load the skill, so 9b.1 cannot change it.
 
@@ -1667,8 +1679,9 @@ request description that carries the record, the four eval
 scenarios, Step 9a's repurposing of `adr-0` and `adr-1`, and its
 removal of the `Confirmed summary:` labels from the ADR-writing
 scenarios, and Step 9b's rule that a plan waits for an accepted ADR,
-with scenario-1 changed to stop after the ADR. The last Verification bullet is checkable only after this
-commit, so Step 11 does not wait on it.
+with scenario-1 changed to expect no ADR, no plan and no branch. The
+last Verification bullet is checkable only after this commit, so Step
+11 does not wait on it.
 
 The pull request description carries one line saying that plan 0011
 on `dev` still describes the label and the stop for an unconfirmed
@@ -1697,8 +1710,8 @@ summary until this branch lands.
   `a summary the human approved`.
 - No scenario carries a label: every check for 9a.4 to 9a.6 in Step 9a
   gives its expected output.
-- A plan waits for an accepted ADR, and scenario-1 stops after the
-  ADR: every check for 9b.1 and 9b.2 in Step 9b gives its expected
+- A plan waits for an accepted ADR, and scenario-1 expects no ADR, no
+  plan and no branch: every check for 9b.1 and 9b.2 in Step 9b gives its expected
   output.
 - Neither skill's `description` changed:
 
@@ -1882,9 +1895,25 @@ summary until this branch lands.
   whose check ADR 0009 left to plan 0010. Recording it in ADR 0009's
   Consequences was considered and dropped, because a non-revising edit
   to an accepted ADR cannot be landed (#74).
+- 2026-10-16, the human's answer on Step 9b's round 1 draft. Its
+  drafter escalated before review: scenario-1 asks for a plan with no
+  ADR, and ADR 0008 lets only an explicit request start an ADR. The
+  `plans` skill's rule already said to stop and discuss with the user
+  (step 2) before writing the ADR, so scenario-1 had rewarded skipping
+  step 2: it scored an ADR and a plan written straight from the task.
+  The parent proposed that, asked for a plan with no ADR, the agent
+  writes neither: it says an ADR is needed first and asks, or with no
+  human stops and reports; the rule's steps 3 and 4 become "Ask whether
+  to write the ADR; the adr skill starts only on the human's explicit
+  request. Write the plan once the ADR is accepted."; and scenario-1's
+  criteria become no ADR, no plan, no branch. The human replied: "yes,
+  go ahead". Step 9b was revised to apply it; the round 1 draft was
+  not reviewed.
 - Implementation choices made in Step 9b, where the decision leaves
   them open: outside any git repository no ADR is accepted, so no plan
-  is written; scenario-1's ADR criteria are scaled by 1.5 (to 60) and
-  "No plan is written" is worth 40; that criterion also fails a plan
-  written outside `plans/`; and the third pass runs without baseline
+  is written; scenario-1's "No ADR is written" and "No plan is
+  written" are worth 40 each and "No branch is created" 20; the first
+  two also fail an ADR or a plan written outside `docs/adr/` or
+  `plans/`; scenario-1 has no positive test that the agent asks, a
+  known weakness left to #90; and the third pass runs without baseline
   arms.
