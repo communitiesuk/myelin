@@ -1,66 +1,21 @@
 {
-  "context": "Tests whether the agent recognizes that an implementation plan requires a prior ADR, creates the ADR first with the correct structure and conventions, then produces a conformant plan that references the ADR—including all required frontmatter fields, body sections, and a reference to the test-first-workflow for coding steps.",
+  "context": "Tests whether the agent, asked for an implementation plan in a project with no ADR, writes neither the ADR nor the plan. Under the plans skill a plan needs an accepted ADR, one on the trunk, and none exists. Under the adr skill an ADR is written only on the human's explicit request, and task.md asks for a plan, not an ADR. With no human to ask whether to write the ADR, the agent stops and reports that an ADR is needed first, so no ADR file, no plan file and no new branch is the passing outcome. Known weakness: an agent that does nothing also passes. A positive test, that the agent says an ADR is needed and asks whether to write it, belongs with #90.",
   "type": "weighted_checklist",
   "checklist": [
     {
-      "name": "ADR file location and naming",
-      "description": "A file exists under docs/adr/ with a name matching the pattern NNNN-kebab-slug.md (four-digit zero-padded number followed by a lowercase hyphenated description, e.g. 0001-rate-limiting.md)",
-      "max_score": 8
+      "name": "No ADR is written",
+      "description": "`docs/adr/` contains no ADR file: no file exists under `docs/adr/` at the project root, in the working tree or, where the solution is a git repository, in any commit. Under the adr skill an ADR is written only on the human's explicit request, and task.md asks for a plan, not an ADR. An empty `docs/adr/` directory, or none, passes. FAILS IF: any file exists under `docs/adr/`; or an ADR for the rate limiter, a record of the token bucket decision with its context, alternatives or consequences, is written anywhere else in the solution.",
+      "max_score": 40
     },
     {
-      "name": "ADR frontmatter completeness",
-      "description": "The ADR file's YAML frontmatter contains exactly two fields: title and date — and no others",
-      "max_score": 8
+      "name": "No plan is written",
+      "description": "`plans/` contains no plan file: no file exists under `plans/` at the project root, in the working tree or, where the solution is a git repository, in any commit. Under the plans skill a plan needs an accepted ADR, one on the trunk, and none exists. An empty `plans/` directory, or none, passes. FAILS IF: any file exists under `plans/`; or the implementation plan the task asks for, ordered implementation steps for the rate limiter, is written anywhere else in the solution, such as a `PLAN.md`.",
+      "max_score": 40
     },
     {
-      "name": "ADR title is a question",
-      "description": "The ADR's title field and its H1 are phrased as the question the record answers, ending in a question mark (e.g. 'How is the API rate limited?'), and the two match. A statement such as 'Token bucket rate limiting' does not satisfy this",
-      "max_score": 6
-    },
-    {
-      "name": "ADR body sections",
-      "description": "The ADR body contains all four required sections in order: Context, Decision, Alternatives considered, and Consequences",
-      "max_score": 10
-    },
-    {
-      "name": "ADR content purity",
-      "description": "The ADR body does NOT contain ordered task lists (step 1, step 2...), test lists, verification steps, or progress-state markers (e.g. 'done', 'blocked', checkboxes)",
-      "max_score": 8
-    },
-    {
-      "name": "Plan file location and naming",
-      "description": "A file exists under plans/ at the project root with a name matching the pattern NNNN-kebab-slug.md (four-digit zero-padded number followed by a lowercase hyphenated description)",
-      "max_score": 8
-    },
-    {
-      "name": "Plan frontmatter completeness",
-      "description": "The plan file's YAML frontmatter contains all five required fields: title, status, adr, date, and deferred_reason",
-      "max_score": 8
-    },
-    {
-      "name": "Plan-ADR linkage",
-      "description": "The plan's frontmatter adr: field is non-null and contains a number (e.g., 0001) that corresponds to a file in docs/adr/",
-      "max_score": 10
-    },
-    {
-      "name": "Plan body structure",
-      "description": "The plan body contains all three required sections: Reference (a link back to the ADR), Steps, and Verification",
-      "max_score": 10
-    },
-    {
-      "name": "Test-first-workflow reference",
-      "description": "The plan's Steps section explicitly references or embeds the test-first-workflow, e.g. mentions 'docstrings → failing tests → code', 'test-first-workflow', or the red-commit/green-commit pattern",
-      "max_score": 10
-    },
-    {
-      "name": "Plan content purity",
-      "description": "The plan body does NOT contain the decision rationale, alternatives considered, or design trade-off analysis (those belong exclusively in the ADR)",
-      "max_score": 7
-    },
-    {
-      "name": "Progress notes section",
-      "description": "The plan body includes a Progress notes section (may be empty or contain a placeholder for future entries)",
-      "max_score": 6
+      "name": "No branch is created",
+      "description": "No git branch is created for an ADR or a plan. A solution that is not a git repository passes. Where it is one, it has at most one branch, and no branch whose name begins `adr-` or `plan`. FAILS IF: the solution's git repository has more than one branch, or any branch whose name begins `adr-` or `plan`.",
+      "max_score": 20
     }
   ]
 }

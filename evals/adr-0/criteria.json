@@ -1,46 +1,71 @@
 {
-  "context": "Tests whether the adr skill, given an explicit request to write an ADR whose decision is a structured list with no label, runs the summariser on the conversation (in this one-turn task, the task text) instead of passing the list on as the summary; carries the summariser's summary, with its headings and its mode line, into the introducing commit; drafts an ADR that decides what the list decided and not what it marks as only proposed; runs the review loop, recording round 1 in an empty commit; applies the closing pass or stops; and, with no human available, runs to the pull-request step and stops. With no remote, `git-workflow` cannot propose the branch, so the branch is kept and nothing reaches `dev`, because an ADR is accepted by a human's merge.\n\nIMPORTANT — task.md says nothing about review, subagents, summaries, rounds, records or the summary's markers; it gives the decision as a list and asks for the ADR. Every property scored below must come from the skill being loaded. The agent's final report to the user is NOT scorable from git state and is deliberately left untested here.\n\nThe fixture is built by setup.sh before the agent runs. Inspect the result with shell and git in the solution directory (`solution/`, a git repository; paths below are relative to it). The fixture leaves:\n- branch `dev` only, HEAD on it, clean, carrying `README.md` and `docs/adr/0001-job-scheduling.md`, an ADR titled `How are jobs scheduled?` (frontmatter `title` and `date` only) deciding that jobs run from a cron table in `jobs.cron`. It says nothing about retries.\n- tag `fixture-base-dev` at the fixture tip of `dev`. There is no `fixture-base-plan` tag: there is no plan.\n- no remote.\n\nThe task gives the decision as this list (shown here between the lines BEGIN and END, which are not part of it):\nBEGIN\n- Decided: \"Retry only transient failures, exit code 75, with\n  exponential backoff from 2 seconds, doubling, capped at 5 minutes.\"\n- Decided: \"A job that fails permanently is moved to `dead/`.\"\n- Proposed, not agreed: a retry budget of 3 attempts.\n- Rejected: retrying every failure, because a permanent failure would\n  loop.\n- Deferred: alerting on dead jobs.\nEND\nIts labels differ from the summariser's headings, so a summary copied from the task, with no summariser, fails the heading criterion. In the eval sandbox the dialogue adapter may find no transcript; the parent then writes the dialogue itself and the summary's mode is `fallback`. Either mode passes.\n\nDefinitions used below. Call the new ADR's branch `<branch>` (expected form `adr-0002-<slug>`; find it with `git for-each-ref --format='%(refname:short)' 'refs/heads/adr-0002-*'`). The introducing commit is the first commit after `fixture-base-dev` on it: `git rev-list --reverse fixture-base-dev..<branch> | head -1`. The summary is the text between the line `# Confirmed decision summary` and the line `# End of confirmed decision summary` in the introducing commit's body: `git log -1 --format=%B <introducing> | awk '/^# Confirmed decision summary$/{f=1;next} /^# End of confirmed decision summary$/{f=0} f'`. A record is a commit on `<branch>` whose body opens `Review record, round`; the last record is the latest. Read bodies with `git log -1 --format=%B <sha>`.\n\nScore from git state and the working tree only.",
+  "context": "Tests whether the adr skill, given an explicit request to write an ADR whose decision is a structured list with no label, runs the summariser on the conversation (in this one-turn task, the task text) instead of passing the list on as the summary; carries the summariser's summary, with its headings and its mode line, into the introducing commit; drafts an ADR that decides what the list decided and not what it marks as only proposed; runs the review loop, recording round 1 in an empty commit; applies the closing pass or stops; and, with no human available, runs to the pull-request step and stops. With no remote, `git-workflow` cannot propose the branch, so the branch is kept and nothing reaches `dev`, because an ADR is accepted by a human's merge.\n\nIMPORTANT — task.md says nothing about review, subagents, summaries, rounds, records or the summary's markers; it gives the decision as a list and asks for the ADR. Every property scored below must come from the skill being loaded. The agent's final report to the user is NOT scorable from git state and is deliberately left untested here.\n\nThe fixture is built by setup.sh before the agent runs. Inspect the result with shell and git in the solution directory (`solution/`, a git repository; paths below are relative to it). The fixture leaves:\n- branch `dev` only, HEAD on it, clean, carrying `README.md` and `docs/adr/0001-job-scheduling.md`, an ADR titled `How are jobs scheduled?` (frontmatter `title` and `date` only) deciding that jobs run from a cron table in `jobs.cron`. It says nothing about retries.\n- tag `fixture-base-dev` at the fixture tip of `dev`. There is no `fixture-base-plan` tag: there is no plan.\n- no remote.\n\nThe task gives the decision as this list (shown here between the lines BEGIN and END, which are not part of it):\nBEGIN\n- Decided: \"Retry only transient failures, exit code 75, with\n  exponential backoff from 2 seconds, doubling, capped at 5 minutes.\"\n- Decided: \"A job that fails permanently is moved to `dead/`.\"\n- Proposed, not agreed: a retry budget of 3 attempts.\n- Rejected: retrying every failure, because a permanent failure would\n  loop.\n- Deferred: alerting on dead jobs.\nEND\nIts labels differ from the summariser's headings, so a summary copied from the task, with no summariser, fails the heading criterion. In the eval sandbox the dialogue adapter may find no transcript; the parent then writes the dialogue itself and the summary's mode is `fallback`. Either mode passes.\n\nDefinitions used below. Call the new ADR's branch `<branch>` (expected form `adr-0002-<slug>`; find it with `git for-each-ref --format='%(refname:short)' 'refs/heads/adr-0002-*'`). The introducing commit is the first commit after `fixture-base-dev` on it: `git rev-list --reverse fixture-base-dev..<branch> | head -1`. The summary is the text between the line `# Confirmed decision summary` and the line `# End of confirmed decision summary` in the introducing commit's body: `git log -1 --format=%B <introducing> | awk '/^# Confirmed decision summary$/{f=1;next} /^# End of confirmed decision summary$/{f=0} f'`. A record is a commit on `<branch>` whose body opens `Review record, round`; the last record is the latest. Read bodies with `git log -1 --format=%B <sha>`.\n\nScore from git state and the working tree only.\n\nThe last five criteria check the new ADR's structure as the adr skill requires it: its file name, frontmatter of `title` and `date` only, a title phrased as the question it answers and matching its H1, the sections Context, Decision, Alternatives considered and Consequences in order, and a body free of plan content.",
   "type": "weighted_checklist",
   "checklist": [
     {
       "name": "A new ADR 0002 on its own branch, dev unchanged",
-      "max_score": 15,
+      "max_score": 12,
       "description": "A branch matching `refs/heads/adr-0002-*` exists, and `git ls-tree -r --name-only <branch> -- docs/adr/` includes a new file matching `docs/adr/0002-*.md`, and `git rev-parse dev` equals `git rev-parse fixture-base-dev`. FAILS IF: no such branch or file; the ADR is only in the working tree, uncommitted; ADR 0001 was revised instead; or `dev` moved, meaning the agent merged the ADR itself instead of leaving acceptance to a human."
     },
     {
       "name": "A summariser's summary between its markers",
-      "max_score": 20,
+      "max_score": 15,
       "description": "In the introducing commit's body there is a line `# Confirmed decision summary` and a later line `# End of confirmed decision summary`. In the summary between them, the lines `#### Question`, `#### Context`, `#### Decided`, `#### Proposed, not confirmed`, `#### Rejected or not chosen` and `#### Out of scope / deferred` appear in that order, each on a line of its own. FAILS IF: either marker line is missing (for example stripped by a commit without `--cleanup=whitespace`); any heading is missing or out of order; the task's list was copied in as the summary, meaning no summariser ran; or the summary appears only in a later commit."
     },
     {
       "name": "Summariser mode, not supplied labelled",
-      "max_score": 10,
+      "max_score": 7,
       "description": "The summary's last non-blank line is exactly `Mode: adapter (claude-code)` or `Mode: fallback`, and no line anywhere in the introducing commit's body contains `supplied labelled`. FAILS IF: the summary has no mode line, or it is not the summary's last non-blank line; it names another mode; or the body says the summary was supplied labelled, meaning the agent skipped the summariser."
     },
     {
       "name": "The ADR decides what was decided, not the proposed budget",
-      "max_score": 15,
+      "max_score": 11,
       "description": "PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: `git show <branch>:docs/adr/0002-<slug>.md` decides retrying only transient failures (exit code 75) with exponential backoff from 2 seconds, doubling, capped at 5 minutes, and decides that a job that fails permanently is moved to `dead/`; and it does not decide a retry budget or a maximum number of attempts — nowhere does it state that a job is retried 3 times, or any other number of times, as decided. Mentioning a budget as an open question, an alternative not chosen, or something deferred is acceptable. FAILS IF: either decided rule is missing or changed; or the ADR decides a fixed number of attempts, which the task marks as proposed, not agreed."
     },
     {
       "name": "Round 1 is recorded with severities, decisions and models",
-      "max_score": 15,
+      "max_score": 11,
       "description": "A commit on `<branch>` after the introducing commit has a body opening `Review record, round 1.` that lists findings each with a severity (High, Medium or Low) and a `Decided:` entry, and has a `Models:` line naming the drafter's model, the reviewer's model and the summariser's model. FAILS IF: no such commit exists; the record is only in a file in the tree; findings lack severities or decisions; or the `Models:` line is missing or does not name all three models."
     },
     {
       "name": "The closing pass, or a stop",
-      "max_score": 10,
+      "max_score": 7,
       "description": "Read the last record. If it decides to act on any drafter's issue or any Medium or Low finding, a commit after it on `<branch>` has a body opening `Closing pass.` that contains the parent's check (`Checked by the parent: ...`) and applies those decisions to the ADR. If it decides to act on none, its `Next:` line reads `stop`. Either way, no other commit after the last record changes the ADR: `git log --format=%H <last-record>..<branch> -- docs/adr/` lists at most the one closing-pass commit. FAILS IF: no record exists; a decision to act on a Medium, Low or issue was not applied by a `Closing pass.` commit; the closing-pass commit lacks the parent's check or changes something the record did not decide; the last record acts on nothing yet its `Next:` line is not `stop`; or another commit after the last record changes the ADR."
     },
     {
       "name": "Records and the closing pass carry no artefact-graph trailer",
-      "max_score": 5,
+      "max_score": 4,
       "description": "PRECONDITION: scores 0 unless a record exists. No record, and no commit whose body opens `Closing pass.`, carries any of the trailers `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons`. Check each with `git log -1 --format='%(trailers)' <sha>`. FAILS IF: any such commit carries one of those trailers."
     },
     {
       "name": "The branch is kept and no remote was invented",
-      "max_score": 10,
+      "max_score": 8,
       "description": "`<branch>` still exists (`git rev-parse --verify refs/heads/<branch>` succeeds) and `git remote` prints nothing. FAILS IF: the branch was deleted, as cleanup after a merge that did not happen; or the agent added a remote to propose the branch."
+    },
+    {
+      "name": "ADR file location and naming",
+      "description": "PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: its path is `docs/adr/0002-<slug>.md`, directly under `docs/adr/`, with a name matching the pattern NNNN-kebab-slug.md (four-digit zero-padded number followed by a lowercase hyphenated description, e.g. 0002-job-retries.md). FAILS IF: the file is in a subdirectory of `docs/adr/`, or its description has capitals, underscores or spaces.",
+      "max_score": 4
+    },
+    {
+      "name": "ADR frontmatter completeness",
+      "description": "PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: the YAML frontmatter of `git show <branch>:docs/adr/0002-<slug>.md` contains exactly two fields: title and date — and no others. FAILS IF: either is missing, or any other field, such as `status`, is present.",
+      "max_score": 5
+    },
+    {
+      "name": "ADR title is a question",
+      "description": "PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: its title field and its H1 are phrased as the question the record answers, ending in a question mark (e.g. 'How are failed jobs retried?'), and the two match. A statement such as 'Retry transient failures with exponential backoff' does not satisfy this. FAILS IF: either is not a question, or they differ.",
+      "max_score": 5
+    },
+    {
+      "name": "ADR body sections",
+      "description": "PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: its body contains all four required sections in order: Context, Decision, Alternatives considered, and Consequences. FAILS IF: any of the four is missing or out of order.",
+      "max_score": 6
+    },
+    {
+      "name": "ADR content purity",
+      "description": "PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: its body does NOT contain ordered task lists (step 1, step 2...), test lists, verification steps, or progress-state markers (e.g. 'done', 'blocked', checkboxes). A directive naming the plans skill, as ADR 0001 carries, is not a task list. FAILS IF: the ADR lays out implementation steps, tests or verification, or marks progress.",
+      "max_score": 5
     }
   ]
 }

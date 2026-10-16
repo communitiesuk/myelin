@@ -1,26 +1,61 @@
 {
-  "context": "Tests whether the agent numbers a new plan by incrementing past the highest plan number ever added in git history, rather than reusing the highest retired number, counting the empty tree, or copying the ADR number. This reproduces the production failure (duplicate plans/0004, 2026-09-23): at the moment of numbering, plans/ is EMPTY in the working tree but git history has added plans 0001 through 0004, and plan 0004 was the most recently completed and removed. The correct next number is 0005 (one greater than 0004, the highest ever added). Reusing 0004 is the real bug — a collision with a plan that already held that number. Counting the empty tree yields 0001; copying the ADR being implemented yields 0006. The scorer inspects the repository state, including git history, after the agent has run.",
+  "context": "Tests whether the agent numbers a new plan by incrementing past the highest plan number ever added in git history, rather than reusing the highest retired number, counting the empty tree, or copying the ADR number. This reproduces the production failure (duplicate plans/0004, 2026-09-23): at the moment of numbering, plans/ is EMPTY in the working tree but git history has added plans 0001 through 0004, and plan 0004 was the most recently completed and removed. The correct next number is 0005 (one greater than 0004, the highest ever added). Reusing 0004 is the real bug — a collision with a plan that already held that number. Counting the empty tree yields 0001; copying the ADR being implemented yields 0006. The scorer inspects the repository state, including git history, after the agent has run. The last seven criteria check that the new plan has the structure the plans skill requires: its location and name, its five frontmatter fields, its link to ADR 0006, its Reference, Steps and Verification sections, a test-first-workflow reference in its Steps, no decision rationale, and a Progress notes section.",
   "type": "weighted_checklist",
   "checklist": [
     {
       "name": "A plan was written for the decision",
       "description": "A new plan file exists under plans/ (in the working tree or added in the agent's commits) with a name matching NNNN-kebab-slug.md, whose frontmatter adr: field names 0006, implementing docs/adr/0006-forecast-source.md",
-      "max_score": 15
+      "max_score": 10
     },
     {
       "name": "The number increments past the highest retired plan, not reusing it",
       "description": "The new plan's four-digit number is 0005 — exactly one greater than 0004, the highest plan number ever added under plans/ in git history (inspect with `git log --all --diff-filter=A --name-only --format= -- plans/`). It is specifically NOT 0004: plan 0004 was completed and removed, so its number is retired and must not be reused even though plans/ no longer contains it. A new plan numbered 0004 is a collision with a plan that already existed under that number, which is the production defect this scenario reproduces.",
-      "max_score": 50
+      "max_score": 40
     },
     {
       "name": "The number is not an empty-tree count or an ADR copy",
       "description": "The new plan's number is not 0001 (which is what counting the empty working-tree plans/ directory would give) and not 0006 (which is the number of the ADR being implemented, docs/adr/0006-forecast-source.md; the plan sequence is independent of the ADR sequence).",
-      "max_score": 20
+      "max_score": 10
     },
     {
       "name": "The plan does not renumber or disturb history",
       "description": "The agent did not resurrect, rename, or renumber any of the retired plans, and did not alter the existing ADRs. Only a single new plan file was added.",
-      "max_score": 15
+      "max_score": 10
+    },
+    {
+      "name": "Plan file location and naming",
+      "description": "PRECONDITION: scores 0 unless the new plan, the file the first criterion finds, exists. Given that: it is directly under `plans/` at the project root, with a name matching the pattern NNNN-kebab-slug.md (four-digit zero-padded number followed by a lowercase hyphenated description, e.g. 0005-forecast-source.md). FAILS IF: the plan is in a subdirectory of `plans/` or outside it, or its description has capitals, underscores or spaces.",
+      "max_score": 3
+    },
+    {
+      "name": "Plan frontmatter completeness",
+      "description": "PRECONDITION: scores 0 unless the new plan exists. Given that: its YAML frontmatter contains all five required fields: title, status, adr, date, and deferred_reason. FAILS IF: any of the five is missing.",
+      "max_score": 5
+    },
+    {
+      "name": "Plan-ADR linkage",
+      "description": "PRECONDITION: scores 0 unless the new plan exists. Given that: its frontmatter adr: field is non-null and contains a number that corresponds to a file in docs/adr/, here 0006 for docs/adr/0006-forecast-source.md. FAILS IF: the field is missing or null, or names a number with no file in docs/adr/.",
+      "max_score": 3
+    },
+    {
+      "name": "Plan body structure",
+      "description": "PRECONDITION: scores 0 unless the new plan exists. Given that: its body contains all three required sections: Reference (a link back to docs/adr/0006-forecast-source.md), Steps, and Verification. FAILS IF: any of the three is missing, or the Reference does not point to ADR 0006.",
+      "max_score": 6
+    },
+    {
+      "name": "Test-first-workflow reference",
+      "description": "PRECONDITION: scores 0 unless the new plan exists. Given that: its Steps section explicitly references or embeds the test-first-workflow for the steps that write the forecast-source code, e.g. mentions 'docstrings → failing tests → code', 'test-first-workflow', or the red-commit/green-commit pattern. FAILS IF: no step references it.",
+      "max_score": 5
+    },
+    {
+      "name": "Plan content purity",
+      "description": "PRECONDITION: scores 0 unless the new plan exists. Given that: its body does NOT contain the decision rationale, alternatives considered, or design trade-off analysis, such as why a fallback provider is used or which other forecast sources were weighed (those belong exclusively in the ADR). FAILS IF: the plan argues for the decision or weighs alternatives.",
+      "max_score": 4
+    },
+    {
+      "name": "Progress notes section",
+      "description": "PRECONDITION: scores 0 unless the new plan exists. Given that: its body includes a Progress notes section (may be empty or contain a placeholder for future entries). FAILS IF: there is no Progress notes section.",
+      "max_score": 4
     }
   ]
 }
