@@ -98,11 +98,24 @@ t "decision: a new docs/adr file is proposed, never merged, exit 3"
   assert_contains "$out" "exit=3"; assert_contains "$out" "pull/7"; assert_contains "$out" "human"
   assert_eq "$(cd "$R/d1" && git rev-parse adr-0002-x)" "$(bare_tip "$R/d1" adr-0002-x)" "branch must be pushed at the same SHA"
   assert_contains "$(cat "$GH_STUB_LOG")" "pr create"
+  assert_contains "$(grep 'pr create' "$GH_STUB_LOG")" "--fill-verbose"
   case "$(cat "$GH_STUB_LOG")" in *"pr merge"*) fail "merge was attempted on a decision" ;; esac
   assert_eq "$(cd "$R/d1" && git rev-parse dev)" "$(bare_tip "$R/d1" dev)" "origin's trunk must equal the local trunk"
   assert_eq "0" "$(cd "$R/d1" && git log --merges --format=%H dev | wc -l | tr -d ' ')" "trunk gained a merge"
   assert_eq "0" "$(cd "$R/d1" && git rev-list --count dev ^"$(git merge-base dev adr-0002-x)")" "trunk moved locally"
   [ -d "$R/d1/.worktrees/adr-0002-x" ] || fail "worktree removed on a decision"
+
+t "decision: landing again with the pull request open rewrites its description from every commit, exit 3"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d7" --remote origin --where worktree)"; githubify "$R/d7"
+  (cd "$wd" && g commit -q --allow-empty -m "$(printf 'Record review round 1 of docs/adr/0002-x.md\n\nReview record, round 1.\n')")
+  : > "$GH_STUB_LOG"
+  out="$(GH_STUB_PR=open land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"; assert_contains "$out" "pull/7"
+  case "$(cat "$GH_STUB_LOG")" in *"pr create"*) fail "a second pull request was opened" ;; esac
+  assert_contains "$(cat "$GH_STUB_LOG")" "pr edit adr-0002-x --body"
+  assert_contains "$(cat "$GH_STUB_LOG")" "Review record, round 1."
+  assert_contains "$(cat "$GH_STUB_LOG")" "Derives-From: docs/discovery/0001-note.md"
+  assert_eq "$(cd "$R/d7" && git rev-parse adr-0002-x)" "$(bare_tip "$R/d7" adr-0002-x)" "branch must be pushed at the same SHA"
 
 t "decision: a Revises trailer is proposed, never merged, exit 3"
   wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d2" --remote origin --where in-place)"

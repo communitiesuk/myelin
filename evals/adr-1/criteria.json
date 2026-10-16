@@ -1,0 +1,31 @@
+{
+  "context": "Tests whether the adr skill, given an explicit request to write an ADR whose decision is a plain sentence and no human available, goes ahead: it runs the summariser on the conversation (in this one-turn task, the task text), drafts, runs the review loop, and runs to the pull-request step and stops. The task states the decision as `ADR: we've decided to retry only transient failures, exit code 75, with exponential backoff from 2 seconds, doubling, capped at 5 minutes, because jobs are being lost until the next run.` and ends `Write the ADR.` Under the skill, an explicit request starts drafting and the human's approval of the summary is optional, so the agent neither stops to ask nor waits. With no remote, `git-workflow` cannot propose the branch, so the branch is kept and nothing reaches `dev`, because an ADR is accepted by a human's merge.\n\nIMPORTANT — task.md says nothing about review, subagents, summaries, rounds, records or the summary's markers; it gives the decision and asks for the ADR. Every property scored below must come from the skill being loaded. The agent's final report to the user is NOT scorable from git state and is deliberately left untested here.\n\nThe fixture is built by setup.sh before the agent runs. Inspect the result with shell and git in the solution directory (`solution/`, a git repository; paths below are relative to it). The fixture leaves:\n- branch `dev` only, HEAD on it, clean with no untracked files, carrying `README.md` and `docs/adr/0001-job-scheduling.md`, an ADR titled `How are jobs scheduled?` (frontmatter `title` and `date` only) deciding that jobs run from a cron table in `jobs.cron`. It says nothing about retries.\n- tag `fixture-base-dev` at the fixture tip of `dev`. There is no `fixture-base-plan` tag: there is no plan.\n- no remote.\n\nIn the eval sandbox the dialogue adapter may find no transcript; the parent then writes the dialogue itself and the summary's mode is `fallback`. Either mode passes.\n\nDefinitions used below. Call the new ADR's branch `<branch>` (expected form `adr-0002-<slug>`; find it with `git for-each-ref --format='%(refname:short)' 'refs/heads/adr-0002-*'`). The introducing commit is the first commit after `fixture-base-dev` on it: `git rev-list --reverse fixture-base-dev..<branch> | head -1`. The summary is the text between the line `# Confirmed decision summary` and the line `# End of confirmed decision summary` in the introducing commit's body: `git log -1 --format=%B <introducing> | awk '/^# Confirmed decision summary$/{f=1;next} /^# End of confirmed decision summary$/{f=0} f'`. A record is a commit on `<branch>` whose body opens `Review record, round`. Read bodies with `git log -1 --format=%B <sha>`.\n\nScore from git state and the working tree only.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "A new ADR 0002 on its own branch, dev unchanged",
+      "max_score": 15,
+      "description": "A branch matching `refs/heads/adr-0002-*` exists, and `git ls-tree -r --name-only <branch> -- docs/adr/` includes a new file matching `docs/adr/0002-*.md`, and `git rev-parse dev` equals `git rev-parse fixture-base-dev`. FAILS IF: no such branch or file; the ADR is only in the working tree, uncommitted; ADR 0001 was revised instead; or `dev` moved, meaning the agent merged the ADR itself instead of leaving acceptance to a human."
+    },
+    {
+      "name": "A summariser-mode summary in the introducing commit",
+      "max_score": 25,
+      "description": "In the introducing commit's body there is a line `# Confirmed decision summary` and a later line `# End of confirmed decision summary`; the summary's last non-blank line is exactly `Mode: adapter (claude-code)` or `Mode: fallback`; and no line anywhere in the body contains `supplied labelled`. FAILS IF: either marker line is missing (for example stripped by a commit without `--cleanup=whitespace`); the summary has no mode line, or it is not the summary's last non-blank line; the body says the summary was supplied labelled; or the summary appears only in a later commit."
+    },
+    {
+      "name": "The ADR decides what the sentence decided",
+      "max_score": 25,
+      "description": "PRECONDITION: scores 0 unless the new ADR exists on `<branch>`. Given that: `git show <branch>:docs/adr/0002-<slug>.md` decides retrying only transient failures, identified by exit code 75, with exponential backoff from 2 seconds, doubling, capped at 5 minutes, and gives as a reason that jobs are lost until the next run; and it does not decide a retry budget or a maximum number of attempts, which the sentence does not decide. Mentioning a budget as an open question or something deferred is acceptable. FAILS IF: any of the decided rules is missing or changed; or the ADR decides a fixed number of attempts."
+    },
+    {
+      "name": "Round 1 is recorded with severities, decisions and models",
+      "max_score": 20,
+      "description": "A commit on `<branch>` after the introducing commit has a body opening `Review record, round 1.` that lists findings each with a severity (High, Medium or Low) and a `Decided:` entry, and has a `Models:` line naming the drafter's model, the reviewer's model and the summariser's model. FAILS IF: no such commit exists; the record is only in a file in the tree; findings lack severities or decisions; or the `Models:` line is missing or does not name all three models."
+    },
+    {
+      "name": "The branch is kept and no remote was invented",
+      "max_score": 15,
+      "description": "`<branch>` still exists (`git rev-parse --verify refs/heads/<branch>` succeeds) and `git remote` prints nothing. FAILS IF: the branch was deleted, as cleanup after a merge that did not happen; or the agent added a remote to propose the branch."
+    }
+  ]
+}

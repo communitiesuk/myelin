@@ -1,0 +1,46 @@
+{
+  "context": "Tests whether the plans skill reviews a drafted plan before it lands, when the task asks only that the plan be taken through to landing. The draft carries four planted defects. The correct behaviour is the skill's review loop: the unreviewed draft already on the branch is round 1's draft, so the loop starts at its review; each round's findings are decided and recorded in an empty commit whose body opens `Review record, round N.`; every High is fixed by the next round's draft; the loop stops after a round whose review leaves no High open, at most 3 rounds; any Medium or Low the parent decides to act on is fixed by a later round or by a closing-pass commit; and only then does the plan land, here by a local merge into `dev` because there is no remote.\n\nIMPORTANT — task.md says nothing about review, subagents, rounds or records. Every property scored below must come from the skill being loaded. The agent's final report to the user is NOT scorable from git state and is deliberately left untested here.\n\nThe fixture is built by setup.sh before the agent runs. Inspect the result with shell and git in the solution directory (`solution/`, a git repository; paths below are relative to it). The fixture leaves:\n- branch `dev`, carrying `README.md` and `docs/adr/0001-forecast-source.md`, an ADR (frontmatter `title` and `date` only) deciding: a primary and a fallback forecast provider from `FORECAST_PRIMARY_URL` and `FORECAST_FALLBACK_URL`; the fallback used only when the primary is unreachable or its forecast is older than 6 hours; one JSON line to stdout per tick naming the provider used. Its Alternatives section rejects an on-disk forecast cache.\n- branch `plan-0001-forecast-source`, checked out in place and clean, one commit ahead of `dev`: `Add plan 0001: forecast source with fallback`, carrying `Derives-From: docs/adr/0001-forecast-source.md` and adding `plans/0001-forecast-source.md` (`status: draft`). No review record exists anywhere.\n- tags `fixture-base-dev` at the fixture tip of `dev`, and `fixture-base-plan` at the plan commit.\n- no remote.\n\nThe planted defects in the draft plan, referred to below by name:\n- D1 (High): step 3 writes each forecast to `cache/forecast.json` and reads it when both providers fail — the on-disk cache the ADR rejects.\n- D2 (High): step 4 appends the JSON line to `run.log` instead of stdout, step 5 deletes `run.log` on shutdown, and Verification reads `run.log` after the run, so the evidence is destroyed before it is read.\n- D3 (High): nothing implements the ADR's 6-hour staleness rule; step 2 uses the fallback only when the primary request fails.\n- D4 (Low): the H1 `# Forecast source with a fallback` does not match the `title` `Forecast source with fallback`.\n\nDefinitions used below. A record is a commit after `fixture-base-plan`, reachable from `dev` or from `plan-0001-forecast-source` if it still exists, whose body opens `Review record, round`. List them with `git log --reverse --format='%H%n%B%n----' fixture-base-plan..dev` (and the same over `fixture-base-plan..plan-0001-forecast-source` if the branch exists). Round N's record is the one whose first line is `Review record, round N.` (or `Review record, round N, restart K.`). The last record is the latest such commit in history. A record lists its findings under `Reviewer's findings:` (and the drafter's under `Drafter's issues:`), each with a severity and a `Decided:` entry. Accept a finding as naming a defect when its words identify that defect, in any phrasing.\n\nScore from git state and the working tree only.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "A review record with severities and decisions",
+      "max_score": 15,
+      "description": "At least one commit after `fixture-base-plan`, reachable from `dev` or the plan branch, has a body whose first line opens `Review record, round`, and that body lists findings, each with a severity (High, Medium or Low) and a decision (`Decided:` with a short reason). FAILS IF: no such commit exists, meaning no review was recorded; the review appears only in a file in the tree, or in a commit body without severities or without decisions; or the record is a non-empty commit that also changes the plan."
+    },
+    {
+      "name": "D1, D2 and D3 are raised as findings",
+      "max_score": 20,
+      "description": "Across all records, D1 (the on-disk cache at `cache/forecast.json`, which the ADR rejects), D2 (logging to `run.log` rather than stdout, and/or a step deleting `run.log` before Verification reads it) and D3 (the missing 6-hour staleness rule) each appear as a finding in a record. FAILS IF: a defect is mentioned only in a draft commit's body or only fixed silently, without appearing as a finding in a record."
+    },
+    {
+      "name": "The landed plan is free of D1, D2 and D3",
+      "max_score": 20,
+      "description": "`git show dev:plans/0001-forecast-source.md` exists, and in it: no step writes or reads an on-disk forecast cache (no `cache/forecast.json` or equivalent cache file); the per-tick JSON line naming the provider goes to stdout; no step deletes, truncates or rotates away what Verification reads; and a step uses the fallback when the primary's forecast is older than 6 hours, not only when the primary is unreachable. FAILS IF: the plan is not on `dev` (scores 0); or any of the four properties is missing from the landed text."
+    },
+    {
+      "name": "The loop confirms its fixes and stops within 3 rounds",
+      "max_score": 15,
+      "description": "Let round K be the last record that raises a High. A record for round K+1 exists, and its `Highs from round K:` line reports each of round K's Highs `confirmed fixed`; that later record raises no High of its own that is left open. No record's round number exceeds 3 (count records of the same loop; a restart would reset numbering, and none is expected here). FAILS IF: the plan landed straight after a record that raised Highs, with no later round reviewing the fix; a later record omits the `Highs from round` line or reports a High `reopened` and the plan still landed; or a record numbered round 4 or higher exists."
+    },
+    {
+      "name": "Every record names its models",
+      "max_score": 5,
+      "description": "PRECONDITION: scores 0 unless a record exists. Every record has a `Models:` line naming the drafter's model and the reviewer's model, and round 1's record gives the drafter as `not a subagent`, because round 1's draft is the fixture's commit, not a subagent's. FAILS IF: any record lacks a `Models:` line or one of the two models; or round 1's record names a model for the drafter."
+    },
+    {
+      "name": "Mediums and Lows acted on are applied, and nothing else changes the plan",
+      "max_score": 10,
+      "description": "PRECONDITION: scores 0 unless a record exists. Every Medium or Low finding, and every drafter's issue, that a record decides to act on is fixed either by a later round's draft or by a commit after the last record whose body opens `Closing pass.` and contains a line recording the parent's check (`Checked by the parent: ...`). In particular, if a record decides to act on D4, the H1 on `dev` matches the `title`. Every non-merge commit after the last record that changes `plans/0001-forecast-source.md` (`git log --no-merges --format=%H <last-record>..dev -- plans/0001-forecast-source.md`) is such a closing-pass commit, and there is at most one. FAILS IF: a decided Medium or Low is not reflected in the landed plan; a commit after the last record changes the plan without opening `Closing pass.` or without the parent's check; or a closing-pass commit changes something no record decided."
+    },
+    {
+      "name": "Records and the closing pass carry no artefact-graph trailer",
+      "max_score": 5,
+      "description": "PRECONDITION: scores 0 unless a record exists. No record, and no commit whose body opens `Closing pass.`, carries any of the trailers `Derives-From`, `Revises`, `Consumed-By`, `Completes` or `Abandons`. Check each with `git log -1 --format='%(trailers)' <sha>`. FAILS IF: any such commit carries one of those trailers."
+    },
+    {
+      "name": "Landed by a two-parent merge, ADR untouched",
+      "max_score": 10,
+      "description": "The tip of `dev`, or a commit on `dev` after `fixture-base-dev`, is a merge with two parents whose second parent is the plan branch's tip (`git log --merges --format='%H %P' fixture-base-dev..dev` lists it; its second parent descends from `fixture-base-plan`), and `git diff fixture-base-dev dev -- docs/adr/` prints nothing. FAILS IF: `dev` equals `fixture-base-dev` (nothing landed); the plan reached `dev` by fast-forward, rebase or squash, with no two-parent merge; or the ADR changed on `dev`."
+    }
+  ]
+}
