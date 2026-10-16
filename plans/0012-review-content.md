@@ -159,3 +159,8 @@ Record each run id, score and cost in Progress notes, in the commit
   the plan produced.
 
 ## Progress notes
+
+- 2026-10-16, Step 4 (claude / deepseek-v4.1-flash, no baseline):
+  quality `adr` 88%, `plans` 90% (10 credits each); plans-0 100
+  (`01a1446a`, 39 credits), plans-1 100 (`01a14481`, 25), adr-0 100
+  (`01a1448d`, 22), adr-1 100 (`01a14496`, 29). 135 credits in all.
