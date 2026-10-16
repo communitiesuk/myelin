@@ -50,4 +50,7 @@ human decided?) and with earlier ADRs, including the closed paths in
 their Alternatives sections and their revision history; and that the
 ADR says nothing about implementation. Until ADR 0004's history skill
 exists, read `docs/adr/` and `git log --follow -p docs/adr/<file>`
-directly.
+directly. Check form against the rules in the `adr` skill's
+`SKILL.md`: for example, frontmatter, required sections, a
+question-shaped title and the forward-pointer. Text the ADR does not
+need is a finding: cut it.

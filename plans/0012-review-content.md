@@ -1,6 +1,6 @@
 ---
 title: Review what each stage adds, and fix findings by cutting
-status: draft
+status: in-progress
 adr: 0008
 date: 2026-10-16
 deferred_reason: null
