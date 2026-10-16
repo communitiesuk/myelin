@@ -205,8 +205,8 @@ drafter revising existing text acts only on the recorded decisions and
 any change it applies, and fixes each by correcting, replacing or
 cutting text, in that order of preference; adding text is the last
 resort. An ADR drafted from now on is capped by the `adr` skill's
-two-minute scanning guideline; going over it calls for cutting, not
-for splitting the ADR. An existing ADR over it is a candidate for
+two-minute scanning guideline; going over it calls for cutting the
+new ADR, not splitting it. An existing ADR over it is a candidate for
 decomposition (#94).
 
 ### Briefs and models
@@ -359,7 +359,7 @@ the shape of ADR 0003's git-host modules.
   as a reviewed round counted against those left.** Not chosen: the
   first leaves the change unreviewed; the second, accepted for a time,
   was reversed because its exceptions kept producing edge cases.
-- **Editors tightening anywhere, beyond the recorded decisions.** Not
+- **Tightening anywhere, beyond the recorded decisions.** Not
   chosen for now; it belongs with continuous refactoring and the
   orchestration work (#79). **Fewer checks, to limit growth**: not
   chosen, since growth comes from how findings are fixed, not from
