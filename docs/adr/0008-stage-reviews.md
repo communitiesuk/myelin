@@ -36,9 +36,14 @@ Handing the summariser the conversation is feasible: a trial
 extraction on the session that produced this ADR gave 31 KB of
 dialogue from a 1.1 MB transcript.
 
-This revision was prompted by plan 0011's adr-1 eval, which tested the
-stop for an unlabelled, unconfirmed decision with no human: the cheap
-model scored 0, then 30 after a wording fix.
+This revision was prompted by what the reviewer briefs, the files
+that tell each reviewer what to check, leave out. The reviews the
+maintainer ran by hand also ran a plan's checks, checked its
+references against the repository and checked form; the briefs do
+not. And the loop bloats artefacts: findings were fixed by adding
+clauses to close gaps, and nothing pushed towards cutting. This ADR
+grew to about 430 lines over four revisions in two days, and plan
+0011 to 2,117 lines over more than ten review passes.
 
 ## Decision
 
@@ -172,7 +177,12 @@ with that record.
 ### Each stage checks what it adds
 
 Each stage checks what it adds and relies on what upstream already
-checked.
+checked. Both reviews also check form, the artefact's conformance to
+its governing skill's structural rules (for example, for an ADR,
+frontmatter, required sections, a question-shaped title and the
+forward-pointer; for a plan, frontmatter, required sections and
+verbatim wrappers), and either may find text unneeded: "cut it" is a
+finding.
 
 - **ADR review:** internal consistency; consistency with its upstream
   (the summary, plus the discovery note where one exists, plus any
@@ -181,16 +191,35 @@ checked.
   history; and that it says nothing about implementation. Until ADR
   0004's history skill exists, the reviewer reads `docs/adr/` and
   `git log` directly.
-- **Plan review:** relies on the ADR being consistent. It checks
-  fidelity — everything the ADR decided, nothing more — and
-  verifiability. The brief asks, for each assertion the plan requires:
-  can it be observed afterwards, and does another step destroy the
-  evidence?
+- **Plan review:** relies on the ADR being consistent. It checks the
+  plan's internal consistency, fidelity — everything the ADR decided,
+  nothing more — and verifiability, which means trying it: the
+  reviewer applies the plan's checks to a scratch copy and runs them,
+  and confirms that every file, line and quoted string the plan
+  refers to exists as described. For each assertion the plan
+  requires: can it be observed afterwards, and does another step
+  destroy the evidence? Each eval assertion must discriminate: doing
+  nothing cannot pass it, and nothing is scored from what the scorer
+  cannot see.
+
+### Findings are fixed by cutting, not by adding
+
+Concision is a general principle, weighted by role. A drafter aims
+for concision and consistency but does not let them hold it up. Any
+drafter revising existing text acts only on the recorded decisions
+and any change it applies. It applies each by cutting text where that
+loses no fidelity, consistency or verifiability, then by replacing,
+which includes correcting, aiming to lower the character count;
+adding text is the last resort. An ADR drafted from now on is capped
+by the `adr` skill's two-minute scanning guideline; going over it
+calls for cutting the new ADR, not splitting it. An existing ADR over
+it is a candidate for decomposition (#94).
 
 ### Briefs and models
 
 - One reviewer brief per artefact-producing skill in scope, `adr` and
   `plans`, kept with the skill at `skills/<skill>/references/review.md`.
+  The briefs keep the existing check categories and sections.
   More reviewers per artefact, for example security or platform
   personas, are not ruled out.
 - A cheaper model may draft; the reviewer should be at least as
@@ -332,23 +361,16 @@ the shape of ADR 0003's git-host modules.
   said in the conversation, which the summariser quotes. **A
   deterministic check for the label**: not chosen, since the agent
   could add the label itself.
-- **With no human to confirm: an unlabelled written decision counts as
-  the summary, with no summariser; the eval harness answers the
-  confirmation; or the affected evals score the summary and the
-  stop.** Part of the earlier revision, which weighed these against
-  its stop for an unlabelled decision with no human, and chose the
-  label and the stop. This revision reverses both, so these options no
-  longer arise, and the summariser now always runs, so no written
-  decision stands in for the summary.
-- **For plan 0011's adr-1 failure: run it on Sonnet to find a model
-  floor; one more wording attempt on the cheap model; or accept it
-  as a known gap and relax the plan's gate.** Not chosen: the
-  human's reframing of the gates, which this revision records,
-  replaced all three.
 - **Changes requested at acceptance as an unreviewed closing pass, or
   as a reviewed round counted against those left.** Not chosen: the
   first leaves the change unreviewed; the second, accepted for a time,
   was reversed because its exceptions kept producing edge cases.
+- **Tightening anywhere, beyond the recorded decisions.** Not
+  chosen for now; it belongs with continuous refactoring and the
+  orchestration work (#79). **Fewer checks, to limit growth**: not
+  chosen, since growth comes from how findings are fixed, not from
+  which checks run. **A plan that names sub-ADRs to write**: not
+  chosen; it would offer agents a way to generate ADRs without bound.
 
 ## Consequences
 
@@ -388,9 +410,14 @@ the shape of ADR 0003's git-host modules.
 - Open, for the orchestration work: what else a run should record as
   signal, for future iterations and for communication between agents.
 - Out of scope, and deferred:
-  - Reviews of tests and implementation. A reviewer that runs things
-    may need a different mechanism, such as a hook or CI, and
-    probably its own ADR, after orchestration.
+  - Reviews of tests and implementation. Reviews of what
+    implementation produces may need a different mechanism, such as
+    a hook or CI, and probably its own ADR, after orchestration.
+  - How decisions decompose from strategic to implementation level,
+    including the two-minute guideline as a level detector (#94); ADR
+    Consequences that name their downstreams (#92); and a myelin-wide
+    rules file for all writing, including code, which waits for #79
+    or #94.
   - The orchestration architecture, including reviewers as agent
     definitions; and whether myelin later builds separate harnesses
     for specific tasks and what they should record. The conversation
