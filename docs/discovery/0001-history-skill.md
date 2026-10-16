@@ -86,6 +86,23 @@ Surfaced in discussion:
 - **Scale.** Reading every ADR's Alternatives section and every
   `Revises` commit is fine at four ADRs. It is not obvious at forty,
   and the assembler direction makes that number plausible.
+- **[2026-10-16] Two more consumers, both mechanical.** Found while
+  implementing plan 0011 (stage reviews):
+  - *Revising an ADR revises its plans.* ADR 0004 requires every plan
+    in the tree that names a revised ADR to be revised on the ADR's
+    own branch. Both of ADR 0008's revisions on 2026-10-15 missed
+    plan 0011, and nothing noticed until implementation. A query
+    "what derives from this ADR?", run when a revision branch is
+    begun or landed, would have listed it.
+  - *Eval criteria read the tree for artefacts that leave it.*
+    `evals/git-workflow-1` checked the branch tip for a discovery note
+    as evidence of the fork point. An agent that correctly consumed
+    the note lost points. The evidence belongs in history (the tree at
+    the branch's first commit, and the `Consumed-By` edge). Eval
+    scorers do not load myelin's skills, so a criterion can only use
+    a history query if one exists as a script it can be told to run.
+    That argues for the "skill or script" question below resolving
+    towards a script that skills and criteria can both call.
 
 ## Next steps
 
