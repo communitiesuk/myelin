@@ -17,8 +17,7 @@ plans.
 
 `propose` in `skills/git-workflow/scripts/hosts/github` runs
 `gh pr create ... --fill-verbose`, which titles a multi-commit branch
-with its humanised slug. Release Gate 5 reads release notes from that
-title. The new title is the first commit's subject
+with its humanised slug. The new title is the first commit's subject
 (`git log --reverse --format=%s "$3..$2"`, first line); the body stays
 every commit's message and body, oldest first.
 
@@ -59,7 +58,8 @@ In `skills/git-workflow/scripts/tests/land.sh`:
    non-decision branch on the GitHub path, modelled on "github: the pull
    request is opened against the derived trunk" (line 231), with
    `EXTRA=1`.
-4. Line 115 asserts `pr edit adr-0002-x --body`; change it to
+4. Rename the d7 test, whose name says it rewrites only the
+   description, to say it rewrites title and description. Line 115 asserts `pr edit adr-0002-x --body`; change it to
    `pr edit adr-0002-x --title Add ADR --body`.
 
 `skills/git-workflow/scripts/tests/stub-gh` needs no change: it already
@@ -83,22 +83,23 @@ pass. Commit: `Title pull requests from the first commit (green)`.
 
 ### Step 4 — Say it in the skill, and complete
 
-Add one sentence to `skills/git-workflow/SKILL.md` under the `land`
-moment, and to `skills/git-workflow/references/RULES.md` Rule 11: the
-pull request is titled with the first commit's subject. This is a doc
-edit to an existing skill body with no `description` change; no wrapper.
-This commit also deletes this plan, with the trailer
+Add "that a pull request is titled with the first commit's subject" to
+the "What the script decides" list in `skills/git-workflow/SKILL.md`,
+and one sentence saying so to `skills/git-workflow/references/RULES.md`
+Rule 11. This is a doc edit to an existing skill body with no
+`description` change; no wrapper. Commit: `Document that a pull request
+is titled from the first commit`. It also deletes this plan, with the
+trailer
 `Completes: plans/0013-pr-titles-from-first-commit.md` and a body saying
 what the plan produced.
 
 ## Verification
 
 - `bash skills/git-workflow/scripts/tests/run.sh` reports no failures.
-- `grep -n -- '--fill' skills/git-workflow/scripts/hosts/github`
-  prints nothing.
 - End to end: on this implementation branch, which has at least two
   commits, run the branch's own
   `bash skills/git-workflow/scripts/git-workflow land` (not the
-  installed copy, which lacks the fix), then
-  `gh pr view <n> --json title --jq .title` prints `Specify that a pull
+  installed copy, which lacks the fix), the
+  landing itself is the check. Then
+  `gh pr view <branch> --json title --jq .title` prints `Specify that a pull
   request is titled from the first commit`, not the slug.
