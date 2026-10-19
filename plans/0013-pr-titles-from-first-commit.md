@@ -10,31 +10,17 @@ deferred_reason: null
 
 ## Reference
 
-Implements `docs/adr/0003-git-workflow.md` (Rule 11: the pull request
-is the integration path; what a commit contains is the governing
-skill's). Work item: issue #61. No related plans.
+Implements `docs/adr/0003-git-workflow.md` (integration goes through the
+host's pull request; the skill's Rule 3 delegates what a commit
+contains). The ADR is silent on titles. Work item: issue #61. No related
+plans.
 
-## The defect
-
-`skills/git-workflow/scripts/hosts/github` `propose` opens the pull
-request with `gh pr create --head "$2" --base "$3" --fill-verbose`. On
-a one-commit branch gh titles it with that commit's subject; on a
-multi-commit branch it titles it with the humanised branch slug.
-`.claude/skills/release/SKILL.md` Gate 5 builds release notes from the
-pull request title (the first body line of the host's merge commit), so
-the notes carry slugs.
-
-## The choice
-
-Title = the **subject of the first commit since the fork point**
-(`git log --reverse --format=%s "$3..$2"`, first line). Recent merged
-branches show why: first commits read as the artefact's title ("Add plan
-0012: put ADR 0008's review content into the skills", "Revise ADR
-0008: ..."), last commits are bookkeeping ("Apply the closing pass to
-...", "Complete plan 0011: ..."). `land` has already refused an empty
-range, so a first commit always exists and the slug is never reached.
-The body stays what `propose` already writes on rewrite: every commit's
-message and body, oldest first (`git log --reverse --format=%B`).
+`propose` in `skills/git-workflow/scripts/hosts/github` runs
+`gh pr create ... --fill-verbose`, which titles a multi-commit branch
+with its humanised slug. Release Gate 5 reads release notes from that
+title. The new title is the first commit's subject
+(`git log --reverse --format=%s "$3..$2"`, first line); the body stays
+every commit's message and body, oldest first.
 
 ## Steps
 
@@ -47,8 +33,10 @@ Edit the comment headers only: the `propose` entry in
 commit's message and body, oldest first") and the `propose` entry in
 the host-module list of `skills/git-workflow/scripts/git-workflow`
 (lines 31-34). Add: its title is the first commit's subject; an open
-pull request's title and description are both rewritten. Commit:
-`Specify that a pull request is titled from the first commit`.
+pull request's title and description are both rewritten. In the same
+commit flip this plan's `status` from `draft` to `in-progress`. Commit:
+`Specify that a pull request is titled from the first commit`, with the
+trailer `Derives-From: plans/0013-pr-titles-from-first-commit.md`.
 
 ### Step 2 — Add the failing tests (red)
 
@@ -63,11 +51,14 @@ In `skills/git-workflow/scripts/tests/land.sh`:
    proposed" using `ADRPATH=docs/adr/0002-x.md EXTRA=1 artefact ...`
    (two commits, subjects `Add ADR` and `Extend ADR`). Assert the
    `pr create` line contains `--title Add ADR`, does not contain
-   `--title Extend ADR`, and its body contains `Extend ADR` and
+   `--title Extend ADR`, and that the whole stub log
+   (`$(cat "$GH_STUB_LOG")`, not the grepped line, since the body spans
+   lines) contains `Extend ADR` and
    `Derives-From: docs/discovery/0001-note.md`.
-3. Add the same two-commit assertion for a non-decision branch on the
-   GitHub path, modelled on "github: the pull request is opened against
-   the derived trunk" (line 231), with `EXTRA=1`.
+3. Add the same two-commit assertions, against the whole log, for a
+   non-decision branch on the GitHub path, modelled on "github: the pull
+   request is opened against the derived trunk" (line 231), with
+   `EXTRA=1`.
 4. Line 115 asserts `pr edit adr-0002-x --body`; change it to
    `pr edit adr-0002-x --title Add ADR --body`.
 
@@ -90,27 +81,24 @@ In `skills/git-workflow/scripts/hosts/github` `propose`, compute once
 "$body"`. Run `bash skills/git-workflow/scripts/tests/run.sh`: all
 pass. Commit: `Title pull requests from the first commit (green)`.
 
-### Step 4 — Say it in the skill
+### Step 4 — Say it in the skill, and complete
 
 Add one sentence to `skills/git-workflow/SKILL.md` under the `land`
-moment, and to `references/RULES.md` Rule 11: the pull request is
-titled with the first commit's subject, and release notes are drawn
-from that title, so the first commit's subject should read as the
-artefact's title. This is a doc edit to an existing skill body with no
-`description` change; no wrapper.
-
-### Step 5 — Complete
-
-In the last implementation commit delete this plan, with the trailer
-`Completes: plans/0013-pr-titles-from-first-commit.md` and a body
-saying what the plan produced.
+moment, and to `skills/git-workflow/references/RULES.md` Rule 11: the
+pull request is titled with the first commit's subject. This is a doc
+edit to an existing skill body with no `description` change; no wrapper.
+This commit also deletes this plan, with the trailer
+`Completes: plans/0013-pr-titles-from-first-commit.md` and a body saying
+what the plan produced.
 
 ## Verification
 
 - `bash skills/git-workflow/scripts/tests/run.sh` reports no failures.
 - `grep -n -- '--fill' skills/git-workflow/scripts/hosts/github`
   prints nothing.
-- End to end: land this plan's own implementation branch, then
-  `gh pr view <n> --json title --jq .title` prints the subject of the
-  branch's first commit, not the slug `plan-0013-...` or
-  `chore-...`.
+- End to end: on this implementation branch, which has at least two
+  commits, run the branch's own
+  `bash skills/git-workflow/scripts/git-workflow land` (not the
+  installed copy, which lacks the fix), then
+  `gh pr view <n> --json title --jq .title` prints `Specify that a pull
+  request is titled from the first commit`, not the slug.
