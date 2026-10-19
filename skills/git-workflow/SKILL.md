@@ -25,7 +25,7 @@ It needs git, and the host's command-line tool (`gh` for GitHub) where the repos
 bash "$SKILL_DIR/scripts/git-workflow" begin <artefact-path>          # or --slug <slug> for work no skill governs
 ```
 
-It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It derives the trunk, isolates into a worktree when the checkout is not on the trunk or is dirty, names the branch from the path, copies the small configuration files, and ignores `.worktrees/`. When it prints `include=<file>`, it has left that file changed and uncommitted: include it in the artefact's first commit. You have not begun the deliverable until it has run; if you are editing and cannot name the branch you are on, stop and run it.
+It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It derives the trunk, isolates into a worktree when the checkout is not on the trunk or is dirty, names the branch from the path, copies the small configuration files, and ignores `.worktrees/`. `begin` also brings the local trunk current, or stops with a report; when it exits 1, relay the report in full and do not create the branch by hand. When it prints `include=<file>`, it has left that file changed and uncommitted: include it in the artefact's first commit. You have not begun the deliverable until it has run; if you are editing and cannot name the branch you are on, stop and run it.
 
 **When the governing skill says the artefact is complete**, from inside `dir=`, with everything committed:
 
@@ -33,7 +33,7 @@ It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It de
 bash "$SKILL_DIR/scripts/git-workflow" land
 ```
 
-- **0**: it merged with two parents, cleaned up, and left the primary checkout on the trunk. Report the merge it printed.
+- **0**: it merged with two parents, cleaned up, and left the primary checkout where it was, or on the trunk where the work was in place, and the local trunk is current or a note says why not. Report the merge it printed.
 - **3**: the branch adds an ADR or carries `Revises`, so it is a decision: it is pushed and proposed, and a human merges it. Say so, give the pull request, and stop.
 - **1**: a host command was missing, failed or refused. Relay the report it printed in full: the pull request if one was opened, the command, the state left behind, and the permission hint. Do not merge locally, do not clean up, and do not describe the artefact as landed.
 - **2**: a precondition failed, usually the trailer on the first commit or a dirty tree. Fix it and run `land` again.
