@@ -96,7 +96,7 @@ An experiment may remain unmerged; its branch and worktree stay. Do not remove a
 
 ## What the script decides — do not re-derive it by hand
 
-The trunk (from three refs, never from configuration or prose); whether to isolate and where; the branch name from the artefact path; what a worktree receives; whether a remote exists and which host it names; that integration is a two-parent merge and never a squash, rebase or fast-forward; that a decision is landed by a human; what a stop leaves behind; and cleanup. `references/RULES.md` has each rule with its reasoning, for when you need to explain the script's behaviour, not to reproduce it.
+The trunk (from three refs, never from configuration or prose); whether to isolate and where; the branch name from the artefact path; what a worktree receives; whether a remote exists and which host it names; that a pull request is titled with the first commit's subject; that integration is a two-parent merge and never a squash, rebase or fast-forward; that a decision is landed by a human; what a stop leaves behind; and cleanup. `references/RULES.md` has each rule with its reasoning, for when you need to explain the script's behaviour, not to reproduce it.
 
 ## Do not
 
