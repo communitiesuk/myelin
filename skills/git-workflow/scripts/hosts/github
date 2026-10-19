@@ -29,12 +29,14 @@ command -v gh >/dev/null 2>&1 || exit 127
 case "${1:-}" in
   propose)
     [ $# -ge 3 ] || { echo "usage: propose <branch> <trunk>" >&2; exit 2; }
+    title="$(git log --reverse --format=%s "$3..$2" | sed -n 1p)"
+    body="$(git log --reverse --format=%B "$3..$2")"
     url="$(gh pr view "$2" --json state,url --jq 'select(.state == "OPEN") | .url' 2>/dev/null)"
     if [ -n "$url" ]; then
-      gh pr edit "$2" --body "$(git log --reverse --format=%B "$3..$2")" >/dev/null || exit 1
+      gh pr edit "$2" --title "$title" --body "$body" >/dev/null || exit 1
       printf '%s\n' "$url"
     else
-      gh pr create --head "$2" --base "$3" --fill-verbose || exit 1
+      gh pr create --head "$2" --base "$3" --title "$title" --body "$body" || exit 1
     fi ;;
   merge)
     [ $# -ge 3 ] || { echo "usage: merge <branch> <trunk>" >&2; exit 2; }
