@@ -38,6 +38,8 @@ git symbolic-ref --quiet --short refs/remotes/origin/HEAD
 
 Never from configuration — not `init.defaultBranch`, not a `workflow.trunk`-style key, not any other value — and never from prose in a `CONTRIBUTING.md`, a README or a house style guide. A repository that carries a local `dev` gets `dev` even where every document in it says `main`. The same holds for branch naming and for the integration path: derive them, do not look them up.
 
+Where a remote exists, the branch starts from a local trunk just fast-forwarded to the remote's, which is not integration and so not Rule 10's merge.
+
 ## Rule 7 — Naming
 
 - `<artefact-type>-NNNN-slug` where the artefact carries a number, so the branch shares the artefact's identifier: `adr-0003-git-workflow`, `plan-0003-git-workflow`.
@@ -88,4 +90,4 @@ git worktree remove .worktrees/<branch>   # --force once dependencies are instal
 git branch -d <branch>
 ```
 
-`--force` is required where dependencies were installed, because removal refuses on untracked files. The now-empty `.worktrees/` parent may stay. Work done **in the primary checkout returns that checkout to trunk**, or the next artefact branches from the previous one. Where the work was isolated the primary checkout never moved: **confirm its branch, do not check it out** — `git rev-parse --abbrev-ref HEAD` answers the question, while `git checkout <trunk>` against a checkout already on trunk changes nothing and writes a spurious line into the reflog. After cleanup, `git branch` shows no artefact branch, `git worktree list` shows only the primary checkout, and HEAD is on trunk.
+`--force` is required where dependencies were installed, because removal refuses on untracked files. The now-empty `.worktrees/` parent may stay. Work done **in the primary checkout returns that checkout to trunk**, or the next artefact branches from the previous one. Where the work was isolated the primary checkout never moved: **confirm its branch, do not check it out** — `git rev-parse --abbrev-ref HEAD` answers the question, while `git checkout <trunk>` against a checkout already on trunk changes nothing and writes a spurious line into the reflog. With the primary checkout left off the trunk, the local trunk is advanced by ref and never by switching the primary. After cleanup, `git branch` shows no artefact branch, `git worktree list` shows only the primary checkout, and HEAD is where it was, or on trunk where the work was in place.
