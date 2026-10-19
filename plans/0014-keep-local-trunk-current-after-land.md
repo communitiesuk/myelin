@@ -1,6 +1,6 @@
 ---
 title: Keep the local trunk current in begin and land
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-10-19
 deferred_reason: null

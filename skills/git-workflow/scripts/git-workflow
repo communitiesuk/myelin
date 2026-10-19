@@ -11,8 +11,10 @@
 #   check   Derive and print the facts the workflow acts on, changing
 #           nothing: trunk=<ref>, remote=<name|none>,
 #           host=<none|github|unknown:<url>>, contention=<in-place|worktree>.
-#   begin   Name the artefact branch from its path, then branch in place
-#           or into .worktrees/<branch> from the trunk, copy the small
+#   begin   Name the artefact branch from its path; where a remote
+#           exists, fetch it and fast-forward the local trunk to the
+#           remote's, or stop (exit 1) creating nothing; then branch in
+#           place or into .worktrees/<branch> from the trunk, copy the small
 #           configuration files into a worktree, and print trunk=, branch=
 #           and dir=, and include=.gitignore when the .worktrees/ ignore
 #           line was added and awaits the artefact's first commit. Makes no
@@ -23,8 +25,9 @@
 #           new file under docs/adr/, or a Revises trailer) to a human via
 #           the host's pull request; otherwise merge with two parents,
 #           locally where there is no remote and through hosts/<name>
-#           otherwise; then clean up and leave the primary checkout on the
-#           trunk.
+#           otherwise, bringing the local trunk current after a host merge
+#           or noting why not; then clean up, leaving the primary checkout
+#           where it was, or on the trunk where the work was in place.
 #
 # Host modules live in hosts/<name> beside this script. Each is an
 # executable taking one of:
@@ -40,8 +43,10 @@
 # Exit codes
 #   0  done: the facts were printed, the branch was begun, or the artefact
 #      merged and was cleaned up
-#   1  stopped with a report: a host command was missing, failed or refused;
-#      the branch is pushed and everything else is left as it was
+#   1  stopped with a report: begin could not fetch or fast-forward the
+#      local trunk, and created no branch; or land's host command was
+#      missing, failed or refused, the branch is pushed and everything else
+#      is left as it was
 #   2  usage or a precondition failed: nothing was changed
 #   3  stopped by design: the branch is a decision; it is pushed and
 #      proposed, and a human merges it
@@ -132,8 +137,15 @@ cmd_check() {
 # path is ungoverned work and needs --slug, giving chore-<slug>. The file
 # need not exist yet.
 #
-# Runs check. When contention is in-place, creates the branch from the
-# trunk in the primary checkout and switches to it. Otherwise creates
+# Runs check. Where a remote exists, first brings the local trunk current
+# with sync_trunk: fetches the remote and fast-forwards the local trunk to
+# the remote's, so the branch starts from the remote's tip. When it
+# cannot (the fetch fails, the local trunk has commits the remote lacks,
+# the primary checkout is on the trunk with tracked changes, or the trunk
+# is checked out in another worktree), exits 1 with sync_trunk's report
+# and creates no branch and no worktree. Then, when contention is
+# in-place, creates the branch from the trunk in the primary checkout and
+# switches to it. Otherwise creates
 # .worktrees/<branch> from the trunk, copies the untracked files under
 # .claude/, .env and .mcp.json into it where they exist and never .venv/
 # or node_modules/, and, when the repository ignores no .worktrees/,
@@ -146,7 +158,8 @@ cmd_check() {
 # then include=.gitignore when it added the ignore line, naming the file
 # the artefact's first commit must include.
 # Exits 2 when the branch already exists, when the path is ungoverned and
-# --slug is missing, or when check would.
+# --slug is missing, or when check would; exits 1 when the local trunk
+# cannot be brought current.
 branch_name_for() {
   # $1 artefact path, $2 optional slug for ungoverned work
   local path="$1" slug="${2:-}" base
@@ -233,8 +246,15 @@ cmd_begin() {
 #   3. Otherwise, by host. none: from the primary checkout with the trunk
 #      checked out (switching to it first when the work was in place),
 #      git merge --no-ff. A host module: push, propose, then merge, both
-#      from the primary checkout; afterwards fetch and fast-forward the
-#      local trunk. The host module only merges — it never deletes a
+#      from the primary checkout; afterwards, whether or not the primary
+#      checkout is on the trunk, bring the local trunk current with
+#      sync_trunk (fast-forwarded in place where the primary is on it, or
+#      moved by ref where it is not), and read the merge commit from the
+#      remote for the landed line. When it cannot, print a note and carry
+#      on: a local trunk with commits the remote lacks, a trunk checked out
+#      in another worktree, or a primary on the trunk with tracked changes
+#      and behind the remote, gets the note and no fast-forward. The host
+#      module only merges — it never deletes a
 #      branch, so it cannot trip over the artefact's worktree; all
 #      teardown belongs to step 4. unknown host: push, exit 1. A missing
 #      host command, or one that fails or refuses: push if not yet
@@ -247,11 +267,33 @@ cmd_begin() {
 #      worktree never pulls the running process's own directory away),
 #      remove the worktree (--force, because it holds the untracked config
 #      files begin copied in), delete the local branch, delete the remote
-#      branch where a remote exists, and confirm by reading HEAD that the
-#      primary checkout is on the trunk. Where the work was in place the
-#      checkout was switched in 3. Where the primary checkout is on
-#      neither the trunk nor the branch, no merge can run there: exit 1
-#      with a report.
+#      branch where a remote exists. The primary checkout is left where it
+#      was: a parked primary stays on its branch. Where the work was in
+#      place the checkout was switched to the trunk in 3. With no remote,
+#      where the primary checkout is on neither the trunk nor the branch,
+#      no merge can run there: exit 1 with a report.
+# sync_trunk PRIMARY REMOTE TRUNK — bring the local trunk current.
+#
+# Fetches REMOTE and fast-forwards the local TRUNK to REMOTE/TRUNK,
+# whatever PRIMARY's HEAD. Every git command runs as git -C PRIMARY with
+# git's own stderr suppressed. The local TRUNK must be an ancestor of
+# REMOTE/TRUNK, so a trunk with commits the remote lacks never reaches a
+# merge; equal, it returns 0 untouched. Behind, where PRIMARY's HEAD is
+# TRUNK, its tracked files must be clean and it is fast-forwarded with
+# merge --ff-only; where it is not, the ref is moved with a fetch into
+# refs/heads/TRUNK, which git refuses where TRUNK is checked out in
+# another worktree. Never switches PRIMARY.
+#
+# Prints nothing on success. On failure prints one line and returns 1:
+#   could not fetch REMOTE
+#   could not fast-forward TRUNK to REMOTE/TRUNK: local TRUNK has commits
+#     REMOTE/TRUNK lacks; push them if they belong on the trunk, or reset
+#     TRUNK to REMOTE/TRUNK if they do not        (ancestry check failed)
+#   could not fast-forward TRUNK to REMOTE/TRUNK  (any other failure)
+sync_trunk() {
+  return 1
+}
+
 script_dir() { cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P; }
 physical() { (cd "$1" 2>/dev/null && pwd -P); }
 
