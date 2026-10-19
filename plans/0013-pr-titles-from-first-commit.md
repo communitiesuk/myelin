@@ -1,6 +1,6 @@
 ---
 title: Title pull requests from the branch's first commit
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-10-19
 deferred_reason: null
