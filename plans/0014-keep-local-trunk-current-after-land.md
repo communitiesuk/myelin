@@ -1,105 +1,128 @@
 ---
-title: Keep the local trunk current after a land from an off-trunk primary
+title: Keep the local trunk current in begin and land
 status: draft
 adr: 0003
 date: 2026-10-19
 deferred_reason: null
 ---
 
-# Keep the local trunk current after a land from an off-trunk primary
+# Keep the local trunk current in begin and land
 
 ## Reference
 
-Implements `docs/adr/0003-git-workflow.md`, for GitHub issue #55. No
-related plans are in the tree.
-
-## The defect
-
-On the host path, `cmd_land` fetches and fast-forwards the local trunk
-only when the primary checkout's HEAD is the trunk
-(`skills/git-workflow/scripts/git-workflow:367-369`). When the artefact
-was isolated and the primary is parked on another branch, the step is
-skipped and the local trunk stays behind `origin` after a successful
-land. The no-remote path has no `origin` to fall behind, so it is
-unaffected.
-
-## The fix
-
-Fast-forward the local trunk without checking it out, using
-`git fetch <remote> refs/heads/<trunk>:refs/heads/<trunk>`, only when
-the primary is not on the trunk. Git refuses the update, and the script
-prints a note and carries on, when the local trunk has diverged
-(non-fast-forward) or is checked out in any worktree. The primary's
-HEAD and files are never touched.
-
-The other two options in #55 are not taken. Returning the primary to
-the trunk contradicts ADR 0003's "Where the work was isolated the
-primary checkout never moved" (Rule 14 in
-`skills/git-workflow/references/RULES.md`: "confirm its branch, do not
-check it out") and Rule 5's "its dirty state belongs to somebody else's
-work in progress". Leaving only the note keeps the local trunk behind.
-No ADR change is needed: the ADR does not mention the trunk
-fast-forward, so the plan adds behaviour inside it.
+Implements `docs/adr/0003-git-workflow.md`, for GitHub issue #55. Verifying
+a human's merge is out of scope (issue #103). No related plans are in the
+tree.
 
 ## Steps
 
-1. Branch and fixtures: none needed beyond this plan's branch. Run the
-   baseline: `bash skills/git-workflow/scripts/tests/run.sh` passes.
+1. Begin the code branch: `bash skills/git-workflow/scripts/git-workflow
+   begin skills/git-workflow/scripts/git-workflow --slug
+   keep-local-trunk-current`, and work in the `dir=` it prints. Run the
+   baseline: `bash skills/git-workflow/scripts/tests/run.sh` reports 0
+   failed.
 
 2. Tests first, then code.
 
    > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
-   a. Add three cases at the end of
-      `skills/git-workflow/scripts/tests/land.sh`, using the existing
-      `artefact "$R/x" --remote origin --where worktree` (which leaves
-      the primary on `topic`), `githubify` and `land` helpers. Name each
-      `t "github: ..."`:
-      - primary parked on `topic`: after `land` exits 0,
-        `git rev-parse dev` in the primary equals `bare_tip "$R/x" dev`,
-        the primary's HEAD is still `topic`, and its `git status
-        --porcelain` is unchanged.
-      - local `dev` diverged (before landing, from the primary: `g
-        switch -q dev`, commit, `g switch -q topic`): exit 0, output
-        contains `could not fast-forward`, local `dev` is unchanged,
-        primary still on `topic`.
+   a. In `skills/git-workflow/scripts/tests/begin.sh`, add a helper
+      `advance_origin DIR` that clones `DIR/.origin/repo.git`, commits to
+      `dev` and pushes. Add five cases, each with `fixture "$R/<name>"
+      --trunk dev --remote origin` and `begin` on
+      `docs/adr/0002-x.md`:
+      - remote ahead, primary on `dev` and clean: after `begin`, local
+        `dev` equals `bare_tip`, and so does the new branch.
+      - remote ahead, primary parked on `topic` (`--branch topic`, then
+        `g switch -q topic`): local `dev` equals `bare_tip`, the primary
+        is still on `topic`, and the worktree branch starts at `bare_tip`.
+      - the fetch fails: `--remote-url /nonexistent/repo.git`. Exit is 1,
+        the output contains `fetch`, no `adr-0002-x` branch exists and
+        `.worktrees` does not.
+      - local `dev` has a commit the remote lacks: exit 1, output
+        contains `fast-forward`, local `dev` unchanged, no branch.
       - `dev` checked out in another worktree (`g worktree add
-        "$R/trunk-wt" dev` before landing, with that worktree's `dev`
-        behind): exit 0, output contains `could not fast-forward`, and
-        that worktree's HEAD and status are unchanged.
-   b. Run `bash skills/git-workflow/scripts/tests/run.sh
-      skills/git-workflow/scripts/tests/land.sh`; the first case fails
-      (the local trunk is behind). The diverged and checked-out cases
-      pass already, as regressions. Commit the tests (red).
-   c. In `skills/git-workflow/scripts/git-workflow`, replace the `if`
-      at lines 367-369 so that the on-trunk branch is unchanged and an
-      `else` branch runs
-      `git -C "$primary" fetch -q "$remote" "refs/heads/$trunk:refs/heads/$trunk" 2>/dev/null || printf 'git-workflow: note: could not fast-forward %s to %s/%s\n' "$trunk" "$remote" "$trunk"`.
-      Run the full suite; all pass. Commit (green).
+        "$R/trunk-wt" dev`, primary parked on `topic`), remote ahead:
+        exit 1, no branch, that worktree's `dev` unchanged. Git refuses
+        a fetch into a branch checked out in a worktree; this depends on
+        the installed git version.
+      `begin.sh` has no `bare_tip`; copy the one-line helper from
+      `land.sh`.
+   b. In `skills/git-workflow/scripts/tests/land.sh`, after the last
+      `github:` case, add three cases named `t "github: ..."`, each with
+      `artefact "$R/x" --remote origin --where worktree` (primary left on
+      `topic`), `githubify` and `land`. Each asserts exit 0, that the
+      primary's HEAD is still `topic`, and that the output contains
+      `as <short bare_tip dev>`, the merge commit:
+      - parked primary: `git rev-parse dev` in the primary equals
+        `bare_tip`, and its `git status --porcelain` is unchanged.
+      - local `dev` diverged (after `artefact`, `g switch -q dev`,
+        commit, `g switch -q topic`): output contains `could not
+        fast-forward`, local `dev` is unchanged.
+      - `dev` checked out in another worktree, behind (`g worktree add
+        "$R/trunk-wt" dev` after `artefact`): output contains `could not
+        fast-forward`, and that worktree's HEAD and status are unchanged.
+   c. Run `bash skills/git-workflow/scripts/tests/run.sh`. All eight new
+      cases fail. In `begin.sh`, `begin` exits 0 and branches from the
+      stale trunk in the first, second and last cases, and succeeds
+      despite the unreachable remote and the diverged trunk in the third
+      and fourth. In `land.sh`, the skipped update leaves local `dev`
+      behind, prints no note, and the `landed ... as` line shows the
+      stale local `dev`, not the merge commit. Existing cases still pass.
+      Commit the tests (red), titled `Test that begin and land keep the
+      local trunk current (red)`, with the trailer `Derives-From:
+      plans/0014-keep-local-trunk-current-after-land.md`, and with the
+      plan's `status:` flipped to `in-progress` in the same commit.
+   d. In `skills/git-workflow/scripts/git-workflow`:
+      - Add `sync_trunk PRIMARY REMOTE TRUNK`. It runs `git -C PRIMARY
+        fetch -q REMOTE`, then, when PRIMARY's HEAD is TRUNK,
+        `git -C PRIMARY merge -q --ff-only REMOTE/TRUNK`, otherwise
+        `git -C PRIMARY fetch -q REMOTE refs/heads/TRUNK:refs/heads/TRUNK`,
+        and returns the first failure. Move the primary-path lookup at
+        line 323 (`git worktree list --porcelain | awk ...`) into a
+        function both commands call.
+      - In `cmd_begin`, after the "already exists" check at line 197 and
+        before the branch or worktree is created (lines 198-204), when
+        the remote is not `none`, call `sync_trunk` and `die 1` with a
+        report naming the remote and trunk on failure, creating nothing.
+      - In `cmd_land`, replace the `if` at lines 369-371 with a call to
+        `sync_trunk` that prints the existing `could not fast-forward`
+        note on failure, whether or not the primary is on the trunk. Read
+        the merge commit with `git ls-remote "$remote" "refs/heads/$trunk"`
+        immediately after the host merge, and use its first seven
+        characters in the `landed ... via ... as` line at line 373 in
+        place of the local trunk's short SHA (omit ` as <sha>` when
+        `ls-remote` fails).
+      - Update the text that states the behaviour: the `begin` and `land`
+        header comments (lines 14-27 and 233-236), and the exit-1 line at
+        line 43, to include begin's stop.
+      - `skills/git-workflow/SKILL.md`: line 28 (`begin` also brings the
+        local trunk current, or stops with a report) and line 36 (exit 0
+        left the primary checkout where it was, or on the trunk where the
+        work was in place, and the local trunk is current or a note says
+        why not).
+      - `skills/git-workflow/references/RULES.md`: add one sentence to
+        Rule 6 (the fork point, line 23) that the branch starts from a local trunk
+        just fast-forwarded to the remote's, and to Rule 14 (line 91)
+        that, with the primary left off the trunk, the local trunk is
+        advanced by ref and never by switching the primary; and change
+        its closing "HEAD is on trunk" to "HEAD is where it was, or on
+        trunk where the work was in place".
+      Run the full suite; all pass. Commit (green), titled `Keep the
+      local trunk current in begin and land (green)`.
 
-3. Update the text that states the behaviour, in the same commit as the
-   code or after it:
-   - the `land` header comment, step 3, at
-     `skills/git-workflow/scripts/git-workflow:234-235`
-     ("afterwards fetch and fast-forward the local trunk"): say that
-     when the primary is off the trunk the trunk is updated by ref
-     without checking it out, or left with a note.
-   - `skills/git-workflow/SKILL.md:36`: exit 0 says it "left the primary
-     checkout on the trunk"; change to "left the primary checkout where
-     it was, or on the trunk where the work was in place", and say the
-     local trunk was fast-forwarded or a note says why not.
-   - `skills/git-workflow/references/RULES.md`, Rule 14: add one
-     sentence that, with the primary left off the trunk, the local trunk
-     is advanced by ref and never by switching the primary.
+3. Delete this plan in the final commit, titled `Complete plan 0014`,
+   whose body says that `begin` now fast-forwards the local trunk or
+   stops, `land` keeps it current whether or not the primary is parked,
+   and the landed message reports the merge commit. Its trailer:
+   `Completes: plans/0014-keep-local-trunk-current-after-land.md`.
 
 ## Verification
 
 - `bash skills/git-workflow/scripts/tests/run.sh` reports 0 failed.
-- By hand in a scratch repository with a GitHub-style remote, as in the
-  issue's repro: land from a worktree with the primary on another
-  branch; `git rev-parse <trunk> origin/<trunk>` prints one SHA and
-  `git rev-parse --abbrev-ref HEAD` in the primary prints the other
-  branch.
+- `git diff dev -- skills/git-workflow/SKILL.md
+  skills/git-workflow/references/RULES.md` shows no remaining statement
+  that the primary is always left on the trunk.
 
 ## Progress notes
 
