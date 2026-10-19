@@ -174,4 +174,22 @@ tree.
 
 ## Progress notes
 
-None yet.
+- Step 1: `begin` ran in place; the branch is `chore-keep-local-trunk-current`
+  in the primary checkout. Baseline 58 tests, 0 failed.
+- Step 2: `sync_trunk`'s comment heading lands with a stub body
+  (`return 1`), unused until step 4.
+- Step 3, deviation: the `begin.sh` case for a local trunk with commits
+  the remote lacks repeats the diverged half on its own fixture
+  (`$R/k4d`) rather than the first half's. Against the old script the
+  first half creates `adr-0002-x`, so a repeat on the same fixture failed
+  on "branch already exists" instead of on the missing sync; on a fresh
+  fixture each half fails for the reason step 3c gives.
+- Step 3, additions beyond the listed assertions: the ahead and diverged
+  halves also assert the output contains `local dev has commits origin/dev
+  lacks`, the worktree-held-trunk case in `begin.sh` also asserts `could
+  not fast-forward` and that the other worktree is still on `dev`, and a
+  `has_branch` helper tests for absence. Red: 67 tests, 9 failed, exactly
+  the nine new cases.
+- Step 4: `cleanup_after_merge` keeps its positional `trunk` argument but
+  no longer reads it, since the note that used it is dropped. Green: 67
+  tests, 0 failed; `shellcheck` clean.
