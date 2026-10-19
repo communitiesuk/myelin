@@ -5,6 +5,15 @@ R="$TMP_ROOT/begin"
 begin() { local d="$1"; shift; (cd "$d" && bash "$SCRIPT" begin "$@" 2>&1); }
 line() { printf '%s\n' "$1" | grep "^$2=" | head -1; }
 tip() { (cd "$1" && git rev-parse "$2"); }
+bare_tip() { git --git-dir="$1/.origin/repo.git" rev-parse "$2" 2>/dev/null; }
+has_branch() { (cd "$1" && git rev-parse --verify --quiet "refs/heads/$2" >/dev/null); }
+# advance_origin DIR — put a commit on dev in DIR's bare origin that DIR lacks.
+# The bare repository's HEAD names no branch, so the clone switches to dev.
+advance_origin() {
+  local c; c="$(mktemp -d "$TMP_ROOT/advance.XXXXXX")"
+  git clone -q "$1/.origin/repo.git" "$c/c" 2>/dev/null && (cd "$c/c" && g switch -q dev \
+    && printf 'remote\n' >> REMOTE-ONLY.md && g add REMOTE-ONLY.md && g commit -q -m "remote: ahead" && g push -q origin dev)
+}
 
 t "naming: docs/adr/NNNN-slug.md -> adr-NNNN-slug"
   fixture "$R/n1" --trunk dev >/dev/null
@@ -141,3 +150,72 @@ t "output: trunk, branch and dir lines are all printed"
   fixture "$R/o1" --trunk dev >/dev/null
   out="$(begin "$R/o1" docs/adr/0002-x.md)"
   for k in trunk branch dir; do [ -n "$(line "$out" $k)" ] || fail "missing $k="; done
+
+t "trunk: remote ahead, primary on the trunk and clean -> local trunk fast-forwarded, branch from the remote's tip"
+  fixture "$R/k1" --trunk dev --remote origin >/dev/null; advance_origin "$R/k1"
+  out="$(begin "$R/k1" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "$(bare_tip "$R/k1" dev)" "$(tip "$R/k1" dev)" "local dev not fast-forwarded to origin's: $out"
+  assert_eq "$(bare_tip "$R/k1" dev)" "$(tip "$R/k1" adr-0002-x)" "branch must start at origin's tip"
+
+t "trunk: remote ahead, primary parked off the trunk -> local trunk moved by ref, primary stays, worktree from the remote's tip"
+  fixture "$R/k2" --trunk dev --branch topic --remote origin >/dev/null; (cd "$R/k2" && g switch -q topic); advance_origin "$R/k2"
+  out="$(begin "$R/k2" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "$(bare_tip "$R/k2" dev)" "$(tip "$R/k2" dev)" "local dev not moved to origin's: $out"
+  assert_eq "topic" "$(cd "$R/k2" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay where it was"
+  assert_eq "$(bare_tip "$R/k2" dev)" "$(cd "$R/k2/.worktrees/adr-0002-x" 2>/dev/null && git rev-parse HEAD)" "worktree branch must start at origin's tip"
+
+t "trunk: the fetch fails -> exit 1, could not fetch, no branch and no worktree"
+  fixture "$R/k3" --trunk dev --remote origin --remote-url /nonexistent/repo.git >/dev/null
+  out="$(begin "$R/k3" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=1"
+  assert_contains "$out" "could not fetch"
+  has_branch "$R/k3" adr-0002-x && fail "branch created despite the failed fetch"
+  [ -d "$R/k3/.worktrees" ] && fail "worktree created despite the failed fetch"
+  true
+
+t "trunk: local trunk has commits the remote lacks, ahead or diverged -> exit 1, trunk unchanged, no branch"
+  fixture "$R/k4" --trunk dev --remote origin >/dev/null
+  (cd "$R/k4" && printf 'local\n' > LOCAL-ONLY.md && g add LOCAL-ONLY.md && g commit -q -m "local: ahead")
+  dev_before="$(tip "$R/k4" dev)"
+  out="$(begin "$R/k4" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=1" "ahead: $out"
+  assert_contains "$out" "could not fast-forward" "ahead: $out"
+  assert_contains "$out" "local dev has commits origin/dev lacks" "ahead: $out"
+  assert_eq "$dev_before" "$(tip "$R/k4" dev)" "ahead: local dev moved"
+  has_branch "$R/k4" adr-0002-x && fail "ahead: branch created"
+  # the repeat, diverged, on a fresh fixture so it does not see the first half's outcome
+  fixture "$R/k4d" --trunk dev --remote origin >/dev/null; advance_origin "$R/k4d"
+  (cd "$R/k4d" && printf 'local\n' > LOCAL-ONLY.md && g add LOCAL-ONLY.md && g commit -q -m "local: ahead")
+  dev_before="$(tip "$R/k4d" dev)"
+  out="$(begin "$R/k4d" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=1" "diverged: $out"
+  assert_contains "$out" "could not fast-forward" "diverged: $out"
+  assert_contains "$out" "local dev has commits origin/dev lacks" "diverged: $out"
+  assert_eq "$dev_before" "$(tip "$R/k4d" dev)" "diverged: local dev moved"
+  has_branch "$R/k4d" adr-0002-x && fail "diverged: branch created"
+  true
+
+t "trunk: primary on the trunk with a tracked change, remote ahead -> exit 1, trunk and file unchanged, no branch"
+  fixture "$R/k5" --trunk dev --remote origin >/dev/null; advance_origin "$R/k5"
+  (cd "$R/k5" && printf 'TODO: unfinished edit\n' >> README.md)
+  dev_before="$(tip "$R/k5" dev)"; readme_before="$(cat "$R/k5/README.md")"
+  out="$(begin "$R/k5" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=1"
+  assert_contains "$out" "could not fast-forward"
+  assert_eq "$dev_before" "$(tip "$R/k5" dev)" "local dev moved under a dirty primary"
+  assert_eq "$readme_before" "$(cat "$R/k5/README.md")" "the primary's tracked change was touched"
+  has_branch "$R/k5" adr-0002-x && fail "branch created"
+  true
+
+t "trunk: trunk checked out in another worktree, remote ahead -> exit 1, no branch, that worktree untouched"
+  fixture "$R/k6" --trunk dev --branch topic --remote origin >/dev/null
+  (cd "$R/k6" && g switch -q topic && g worktree add -q "$R/trunk-wt" dev); advance_origin "$R/k6"
+  wt_before="$(cd "$R/trunk-wt" && git rev-parse HEAD)"
+  out="$(begin "$R/k6" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=1"
+  assert_contains "$out" "could not fast-forward"
+  has_branch "$R/k6" adr-0002-x && fail "branch created"
+  assert_eq "$wt_before" "$(cd "$R/trunk-wt" && git rev-parse HEAD)" "the other worktree's dev moved"
+  assert_eq "dev" "$(cd "$R/trunk-wt" && git rev-parse --abbrev-ref HEAD)"

@@ -279,3 +279,35 @@ t "github: land deletes the remote branch itself, not the host module"
   # show-ref, not bare_tip: `git rev-parse <missing-ref>` echoes the name back
   # rather than printing nothing, so it cannot test for absence.
   git --git-dir="$R/wc3/.origin/repo.git" show-ref --verify --quiet refs/heads/discovery-0002-x && fail "remote branch not deleted"
+
+t "github: primary parked off the trunk -> local trunk moved by ref to the merge, primary left where it was"
+  wd="$(artefact "$R/k1" --remote origin --where worktree)"; githubify "$R/k1"; : > "$GH_STUB_LOG"
+  status_before="$(cd "$R/k1" && git status --porcelain)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
+  assert_eq "topic" "$(cd "$R/k1" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay where it was"
+  assert_contains "$out" "as $(bare_tip "$R/k1" dev | cut -c1-7)" "the landed line must name the merge commit: $out"
+  assert_eq "$(bare_tip "$R/k1" dev)" "$(cd "$R/k1" && git rev-parse dev)" "local trunk must equal origin's: $out"
+  assert_eq "$status_before" "$(cd "$R/k1" && git status --porcelain)" "the primary's status changed"
+
+t "github: local trunk diverged, primary parked -> note, local trunk unchanged, landed line names the merge"
+  wd="$(artefact "$R/k2" --remote origin --where worktree)"
+  (cd "$R/k2" && g switch -q dev && printf 'local\n' > LOCAL-ONLY.md && g add LOCAL-ONLY.md && g commit -q -m "local: ahead" && g switch -q topic)
+  githubify "$R/k2"; : > "$GH_STUB_LOG"
+  dev_before="$(cd "$R/k2" && git rev-parse dev)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
+  assert_eq "topic" "$(cd "$R/k2" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay where it was"
+  assert_contains "$out" "as $(bare_tip "$R/k2" dev | cut -c1-7)" "the landed line must name the merge commit: $out"
+  assert_contains "$out" "could not fast-forward" "no note for the diverged trunk: $out"
+  assert_eq "$dev_before" "$(cd "$R/k2" && git rev-parse dev)" "the diverged local trunk moved"
+
+t "github: trunk checked out in another worktree, behind -> note, that worktree untouched, landed line names the merge"
+  wd="$(artefact "$R/k3" --remote origin --where worktree)"
+  (cd "$R/k3" && g worktree add -q "$R/trunk-wt" dev)
+  githubify "$R/k3"; : > "$GH_STUB_LOG"
+  wt_head_before="$(cd "$R/trunk-wt" && git rev-parse HEAD)"; wt_status_before="$(cd "$R/trunk-wt" && git status --porcelain)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
+  assert_eq "topic" "$(cd "$R/k3" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay where it was"
+  assert_contains "$out" "as $(bare_tip "$R/k3" dev | cut -c1-7)" "the landed line must name the merge commit: $out"
+  assert_contains "$out" "could not fast-forward" "no note for the trunk checked out elsewhere: $out"
+  assert_eq "$wt_head_before" "$(cd "$R/trunk-wt" && git rev-parse HEAD)" "the other worktree's HEAD moved"
+  assert_eq "$wt_status_before" "$(cd "$R/trunk-wt" && git status --porcelain)" "the other worktree's status changed"
