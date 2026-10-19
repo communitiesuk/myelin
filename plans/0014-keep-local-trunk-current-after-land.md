@@ -24,16 +24,18 @@ tree.
 
 2. Docstrings first.
 
-   > **Directive for the implementer**: this step and the next will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+   > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
-   In `skills/git-workflow/scripts/git-workflow`, update the comments that
-   state the behaviour: the `begin` and `land` entries of the usage
+   Line numbers in steps 2 and 4 are as of b5949b4, before this step's
+   commit. In `skills/git-workflow/scripts/git-workflow`, update the
+   comments that state the behaviour: the `begin` and `land` entries of the usage
    header (lines 14-27); the exit-1 line (line 43), to include begin's
    stop; `begin`'s function comment (lines 127-149), to say it fetches and
    fast-forwards the local trunk first, or exits 1 and creates nothing; and
    `land`'s function comment (lines 214-254): step 3's "afterwards fetch
    and fast-forward" (lines 236-237), made to apply whether or not the
-   primary is parked, and step 4's confirm-HEAD sentences (lines 250-254),
+   primary is parked, and to say that a primary on the trunk with tracked
+   changes, behind the remote, gets a note and no fast-forward, and step 4's confirm-HEAD sentences (lines 250-254),
    made to say a parked primary is left where it was. Add the comment
    heading `sync_trunk` (below); its body comes in step 4. Commit,
    titled `Document that begin and land keep the local trunk current`,
@@ -43,9 +45,11 @@ tree.
 
 3. Tests, then red.
 
+   > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+
    a. In `skills/git-workflow/scripts/tests/begin.sh`, add a helper
-      `advance_origin DIR` that clones `DIR/.origin/repo.git`, commits to
-      `dev` and pushes. Add six cases, each with `fixture "$R/<name>"
+      `advance_origin DIR` that clones `DIR/.origin/repo.git`, switches to
+      `dev` (the bare repository's HEAD names no branch), commits and pushes. Add six cases, each with `fixture "$R/<name>"
       --trunk dev --remote origin` and `begin` on
       `docs/adr/0002-x.md`:
       - remote ahead, primary on `dev` and clean: after `begin`, local
@@ -59,8 +63,8 @@ tree.
       - primary on `dev` and clean, with a local `dev` commit the remote
         lacks (the remote not ahead, so `merge --ff-only` alone would
         pass): exit 1, output contains `could not fast-forward`, local
-        `dev` unchanged, no branch. Repeat with the remote ahead too
-        (diverged).
+        `dev` unchanged, no branch. In the same case, repeat with the
+        remote ahead too (diverged).
       - primary on `dev` with a tracked file modified, remote ahead: exit
         1, output contains `could not fast-forward`, local `dev` and the
         file unchanged, no branch.
@@ -93,23 +97,31 @@ tree.
       leaves local `dev` behind, prints no note, and the `landed ... as`
       line shows the stale local `dev`, not the merge commit. Existing
       cases still pass. Commit the tests (red), titled `Test that begin
-      and land keep the local trunk current (red)`, with the trailer
-      `Derives-From: plans/0014-keep-local-trunk-current-after-land.md`.
+      and land keep the local trunk current (red)`.
 
-4. Code, then green. In `skills/git-workflow/scripts/git-workflow`:
+4. Code, then green.
+
+   > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
+
+   In `skills/git-workflow/scripts/git-workflow`:
    - Add `sync_trunk PRIMARY REMOTE TRUNK`, which prints nothing on
-     success and, on failure, one line and returns 1. It runs `git -C
-     PRIMARY fetch -q REMOTE`; if that fails the line is `could not fetch
-     REMOTE`. Every later failure prints `could not fast-forward TRUNK to
-     REMOTE/TRUNK`. Then, whatever the primary's position:
-     `git merge-base --is-ancestor TRUNK REMOTE/TRUNK` must pass, so a
+     success and, on failure, one line and returns 1. Every git command in it is
+     `git -C PRIMARY`, and git's own stderr is suppressed: the one line is
+     the report. It runs `git -C PRIMARY fetch -q REMOTE`; if that fails the
+     line is `could not fetch REMOTE`. Every later failure prints `could
+     not fast-forward TRUNK to REMOTE/TRUNK: local TRUNK has commits
+     REMOTE/TRUNK lacks; push them if they belong on the trunk, or reset
+     TRUNK to REMOTE/TRUNK if they do not` when the ancestry check fails,
+     and `could not fast-forward TRUNK to REMOTE/TRUNK` otherwise. Then,
+     whatever the primary's position: `git -C PRIMARY merge-base
+     --is-ancestor TRUNK REMOTE/TRUNK` must pass, so a
      local trunk with commits the remote lacks stops here and never
      reaches a `merge`. If the two are equal it returns 0. Otherwise,
-     when PRIMARY's HEAD is TRUNK it requires `git status --porcelain
-     --untracked-files=no` to be empty (a dirty primary behind the remote
-     stops: begin never touches its files) and runs `git merge -q
-     --ff-only REMOTE/TRUNK`; when it is not, it runs `git fetch -q REMOTE
-     refs/heads/TRUNK:refs/heads/TRUNK`, which git refuses where TRUNK is
+     when PRIMARY's HEAD is TRUNK it requires `git -C PRIMARY status
+     --porcelain --untracked-files=no` to be empty (a dirty primary behind the remote
+     stops: begin never touches its files) and runs `git -C PRIMARY
+     merge -q --ff-only REMOTE/TRUNK`; when it is not, it runs `git -C
+     PRIMARY fetch -q REMOTE refs/heads/TRUNK:refs/heads/TRUNK`, which git refuses where TRUNK is
      checked out in another worktree. Move the primary-path lookup at line
      323 (`git worktree list --porcelain | awk ...`) into a function both
      commands call.
@@ -117,7 +129,8 @@ tree.
      before the branch or worktree is created (lines 198-204), when the
      remote is not `none`, set `msg=$(sync_trunk ...)` and, on failure,
      `die 1 "$msg; no branch created"`.
-   - In `cmd_land`, replace the `if` at lines 369-371 with `sync_trunk`,
+   - In `cmd_land`, replace the `if [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ]`
+     block (lines 369-371) with `sync_trunk`,
      printing `git-workflow: note: $msg` on failure, whether or not the
      primary is on the trunk. Read the merge commit with `git ls-remote
      "$remote" "refs/heads/$trunk"` immediately after the host merge, and
@@ -126,12 +139,11 @@ tree.
      <sha>` when `ls-remote` fails).
    - Drop the note at line 290 (`primary checkout is on X, not the
      trunk`): a parked primary is now expected.
-   - `skills/git-workflow/SKILL.md`: line 28 (`begin` also brings the
-     local trunk current, or stops with a report), line 36 (exit 0 left
+   - `skills/git-workflow/SKILL.md`: line 28, in `begin`'s paragraph (`begin` also brings the
+     local trunk current, or stops with a report; when it exits 1, relay
+     the report in full and do not create the branch by hand), line 36 (exit 0 left
      the primary checkout where it was, or on the trunk where the work
-     was in place, and the local trunk is current or a note says why not),
-     and after line 39 a new bullet: when `begin` exits 1, relay the
-     report in full and do not create the branch by hand.
+     was in place, and the local trunk is current or a note says why not).
    - `skills/git-workflow/references/RULES.md`: in Rule 6 (line 23), one
      sentence that, where a remote exists, the branch starts from a local
      trunk just fast-forwarded to the remote's, which is not integration
@@ -154,10 +166,11 @@ tree.
 ## Verification
 
 - `bash skills/git-workflow/scripts/tests/run.sh` reports 0 failed.
-- `grep -n "on the trunk\|where it was"
+- `grep -n "on the trunk\|on trunk\|where it was"
   skills/git-workflow/SKILL.md skills/git-workflow/references/RULES.md
   skills/git-workflow/scripts/git-workflow` shows no statement that the
-  primary is always left on the trunk.
+  primary is always left on the trunk, and the wrapped `land` header
+  entry in the script (lines 14-27) is read to say the same.
 
 ## Progress notes
 
