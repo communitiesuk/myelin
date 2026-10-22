@@ -133,8 +133,9 @@ added by the commit that changes it. The table below is therefore
 exhaustive: it lists every kind of edge and the event that adds it,
 plus one marker, `Edits`, for a commit that touches an artefact
 without adding or changing any edge. An event not in the table adds
-no edge, and a change to an artefact's content that leaves its edges
-as they were carries no trailer for them.
+no edge; nor does a change to an artefact's content that leaves its
+edges as they were, though a non-revising edit to an ADR carries the
+`Edits` marker for it.
 
 The vocabulary:
 
@@ -142,7 +143,7 @@ The vocabulary:
 | --- | --- | --- |
 | `Derives-From:` | establishes that an artefact derives from another: the first commit on the artefact's branch, or a later commit that re-points it | path of the upstream artefact; one trailer per direct upstream |
 | `Revises:` | changes what an accepted ADR decides | path of the ADR |
-| `Edits:` | makes a non-revising edit to an existing ADR (typo, citation, metadata, or an uncaught cross-reference) | path of the ADR edited |
+| `Edits:` | marks (not an edge) a non-revising edit to an existing ADR (typo, citation, metadata, or an uncaught cross-reference) | path of the ADR edited |
 | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
@@ -159,16 +160,21 @@ update not caught when the referencing artefact was created —
 carries `Edits` instead: not an edge between two artefacts, since the
 ADR names itself and has no truthful upstream to point `Derives-From`
 at, but a marker that the commit is such an edit, so it stays
-queryable in the graph.
+queryable in the graph. A revising edit — what "edit in place" means
+elsewhere in this ADR — carries `Revises`; only a non-revising edit
+carries `Edits`, and `land` sends it direct to trunk, with no human
+pull request.
 
-Trailers record edges between artefacts. Structure inside an
-artefact, such as the order of docstring, test and code commits
-under `test-first-workflow`, belongs to the governing skill under
-ADR 0003's delegation of commit cadence, and carries no trailer.
+Trailers record edges between artefacts, except `Edits`, which marks
+a commit that changes an ADR's content without adding one. Structure
+inside an artefact, such as the order of docstring, test and code
+commits under `test-first-workflow`, belongs to the governing skill
+under ADR 0003's delegation of commit cadence, and carries no
+trailer.
 
-The prose body of a `Revises`, `Abandons` or deleting commit must say
-what changed and why, in sentences. Trailers carry the edge; the body
-carries the reason. Neither is optional.
+The prose body of a `Revises`, `Edits`, `Abandons` or deleting commit
+must say what changed and why, in sentences. Trailers carry the edge;
+the body carries the reason. Neither is optional.
 
 While an artefact is in the tree, its frontmatter names what it
 derives from, as plans already do with `adr:`. Once it leaves, the
@@ -274,7 +280,8 @@ question and is deferred to a separate ADR. Until it exists,
 - The `facilitated-discovery` skill changes: a discovery note leaves
   the tree when the ADR it informed is accepted, with `Consumed-By`.
 - The git-workflow skill that plan 0003 specifies must carry the
-  trailer vocabulary, since it is the skill that lands commits.
+  trailer vocabulary and route an `Edits` branch to trunk without
+  requiring `Derives-From`, since it is the skill that lands commits.
   Plan 0003 is revised accordingly under the rule above.
 - ADR 0003 is revised in place for the first time: the bookkeeping
   exception is folded in, and its claim that the `adr` skill's
@@ -300,13 +307,12 @@ question and is deferred to a separate ADR. Until it exists,
 - A non-revising edit to an existing ADR — a typo fix, a citation
   repair, a metadata change, or a cross-reference update not caught
   when the referencing artefact was created — carries `Edits` and
-  needs no `Derives-From`: `land` sends such a branch direct to
-  trunk, no human PR, since a human-mediated merge to fix a typo is
-  friction. Ride-along on the causing ADR's branch stays and is
-  preferred when the cross-reference is caught at creation time;
-  `Edits` is for edits made standalone, after the fact. The gap is
-  ADR-specific: the ADR roots the graph and so has no truthful
-  upstream to name, where every other artefact already carries one.
+  needs no `Derives-From`. Ride-along on the causing ADR's branch
+  stays and is preferred when the cross-reference is caught at
+  creation time; `Edits` is for edits made standalone, after the
+  fact. The gap is ADR-specific: the ADR roots the graph and so has
+  no truthful upstream to name, where every other artefact already
+  carries one.
 - The vocabulary allows several direct upstreams, but the plan
   schema allows one ADR. A plan is the implementation of one answer
   to one question, and that stands until a plan genuinely needs
