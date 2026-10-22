@@ -34,16 +34,20 @@ drafting and may have shifted.
 commit-message branch (currently `NOTRAILER` → no trailer, else
 `Derives-From: $TRAILER`) with a third, `CLARIFIES` knob, so a test
 can build a branch whose first commit carries `Clarifies:
-<ADRPATH value>` instead of `Derives-From`:
+<CLARIFIESVAL value>` instead of `Derives-From`. Give `CLARIFIES` its
+own value, `CLARIFIESVAL` (default `ADRPATH`), kept separate from
+`ADRPATH` itself — the path `begin` gets — exactly as `TRAILER` stays
+separate from `ADRPATH` for the `Derives-From` branch, so a test can
+set a Clarifies value `begin` never sees:
 
 ```sh
     && if [ "${NOTRAILER:-0}" = 1 ]; then g commit -q -m "Add ADR"; \
-       elif [ "${CLARIFIES:-0}" = 1 ]; then g commit -q -m "$(printf 'Add ADR\n\nClarifies: %s\n' "${ADRPATH:-docs/discovery/0002-x.md}")"; \
+       elif [ "${CLARIFIES:-0}" = 1 ]; then g commit -q -m "$(printf 'Add ADR\n\nClarifies: %s\n' "${CLARIFIESVAL:-${ADRPATH:-docs/discovery/0002-x.md}}")"; \
        else g commit -q -m "$(printf 'Add ADR\n\nDerives-From: %s\n' "${TRAILER:-docs/discovery/0001-note.md}")"; fi )
 ```
 
-Update the comment above `artefact()` to document the `CLARIFIES`
-knob alongside `TRAILER`/`NOTRAILER`/`ADRPATH`/`EXTRA`.
+Update the comment above `artefact()` to document the `CLARIFIES` and
+`CLARIFIESVAL` knobs alongside `TRAILER`/`NOTRAILER`/`ADRPATH`/`EXTRA`.
 
 `ADRPATH=docs/adr/0001-one.md` already points `artefact()` at the
 ADR the `fixture()` helper commits on the trunk (`docs/adr/0001-one.md`),
@@ -76,7 +80,7 @@ t "refusal: editing an existing ADR with no trailer at all is still refused, exi
   assert_eq "adr-0001-one" "$(cd "$R/c2" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
 
 t "refusal: Clarifies value not repository-relative"
-  wd="$(CLARIFIES=1 ADRPATH=./docs/adr/0001-one.md artefact "$R/c3" --where in-place)"
+  wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md CLARIFIESVAL=./docs/adr/0001-one.md artefact "$R/c3" --where in-place)"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "relative"
 ```
 
@@ -84,12 +88,14 @@ t "refusal: Clarifies value not repository-relative"
 `begin`'s naming rule for `docs/adr/0001-one.md`; confirm it against
 `branch_name_for` if the fixture's ADR path changes.)
 
-Run `bash skills/git-workflow/scripts/tests/run.sh land.sh` and confirm
-all three new tests **fail** against the unmodified script: the first
-fails because an unrecognised `Clarifies`-only first commit is refused
-for lacking `Derives-From`; the third fails the same way, not for the
-reason it is meant to check. Commit this red state under
-`test-first-workflow`'s cadence.
+Run `bash skills/git-workflow/scripts/tests/run.sh
+skills/git-workflow/scripts/tests/land.sh` and confirm all three new
+tests **fail** against the unmodified script: the first fails because
+an unrecognised `Clarifies`-only first commit is refused for lacking
+`Derives-From`; the third fails for the same reason — the unmodified
+script does not yet read `Clarifies` at all — not because it
+validates the trailer's value, which is what it is meant to check.
+Commit this red state under `test-first-workflow`'s cadence.
 
 **Code (`git-workflow`).** In `cmd_land`, beside the existing block
 
@@ -132,9 +138,10 @@ Derives-From..."), each gaining the `Clarifies` exemption and noting
 that a `Clarifies` branch is not a decision and lands like any other
 non-decision artefact.
 
-Run `bash skills/git-workflow/scripts/tests/run.sh land.sh`, then the
-full suite `bash skills/git-workflow/scripts/tests/run.sh`, and confirm
-every test, old and new, passes. Commit the green state under
+Run `bash skills/git-workflow/scripts/tests/run.sh
+skills/git-workflow/scripts/tests/land.sh`, then the full suite
+`bash skills/git-workflow/scripts/tests/run.sh`, and confirm every
+test, old and new, passes. Commit the green state under
 `test-first-workflow`'s cadence.
 
 ### Step 2 — Add `Clarifies` to the trailer table in `skills/git-workflow/SKILL.md`
