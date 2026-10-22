@@ -299,7 +299,7 @@ An ADR is not frozen at merge. When the answer to its question changes, edit it 
   carry no trailer: the `Revises` edge is added by exactly one commit.
 - When a revision reverses an adopted path, add an entry to the Alternatives section summarising the reversal: what was previously decided and why it was reversed. That is what stops the next author retrying it; the full prior text is in history.
 - On the same branch, every plan in the tree whose `adr:` field names this ADR is either revised to match or set to `deferred` with a reason naming the revision. No plan targets a decision that has changed under it.
-- `Revises` is for changes to what an accepted ADR decides. A typo fix carries no trailer, and nor does an edit made on the ADR's own branch before it merges, which is still drafting.
+- `Revises` is for changes to what an accepted ADR decides; a standalone non-revising edit — a typo fix, a citation repair, a metadata change, or an uncaught cross-reference — carries `Clarifies` instead, and `land` sends it direct to trunk with no human pull request. Ride-along on the causing branch is preferred when the cross-reference is caught at the referencing artefact's own creation; `Clarifies` is for the same kind of edit made standalone, after the fact. An edit made on the ADR's own branch before it merges is still drafting and carries no trailer.
 
 ## The introducing commit
 
