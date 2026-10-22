@@ -89,13 +89,13 @@ t "refusal: Clarifies value not repository-relative"
 `branch_name_for` if the fixture's ADR path changes.)
 
 Run `bash skills/git-workflow/scripts/tests/run.sh
-skills/git-workflow/scripts/tests/land.sh` and confirm all three new
-tests **fail** against the unmodified script: the first fails because
-an unrecognised `Clarifies`-only first commit is refused for lacking
-`Derives-From`; the third fails for the same reason — the unmodified
-script does not yet read `Clarifies` at all — not because it
-validates the trailer's value, which is what it is meant to check.
-Commit this red state under `test-first-workflow`'s cadence.
+skills/git-workflow/scripts/tests/land.sh` and confirm the first and
+third new tests fail red against the unmodified script: c1 because an
+unrecognised `Clarifies`-only first commit is refused for lacking
+`Derives-From`; c3 for the same reason, not the value check it is
+meant to exercise. The second (c2, the untrailered-edit refusal) is a
+regression guard that already passes on the unmodified script. Commit
+this red state under `test-first-workflow`'s cadence.
 
 **Code (`git-workflow`).** In `cmd_land`, beside the existing block
 
@@ -146,9 +146,6 @@ test, old and new, passes. Commit the green state under
 
 ### Step 2 — Add `Clarifies` to the trailer table in `skills/git-workflow/SKILL.md`
 
-Doc-only; no directive wrapper (edits an existing skill body, changes
-no `description`).
-
 In the Rule 9 table, add a row for `Clarifies` directly after
 `Revises:`, copied from `docs/adr/0004-where-does-history-live.md`'s
 vocabulary table:
@@ -174,8 +171,6 @@ artefact the agent lands itself," since `Clarifies` is explicitly not
 a decision.
 
 ### Step 3 — Correct `skills/adr/SKILL.md`'s "Revising an ADR" bullet
-
-Doc-only; no directive wrapper.
 
 Replace the bullet (under "Revising an ADR"):
 
