@@ -29,7 +29,9 @@ bare_tip() { git --git-dir="$1/.origin/repo.git" rev-parse "$2" 2>/dev/null; }
 #   artefact DIR [fixture options...] then: --where in-place|worktree
 #   The trailer is written unless NOTRAILER=1; the artefact is docs/discovery/0002-x.md
 #   (a note, so that landing it is not a decision)
-#   unless ADRPATH is set; extra commits via EXTRA=1.
+#   unless ADRPATH is set; extra commits via EXTRA=1. With CLARIFIES=1 the
+#   first commit carries a Clarifies trailer (value CLARIFIESVAL, default
+#   ADRPATH) instead of Derives-From.
 artefact() {
   local dir="$1"; shift
   local where=worktree opts=()
@@ -40,7 +42,9 @@ artefact() {
   local out; out="$(cd "$dir" && bash "$SCRIPT" begin "${ADRPATH:-docs/discovery/0002-x.md}" 2>&1)" || { echo "$out"; return 2; }
   local wd; wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
   ( cd "$wd" && mkdir -p "$(dirname "${ADRPATH:-docs/discovery/0002-x.md}")" && printf -- '---\ntitle: x\n---\n' > "${ADRPATH:-docs/discovery/0002-x.md}" && g add -A \
-    && if [ "${NOTRAILER:-0}" = 1 ]; then g commit -q -m "Add ADR"; else g commit -q -m "$(printf 'Add ADR\n\nDerives-From: %s\n' "${TRAILER:-docs/discovery/0001-note.md}")"; fi )
+    && if [ "${NOTRAILER:-0}" = 1 ]; then g commit -q -m "Add ADR"; \
+       elif [ "${CLARIFIES:-0}" = 1 ]; then g commit -q -m "$(printf 'Add ADR\n\nClarifies: %s\n' "${CLARIFIESVAL:-${ADRPATH:-docs/discovery/0002-x.md}}")"; \
+       else g commit -q -m "$(printf 'Add ADR\n\nDerives-From: %s\n' "${TRAILER:-docs/discovery/0001-note.md}")"; fi )
   if [ "${EXTRA:-0}" = 1 ]; then ( cd "$wd" && printf 'more\n' >> "${ADRPATH:-docs/discovery/0002-x.md}" && g add -A && g commit -q -m "Extend ADR" ); fi
   echo "$wd"
 }
@@ -144,6 +148,23 @@ t "decision: with no remote it cannot be proposed, exit 3, branch kept"
 t "not a decision: editing an existing ADR without Revises merges normally"
   wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d4" --where in-place)"
   assert_eq "0" "$(land_rc "$wd")"; assert_eq "2" "$(parents "$R/d4" dev)"
+
+t "Clarifies: a first commit carrying Clarifies and no Derives-From on an existing-ADR edit lands direct to trunk, exit 0, no PR"
+  wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md artefact "$R/c1" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "2" "$(parents "$R/c1" dev)" "dev must end in a two-parent merge: $out"
+  assert_eq "dev" "$(cd "$R/c1" && git rev-parse --abbrev-ref HEAD)" "primary checkout must end on the trunk"
+  assert_eq "0" "$(cd "$R/c1" && git for-each-ref refs/heads/adr-0001-one | wc -l | tr -d ' ')" "branch must be gone"
+
+t "refusal: editing an existing ADR with no trailer at all is still refused, exit 2"
+  wd="$(NOTRAILER=1 ADRPATH=docs/adr/0001-one.md artefact "$R/c2" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Derives-From"
+  assert_eq "adr-0001-one" "$(cd "$R/c2" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
+
+t "refusal: Clarifies value not repository-relative"
+  wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md CLARIFIESVAL=./docs/adr/0001-one.md artefact "$R/c3" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "relative"
 
 t "decision: a new docs/adr file with no Derives-From is proposed, not refused, exit 3"
   wd="$(ADRPATH=docs/adr/0002-x.md NOTRAILER=1 artefact "$R/d5" --remote origin --where worktree)"; githubify "$R/d5"; : > "$GH_STUB_LOG"
