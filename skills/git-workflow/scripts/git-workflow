@@ -377,13 +377,18 @@ cmd_land() {
   git diff --name-status "$trunk...HEAD" | grep -qE '^A[[:space:]]+docs/adr/' && decision=1
 
   # A decision roots or revises the artefact graph and needs no
-  # Derives-From; every other artefact derives from an upstream, so its
-  # first commit must carry one. A trailer that is present is validated
-  # as repository-relative either way.
-  local trailer
+  # Derives-From; a Clarifies edit to an existing ADR adds a self-edge
+  # and needs none either; every other artefact derives from an upstream,
+  # so its first commit must carry one. A Derives-From or Clarifies that
+  # is present is validated as repository-relative either way.
+  local trailer clarifies
   trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
+  clarifies="$(git log -1 --format='%(trailers:key=Clarifies,valueonly)' "$first" | sed '/^$/d')"
+  if [ -n "$clarifies" ]; then
+    printf '%s\n' "$clarifies" | grep -qE '^(\./|/)' && die 2 "Clarifies must be a repository-relative path, got: $clarifies"
+  fi
   if [ -z "$trailer" ]; then
-    [ "$decision" -eq 1 ] || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
+    { [ "$decision" -eq 1 ] || [ -n "$clarifies" ]; } || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
   else
     printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
   fi
