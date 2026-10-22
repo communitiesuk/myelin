@@ -84,11 +84,12 @@ Artefacts form a graph — a plan derives from an ADR, an ADR from a discovery n
 | --- | --- | --- |
 | `Derives-From:` | establishes that an artefact derives from another: the first commit on the artefact's branch, or a later commit that re-points it | path of the upstream artefact; one trailer per direct upstream |
 | `Revises:` | changes what an accepted ADR decides | path of the ADR |
+| `Clarifies:` | makes a non-revising edit to an existing ADR (typo, citation, metadata, or an uncaught cross-reference): a self-edge, as `Revises` is on an in-place revision | path of the ADR edited |
 | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
 
-Values are repository-relative paths, in the trailer block at the end of the message, one per line in `Key: value` form — never in prose, which `git interpret-trailers` cannot see. **`Derives-From` sits on the first commit of the artefact's branch, whatever that commit contains**, and names direct upstreams only: a skill produced by a plan step names the plan, not the ADR behind it. Before the first commit, ask what this artefact was produced from and write the path down; `land` refuses a branch whose first commit lacks it. **The body carries the reason**: a `Revises`, `Abandons` or deleting commit says what changed and why, in sentences.
+Values are repository-relative paths, in the trailer block at the end of the message, one per line in `Key: value` form — never in prose, which `git interpret-trailers` cannot see. **`Derives-From` sits on the first commit of the artefact's branch, whatever that commit contains**, and names direct upstreams only: a skill produced by a plan step names the plan, not the ADR behind it. Before the first commit, ask what this artefact was produced from and write the path down; `land` refuses a branch whose first commit lacks it, unless the branch is a decision or its first commit carries `Clarifies`, which `land` sends direct to trunk with no human pull request. **The body carries the reason**: a `Revises`, `Clarifies`, `Abandons` or deleting commit says what changed and why, in sentences.
 
 ### Rule 13 — Merging is not mandatory, and nothing of anyone else's is yours to tidy
 

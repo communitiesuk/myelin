@@ -21,9 +21,10 @@
 #           commit. Never stages, stashes, reverts or deletes anything in
 #           the primary checkout.
 #   land    From the artefact's checkout: refuse unless the first commit
-#           since the fork point carries Derives-From; hand a decision (a
-#           new file under docs/adr/, or a Revises trailer) to a human via
-#           the host's pull request; otherwise merge with two parents,
+#           since the fork point carries Derives-From or a Clarifies edit
+#           to an existing ADR; hand a decision (a new file under docs/adr/,
+#           or a Revises trailer) to a human via the host's pull request;
+#           otherwise merge with two parents,
 #           locally where there is no remote and through hosts/<name>
 #           otherwise, bringing the local trunk current after a host merge
 #           or noting why not; then clean up, leaving the primary checkout
@@ -243,9 +244,12 @@ cmd_begin() {
 #      it needs no Derives-From. Every other artefact derives from an
 #      upstream, so its first commit since the fork point must carry a
 #      Derives-From trailer; landing refuses (exit 2) when a non-decision
-#      does not. Either way, a Derives-From that is present must be
-#      repository-relative (not starting with / or ./), or landing refuses
-#      (exit 2). A decision is then pushed and proposed through the host
+#      does not. A Clarifies edit to an existing ADR is the exception: not
+#      a decision, but needing no Derives-From either, since it adds a
+#      self-edge from the ADR to itself rather than deriving from an
+#      upstream (ADR 0004). Any Derives-From or Clarifies that is present
+#      must be repository-relative (not starting with / or ./), or landing
+#      refuses (exit 2). A decision is then pushed and proposed through the host
 #      module, then exit 3 with a report naming the pull request: a human
 #      merges it. With no remote a decision cannot be proposed: exit 3,
 #      branch left in place.
@@ -373,13 +377,18 @@ cmd_land() {
   git diff --name-status "$trunk...HEAD" | grep -qE '^A[[:space:]]+docs/adr/' && decision=1
 
   # A decision roots or revises the artefact graph and needs no
-  # Derives-From; every other artefact derives from an upstream, so its
-  # first commit must carry one. A trailer that is present is validated
-  # as repository-relative either way.
-  local trailer
+  # Derives-From; a Clarifies edit to an existing ADR adds a self-edge
+  # and needs none either; every other artefact derives from an upstream,
+  # so its first commit must carry one. A Derives-From or Clarifies that
+  # is present is validated as repository-relative either way.
+  local trailer clarifies
   trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
+  clarifies="$(git log -1 --format='%(trailers:key=Clarifies,valueonly)' "$first" | sed '/^$/d')"
+  if [ -n "$clarifies" ]; then
+    printf '%s\n' "$clarifies" | grep -qE '^(\./|/)' && die 2 "Clarifies must be a repository-relative path, got: $clarifies"
+  fi
   if [ -z "$trailer" ]; then
-    [ "$decision" -eq 1 ] || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
+    { [ "$decision" -eq 1 ] || [ -n "$clarifies" ]; } || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
   else
     printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
   fi
