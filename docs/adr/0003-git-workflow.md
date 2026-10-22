@@ -273,8 +273,10 @@ script, and supporting a host is adding a module.
 
 Landing enforces one rule of ADR 0004 mechanically: the script
 refuses to land a branch whose first commit carries no `Derives-From`
-trailer. The trailer is written by whoever commits, under the
-governing skill; the script checks that it is there.
+trailer, except where ADR 0004 needs none — a decision, or a
+`Clarifies` edit to an existing ADR. The trailer is written by whoever
+commits, under the governing skill; the script checks that it is
+there.
 
 The script is invoked by the model at the moments the skill body
 names. Running it without the model, by a hook or an orchestrator, is
