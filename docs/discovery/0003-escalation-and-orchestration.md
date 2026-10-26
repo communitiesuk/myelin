@@ -133,6 +133,16 @@ a set of skills a single agent loads:
 The real weight of the landing-gate work is that it makes the
 orchestrator question concrete and forces it.
 
+This note is the orchestrator's *control plane* — when work needs a
+human, who supervises, how a block is imposed. Its *data plane* — what
+a handover between steps carries, and how that context is compressed,
+logged and measured — is developed separately in
+`docs/discovery/0005-compression-and-handover.md`. The two meet where
+the interlocutor hands a worker "the relevant skills" (that note's
+codebook/context-assembler is a candidate mechanism for the handover,
+and reframes probe 1) and where the enforcement piece needs somewhere
+to read a verdict from (that note's per-handover log).
+
 ### [2026-09-25] Inherited from ADR 0006: the ticket store's deferred half
 
 `docs/adr/0006-where-do-captured-ideas-live.md` (proposed) answered the
