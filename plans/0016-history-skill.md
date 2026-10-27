@@ -22,24 +22,30 @@ ADR 0010 leaves the keying and dedupe mechanisms to this plan.
   artefact's leading number. `plans/0004-releases.md` and
   `plans/0004-where-does-history-live.md` are distinct keys under this
   rule despite sharing a number.
-- **Downstream edges.** Only `Derives-From` and `Revises` trailers
-  count — matching the query's own name, "what derives from or
-  revises a given artefact." A commit's artefact (the path it adds or
-  changes) is downstream of each path named in that commit's
-  `Derives-From` or `Revises` trailer value. The query reads trailer
-  fields only, never a commit's subject line, and returns the
-  transitive closure from the given path.
-- **Closed-paths dedupe.** A `Revises: B` edge, carried by the commit
-  that revises `B` into artefact `A`, is closed-path evidence from two
-  possible sources: `A`'s own `## Alternatives considered` section (if
-  it restates the reversal) and the `Revises` commit's body. ADRs stay
-  in the tree for as long as their decision stands, so `B` is always
-  findable at its own path. Dedupe deterministically: if `B`'s current
-  `## Alternatives considered` section contains a bullet that
-  textually names `A` (by `A`'s number or path — the restatement
-  convention the prototype found, e.g. "reversed by ADR 0009"), keep
-  that bullet and drop the `Revises` body for this edge; otherwise keep
-  the `Revises` body.
+- **Downstream edges.** `Revises: X` is an in-place self-edge: the
+  commit that edits artefact `X` carries `Revises: X` naming `X`
+  itself, not a different artefact (e.g. commit `ab0479f` edits ADR
+  0004 and carries `Revises: docs/adr/0004-where-does-history-live.md`).
+  Following it as a forward path-edge would self-loop. So the
+  transitive closure — "what derives from a given artefact" — follows
+  `Derives-From` trailer values only, with a visited-set so it
+  terminates. "What revises X" is a separate, flat (non-transitive)
+  lookup: every commit carrying `Revises: X`, i.e. `X`'s own revision
+  history; `X` is never reported as its own downstream node. The query
+  reads trailer fields only, never a commit's subject line.
+- **Closed-paths dedupe.** An ADR `X` that was adopted then reversed
+  has closed-path evidence from two possible sources, both keyed to
+  `X`: `X`'s own current `## Alternatives considered` section (if it
+  restates the reversal, naming the reversing ADR in prose only — that
+  ADR carries no trailer back to `X` and is not derivable from the
+  graph) and the body of any commit carrying `Revises: docs/adr/X`.
+  The script does not attempt to textually match the two sources: it
+  returns both, recall-biased (never drops a closed path), grouped by
+  the ADR path they concern. Dedupe — collapsing candidates that
+  describe the same reversed path, preferring the in-tree Alternatives
+  entry per ADR 0010 — is the single bounded model step's job (Step
+  5), not the script's, since that step already judges topic-relevance
+  over the same candidates' reason text.
 
 ## Steps
 
@@ -114,23 +120,30 @@ Files changed: `evals/history-0/{task.md,scenario.json,criteria.json,setup.sh}`,
 Create `skills/history/scripts/history`, an executable shell script
 mirroring `skills/git-workflow/scripts/git-workflow`'s shape (a usage
 comment header documenting subcommands, in place of a docstring).
-Document the subcommand `history downstream <path>`: prints, one per
-line, every path reachable from `<path>` by following `Derives-From`
-and `Revises` trailer values forward, transitively, per this plan's
-"Downstream edges" mechanism — reading trailer fields via `git log
---all --format='%(trailers:key=Derives-From,valueonly)'` (and
-`Revises`) rather than any commit subject.
+Document the subcommand `history downstream <path>`, per this plan's
+"Downstream edges" mechanism: prints, one per line, every path
+reachable from `<path>` by following `Derives-From` trailer values
+forward, transitively, with a visited-set so it terminates, plus a
+separate flat (non-transitive) list of every commit carrying
+`Revises: <path>` — `<path>`'s own revision history — never following
+`Revises` as a forward edge and never listing `<path>` itself as a
+downstream node. Read trailer fields via `git log --all
+--format='%(trailers:key=Derives-From,valueonly)'` (and `Revises`)
+rather than any commit subject.
 
 Write failing tests first at `skills/history/scripts/tests/downstream.sh`,
 reusing the `run.sh`/`lib.sh` harness pattern from
 `skills/git-workflow/scripts/tests/` or `skills/adr/scripts/tests/`
 (copy, don't reinvent). Cover: a direct `Derives-From` edge; the
 two-hop transitive closure; the number-reuse decoy (two paths sharing
-a number, only the correct one returned); and the subject-only decoy
+a number, only the correct one returned); the subject-only decoy
 (a commit naming the path in its subject but carrying no trailer is
-excluded). Run `bash skills/history/scripts/tests/run.sh downstream.sh`
-and confirm every new test fails because the subcommand does not
-exist yet, not for an unrelated reason.
+excluded); and a self-revision case (an artefact with a `Revises:
+<itself>` commit does not appear as its own downstream node, and the
+closure still terminates rather than looping). Run `bash
+skills/history/scripts/tests/run.sh downstream.sh` and confirm every
+new test fails because the subcommand does not exist yet, not for an
+unrelated reason.
 
 Implement `history downstream` until the suite is green.
 
@@ -146,22 +159,26 @@ Extend the usage header in `skills/history/scripts/history` to document
 `history closed-paths <topic>`: a recall-biased title/keyword prune
 over every ADR's title and `## Alternatives considered` bullets
 against `<topic>`, then extraction of surviving Alternatives bullets
-and `Revises` commit bodies, deduped per this plan's "Closed-paths
-dedupe" mechanism, printed as records of path, reason text, and source
-(`alternatives` or `revises`). No model runs here — relevance judgment
-is Step 5's job; this subcommand's prune is deliberately wider than
-exact topic match (recall-biased: a false positive costs a discarded
-read, a false negative silently reopens a closed path).
+and `Revises` commit bodies, printed as records of path, reason text,
+and source (`alternatives` or `revises`), grouped by the ADR path they
+concern per this plan's "Closed-paths dedupe" mechanism. The script
+performs no textual matching between the two sources and never drops
+either — both are returned whenever both exist for the same path.
+No model runs here, and no dedupe either: relevance judgment and
+dedupe are both Step 5's job; this subcommand's prune is deliberately
+wider than exact topic match (recall-biased: a false positive costs a
+discarded read, a false negative silently reopens a closed path).
 
 Write failing tests first at `skills/history/scripts/tests/closed-paths.sh`.
 Cover: extraction of a never-adopted path from an Alternatives bullet;
 extraction of an adopted-then-reversed path from a `Revises` body when
-the revising ADR's own Alternatives section does not restate it;
-suppression of the `Revises`-sourced duplicate when the revising ADR's
-number or path is named in the revised ADR's Alternatives bullet; and
-that the prune retains an on-topic bullet phrased without the exact
-query keyword (recall bias), while a bullet on an unrelated topic is
-absent from the printed candidates it hands to Step 5. Run `bash
+the revising ADR's own Alternatives section does not restate it; a
+path with both sources present (an Alternatives bullet restating the
+reversal and a `Revises` body) — both are printed, grouped under that
+one path, with no suppression of either; and that the prune retains
+an on-topic bullet phrased without the exact query keyword (recall
+bias), while a bullet on an unrelated topic is absent from the printed
+candidates it hands to Step 5. Run `bash
 skills/history/scripts/tests/run.sh closed-paths.sh` and confirm every
 new test fails first for the right reason.
 
@@ -184,12 +201,17 @@ fits. It must state:
   then the ADR's one bounded model step — judge which printed
   candidates are on the topic, using only each candidate's printed
   reason text, never the full artefact (the judgment is narrow because
-  the reason is already a pre-written summary, per the ADR). A fresh,
-  narrow subagent may do this judgment, in the one-small-task style
-  `docs/adr/0008-stage-reviews.md` established, or it may be done
-  inline; either way its only inputs are the topic and the candidates'
-  reason text, and its only output is which candidates are on-topic.
-  Report only those, each with its reason and source.
+  the reason is already a pre-written summary, per the ADR). The same
+  step also dedupes: when two candidates are grouped under the same
+  ADR path and describe the same reversed decision, collapse them,
+  preferring the in-tree `alternatives`-sourced candidate over the
+  `revises`-sourced one, per ADR 0010 ("preferring the in-tree entry").
+  A fresh, narrow subagent may do this judgment and dedupe, in the
+  one-small-task style `docs/adr/0008-stage-reviews.md` established, or
+  it may be done inline; either way its only inputs are the topic and
+  the candidates' reason text, and its only output is which candidates
+  are on-topic after collapsing duplicates. Report only those, each
+  with its reason and source.
 - A "Do not" line: do not read `docs/adr/` or run `git log` directly
   for either question once this skill exists.
 
@@ -215,7 +237,7 @@ directive wrapper, per the plans skill's silent-absence convention.
 
 Do not edit `docs/adr/0008-stage-reviews.md` itself — the plans skill
 forbids editing an ADR from within a plan's commits; the ADR's own
-text (lines 192–193: "Until ADR 0004's history skill exists, the
+text (lines 191–193: "Until ADR 0004's history skill exists, the
 reviewer reads `docs/adr/` and `git log` directly") names the interim
 path as something this implementation retires, and stands as written.
 
@@ -237,12 +259,22 @@ Files changed: `skills/adr/references/review.md`.
   `downstream.sh` and `closed-paths.sh` green).
 - Hand smoke-check against this repository's real history: `history
   downstream docs/adr/0004-where-does-history-live.md` includes every
-  plan still naming it in a live `Derives-From`; `history closed-paths
-  "status field"` surfaces the "a `status` field … reversed by ADR
-  0009" path exactly once, sourced `alternatives` (the in-tree
-  restatement), not duplicated from `Revises` history.
-- `grep -c "Until ADR 0004's history skill exists" skills/adr/references/review.md`
-  prints `0`; the same file contains `history closed-paths`.
+  plan still naming it in a live `Derives-From`, does not list ADR
+  0004 itself as a downstream node, and separately surfaces commit
+  `ab0479f` (which carries `Revises:
+  docs/adr/0004-where-does-history-live.md`) in the flat revises
+  lookup. Running the full `history` skill end to end on the
+  closed-paths question for `"status field"` — script plus the Step 5
+  model step — reports the "a `status` field … reversed by ADR 0009"
+  path exactly once, sourced `alternatives` (the in-tree restatement);
+  this "exactly once" is the skill's output after the model step's
+  dedupe, not a property of the script's output alone, which may print
+  both sources for this path.
+- `grep -c "git log --follow -p" skills/adr/references/review.md`
+  prints `0` (the retired sentence's line-wrapping made the full-phrase
+  grep non-discriminating — it prints `0` before any edit too — so this
+  checks a single-line unique fragment instead); the same file
+  contains `history closed-paths`.
 - `docs/adr/0008-stage-reviews.md` and `docs/adr/0010-history-retrieval.md`
   are unchanged (`git diff` against this plan's branch shows no edit to
   either).
