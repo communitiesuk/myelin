@@ -104,6 +104,66 @@ Surfaced in discussion:
     That argues for the "skill or script" question below resolving
     towards a script that skills and criteria can both call.
 
+## [2026-10-27] Prototype findings: mostly script
+
+Ran the by-hand prototype this note's next steps asked for — the
+closed-paths and "what derives from X" queries against real history,
+now that it carries `Clarifies`, `Revises` and `Completes` commits and
+nine ADRs with Alternatives sections. Read-only; no artefact built.
+Findings, with the open questions they settle:
+
+- **Skill or script → mostly script.** The **downstream/graph query**
+  ("what derives from or revises X") is *fully* deterministic: it reads
+  the `Derives-From`/`Revises` trailer fields (not the commit subject —
+  subject grep catches the Phase 2 review-record commits, which name a
+  path but carry no trailer). The **closed-paths retrieval** is also
+  deterministic: every ADR (9/9) carries a `## Alternatives considered`
+  section under that exact heading, liftable whole, and each `Revises`
+  commit carries its reason in its body. The *only* step needing a model
+  is deciding which retrieved candidates are **on the topic**. So the
+  skill ships a script; the model is a single bounded relevance step on
+  top. This settles the "skill or script" question above toward a
+  script that skills and eval criteria can both call.
+
+- **The two closed-path sources are NOT disjoint** (correcting "What
+  we've covered"). Current ADRs' Alternatives sections *restate*
+  reversed paths — ADR 0004's section itself lists "a `status` field …
+  reversed by ADR 0009" and "a non-revising ADR edit carries no
+  trailer … Reversed". So the in-tree Alternatives section is often a
+  pre-summarised superset of `Revises` history. The skill **dedupes**,
+  preferring the cheap in-tree entry and using `Revises` history only
+  for reversed paths a current ADR does not restate.
+
+- **Number reuse is real → key on the full path.** `plans/0004-releases`
+  and `plans/0004-where-does-history-live` both exist in history (the
+  known duplicate-0004 defect). The graph key must be the full path, not
+  the number.
+
+- **The query is transitive.** Downstream of an ADR gives its plans
+  directly; the code/skill is another hop (`Derives-From: <plan>`).
+  Deterministic closure, not one grep — and that closure is exactly the
+  revision process's "what must change downstream".
+
+- **Scale (the "forty ADRs" worry) is a tuning problem, not a new
+  mechanism.** A topic touches few prior ADRs, and discarding an
+  irrelevant ADR is cheaper than assessing a relevant one: title and the
+  short Alternatives bullets prune most without reading the body. The
+  query becomes *recall-biased deterministic prune → small candidate set
+  → model judges the survivors*. The prune must bias to recall: a
+  false-negative drop silently reopens a settled decision, the one
+  failure the skill exists to prevent. Whether a cheap prune achieves
+  high recall is empirical and untestable at nine ADRs, so the *shape*
+  (prune-then-judge) is in scope but the *tuning* is deferred.
+
+**Agreed v1 scope for the ADR.** In: the closed-paths query, the
+downstream/graph query, and a recall-biased title/keyword prune (itself
+a context-assembler down-payment — see
+`docs/discovery/0005-compression-and-handover.md` [2026-10-27]).
+Deferred: tuning the prune at scale, human open-ended queries, and
+detecting "open" (the absence of a decision). The decision surface is
+now small and clear, so this goes **straight to the `adr` skill** rather
+than another facilitated-discovery pass.
+
 ## Next steps
 
 - Let plan 0004 land first, so that at least one `Revises` commit
