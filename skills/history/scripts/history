@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# history — the retrieval half of the history skill.
+#
+# Reads this repository's git history to answer two questions about the
+# artefact graph and the record of closed decisions. It reads trailer
+# fields and in-tree ADR sections only; it never parses a commit subject
+# line as an edge.
+#
+# Usage:
+#   bash history downstream <path>
+#   bash history --help
+#
+# Subcommands
+#   downstream <path>
+#       Print what derives from <path>, and <path>'s own revision history.
+#       Two sections:
+#         downstream:   every path reachable from <path> by following
+#                       Derives-From trailer values forward, transitively,
+#                       one per line. The node at each hop is the deriving
+#                       commit's changed file(s) — the artefact the commit
+#                       introduces — not the trailer value, which names the
+#                       hop's source. A visited-set bounds the walk so it
+#                       terminates. <path> itself is never listed.
+#         revises:      one line per commit carrying `Revises: <path>`,
+#                       i.e. <path>'s own revision history. This lookup is
+#                       flat, never transitive: a Revises trailer is never
+#                       followed as a forward edge.
+#       Edges are read from trailer fields
+#       (`git log --all --format='%(trailers:key=Derives-From,valueonly)'`
+#       and the Revises equivalent), never from a commit subject.
+#
+# Exit codes
+#   0  the query ran and its sections were printed
+#   2  usage or a precondition failed (unknown subcommand, missing
+#      argument, or not inside a git repository)
+#
+# Depends on git and nothing else.
+
+set -u
+
+usage() {
+  sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+main() {
+  if [ $# -eq 0 ]; then usage >&2; return 2; fi
+  case "$1" in
+    -h|--help) usage; return 0 ;;
+    downstream) return 2 ;;  # not yet implemented
+    *) printf 'history: unknown subcommand: %s\n' "$1" >&2; usage >&2; return 2 ;;
+  esac
+}
+
+main "$@"
