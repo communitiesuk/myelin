@@ -239,13 +239,66 @@ Compression resolves the handover-versus-long-context tension when:
 
 Leave any of these to the model's own sense of what is simple, and you get the failure you were trying to avoid.
 
+## [2026-10-27] Single-turn workers collapse the per-turn problem
+
+Worked through with the maintainer alongside `0003`'s [2026-10-27]
+single-turn primitive. That control-plane move reshapes this note's
+hardest machinery.
+
+**The per-turn apparatus dissolves.** "Per-turn recording" and "assembly
+per turn" exist to tame the *intra-step* turns of a multi-turn agent:
+log every turn because a multi-turn agent can correct its own bad output
+and miscredit the codebook. If a worker is a **single turn** (`0003`'s
+keystone rule), there are no intra-step turns. Turn = step = handover,
+so the per-turn corpus this note wants is the per-handover corpus the CA
+already emits — for free, at one granularity. The open question above
+("whether 'rebuild context every turn' is feasible on this harness or
+only between steps") does not get answered; it **ceases to exist**. The
+assembler lives purely *between* workers — the easy, portable case.
+
+**The correction path moves into the DAG.** This note says "the
+correction path is where the information is." Under single-turn workers
+it does not vanish — it becomes a *downstream node* (reviewer → reviser),
+each a logged handover. Corrections become structural and auditable
+(a node, an edge) rather than buried in an agent's self-talk, which is
+strictly better for the retained corpus. The drafter → reviewer → reviser
+chain the Phase 2 runs already exercised is this shape.
+
+**But the CA becomes load-bearing for both planes.** A worker's
+assembled input is bounded; a single-turn *orchestrator*'s input is the
+run-state — the history so far — which must be compressed to fit one
+turn. That is this note's hardest job (codebook + residual over the
+whole trajectory). So pushing orchestrators to one turn *raises* the
+stakes on the CA; it does not lower them. The risk concentrates in one
+inspectable, testable component rather than smearing across long-lived
+agents.
+
+**Why that concentration is survivable.** The CA's selection problem is
+bounded by myelin's own thesis: myelin aligns the repository on intent,
+so the corpus is *pre-curated* — the repo is meant to hold only useful
+context. The CA is not summarising arbitrary sprawl; it selects the most
+relevant entries for a *well-specified* task. That is the condition this
+note already names as making the information-bottleneck tractable
+("a workflow designed in advance makes it tractable, because each step's
+needs are known"), tightened further by the pre-curated corpus. The
+commitment is to use the CA until it works, with its own logs as the
+iteration mechanism — and to build its enabling skills (history,
+revision) only *just good enough* to get there, rather than guessing
+their shape ahead of the evidence.
+
+**Contracts give the typed fields a home.** This note wants
+"deterministic matching on typed fields wherever possible." `0003`'s
+workers define their input/output contracts *internally* and validate
+incoming context at their own door, so the schemas the CA matches on are
+owned by the workers, not declared separately.
+
 ## Relationship to D0003 and open threads
 
 - **Codebook ≈ skills (probe 1).** If the codebook *is* the skill set and the assembler hands it over deterministically, D0003's probe 1 ("does delegating to a worker make skill-use reliable?") partly reframes: the question becomes whether deterministic selection + a protected residual make skill-loading reliable where a bare "use git-workflow" prompt does not. Still unmeasured.
 - **Log record ≈ verdict substrate.** The per-handover log with a link to the outcome is a candidate for the "somewhere to read a verdict from" that D0003's enforcement piece lacks.
 - **Stage reviews (#77) as the first testbed.** The drafter → reviewer → parent handover is the smallest real handover chain; its logs would be the first corpus.
 - **Consequence weighting ↔ blast radius.** Point 3's "expensive to get wrong, supplied from outside" is the same signal D0003 routes to a container + `PreToolUse` hook for its trigger (2). The two notes should share one definition of consequence rather than grow two.
-- **Open:** what is the concrete schema of a codebook entry and of a handover artefact; where the assembler lives relative to the harness's own context management; and whether "rebuild context every turn" is feasible on this harness or only between steps.
+- **Open:** what is the concrete schema of a codebook entry and of a handover artefact; where the assembler lives relative to the harness's own context management; and ~~whether "rebuild context every turn" is feasible on this harness or only between steps~~ — the last is dissolved by the [2026-10-27] entry: single-turn workers make the assembler live purely between steps, so rebuild-every-turn is never needed.
 
 ## Candidate seeds — only once a "how" ADR exists
 
