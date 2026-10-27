@@ -8,9 +8,25 @@
 #
 # Usage:
 #   bash history downstream <path>
+#   bash history closed-paths <topic>
 #   bash history --help
 #
 # Subcommands
+#   closed-paths <topic>
+#       Print the closed-path candidates on <topic>, for a model step to
+#       judge for relevance and dedupe. First a recall-biased prune: an
+#       ADR is on topic when its title or any of its `## Alternatives
+#       considered` bullets shares a (lightly stemmed) word with <topic>.
+#       The prune is deliberately wider than an exact-keyword match — a
+#       false positive costs a discarded read, a false negative silently
+#       reopens a closed path. Then, for every on-topic ADR, print one
+#       record per candidate: its path, the source (`alternatives` for an
+#       Alternatives bullet, `revises` for the body of a commit carrying
+#       `Revises: <that ADR>`), and the reason text. Records are grouped
+#       by the ADR path they concern. No model runs here and nothing is
+#       deduped or dropped: when an ADR has both an Alternatives bullet
+#       and a Revises body for the same reversal, both are printed. The
+#       relevance judgement and the dedupe are the skill's one model step.
 #   downstream <path>
 #       Print what derives from <path>, and <path>'s own revision history.
 #       Two sections:
@@ -129,6 +145,7 @@ main() {
   case "$1" in
     -h|--help) usage; return 0 ;;
     downstream) shift; cmd_downstream "$@" ;;
+    closed-paths) return 2 ;;  # not yet implemented
     *) printf 'history: unknown subcommand: %s\n' "$1" >&2; usage >&2; return 2 ;;
   esac
 }
