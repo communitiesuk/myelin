@@ -49,7 +49,9 @@ prints two sections:
   revision history.
 
 Report both. For a revision, the `downstream:` list is what must be
-checked against the changed decision.
+checked against the changed decision. An empty `downstream:` section is
+an answer — nothing derives from `<path>` — not a reason to go reading
+`git log` by hand.
 
 ## The closed-paths question
 
@@ -88,6 +90,9 @@ inline, or handed to a fresh, narrow subagent in the one-small-task
 style `docs/adr/0008-stage-reviews.md` established.
 
 Report the surviving closed paths, each with its reason and its source.
+If no candidate is printed, or none survives the judgement, report that
+nothing is closed on the topic — do not fall back to reading `docs/adr/`
+or `git log` by hand.
 
 ## Do not
 
