@@ -42,11 +42,93 @@ usage() {
   sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'
 }
 
+# Print, one per line, every Derives-From edge in the whole history as
+# `<source-path><TAB><derived-path>`: the source is the trailer value, the
+# derived path is a changed file of the commit carrying the trailer. One
+# git pass over every commit on every branch; a commit with several
+# Derives-From values or several changed files yields one line per pair.
+# Merge commits show no files under --name-only, which is correct: an
+# artefact's introducing commit (which carries the trailer) is never the
+# merge.
+#
+# Scanned line by line (default newline RS) rather than with a record
+# separator: BSD awk (macOS) treats `-v RS='\0'` as paragraph mode, so a
+# NUL-delimited multi-line record is not portable. Each commit emits a
+# header line marked with \x1e carrying its Derives-From values (joined by
+# \x1d), then its changed files one per line; \x1e/\x1d/\x1f escapes are
+# honoured inside the awk body.
+df_edges() {
+  git log --all --name-only \
+    --format='%x1eDF%x1f%(trailers:key=Derives-From,valueonly,separator=%x1d)' |
+  awk '
+    substr($0, 1, 1) == "\x1e" {
+      split(substr($0, 2), h, "\x1f")   # h[1]="DF", h[2]=joined DF values
+      ndf = split(h[2], dfs, "\x1d")
+      next
+    }
+    $0 == "" { next }
+    {
+      for (j = 1; j <= ndf; j++) if (dfs[j] != "") printf "%s\t%s\n", dfs[j], $0
+    }'
+}
+
+# Print, one line per commit (`<short-hash> <subject>`), every commit (on
+# any branch) carrying a Revises trailer whose value is exactly $1. Flat:
+# this is $1's own revision history, never a forward edge to follow. One
+# git pass.
+revises_of() {
+  local p="$1"
+  # Split on the \x1f and \x1e separators inside the awk body: BSD awk
+  # (macOS) does not honour a \xNN escape passed via -F, only one used in
+  # a split() call.
+  git log --all \
+    --format='%h%x1f%s%x1f%(trailers:key=Revises,valueonly,separator=%x1e)' |
+  awk -v p="$p" '
+    {
+      k = split($0, a, "\x1f")
+      if (k < 3) next
+      n = split(a[3], rs, "\x1e")
+      for (i = 1; i <= n; i++) if (rs[i] == p) { print a[1] " " a[2]; break }
+    }'
+}
+
+cmd_downstream() {
+  local query="${1:-}"
+  [ -n "$query" ] || { usage >&2; return 2; }
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+    printf 'history: not inside a git repository\n' >&2; return 2; }
+
+  # Read every Derives-From edge once, then walk it breadth-first, forward
+  # and transitive. The visited set seeds with the query so the query is
+  # never emitted and the walk terminates on cycles.
+  local edges; edges="$(df_edges)"
+  local -a queue=("$query") results=()
+  local visited=" $query " cur f
+  while [ ${#queue[@]} -gt 0 ]; do
+    cur="${queue[0]}"
+    queue=("${queue[@]:1}")
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      case "$visited" in *" $f "*) continue ;; esac
+      visited="$visited$f "
+      results+=("$f")
+      queue+=("$f")
+    done < <(printf '%s\n' "$edges" | awk -F'\t' -v s="$cur" '$1 == s { print $2 }')
+  done
+
+  printf 'downstream:\n'
+  if [ ${#results[@]} -gt 0 ]; then
+    for f in "${results[@]}"; do printf '%s\n' "$f"; done
+  fi
+  printf 'revises:\n'
+  revises_of "$query"
+}
+
 main() {
   if [ $# -eq 0 ]; then usage >&2; return 2; fi
   case "$1" in
     -h|--help) usage; return 0 ;;
-    downstream) return 2 ;;  # not yet implemented
+    downstream) shift; cmd_downstream "$@" ;;
     *) printf 'history: unknown subcommand: %s\n' "$1" >&2; usage >&2; return 2 ;;
   esac
 }
