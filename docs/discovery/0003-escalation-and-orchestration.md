@@ -202,10 +202,98 @@ The stage-review loop also gives the enforcement piece above somewhere
 to read a verdict from: findings and how each was handled, recorded in
 the PR.
 
+### [2026-10-27] A candidate shape: one single-turn primitive over a context assembler
+
+Worked through with the maintainer, developing the control plane
+against the data plane (`0005`) and the Phase 2 stage-review evidence.
+A candidate architecture, not a decision; recorded so the "how" ADRs
+(#79) can draw on it.
+
+**The evidence that reframed it.** Mining the Phase 2 stage-review runs
+(ADRs 0008/0009/0004, plans 0010–0015) — whose records live only as
+commit-message bodies in git history, there is no run-log store —
+showed the loop's failures were **not** skill-loading failures. Probe 1
+(below) was already designed around: ADR 0008 hands each worker its
+governing skill *as an input* (the reviewer brief at
+`skills/<skill>/references/review.md`), so adherence never rode the
+probabilistic Skill-tool trigger. Every breach the records show instead
+was a **handover/context-assembly failure**: a drafter resumed with its
+own context rather than a fresh assembled one; a closing pass that
+dropped a recorded decision; a fresh drafter that could not see the
+review because the record did not quote it. The common root is a lossy
+or mis-assembled worker input — exactly `0005`'s thesis, now with a
+corpus.
+
+**One primitive, two altitudes.** Everything is a single turn over
+context assembled by `0005`'s context assembler (CA): a **worker**
+takes a validated input and emits an artefact or performs one action;
+an **orchestrator** takes assembled run-state and emits a dispatch
+decision. Same shape, differing only in whether the output is an
+artefact or a dispatch, and recursively composable (an orchestrator
+node's children can be workers or further orchestrators — the
+"team of agents per artefact-producing step"). The move underneath is
+**persist the state, not the process**: the run is long-lived as
+repo/pool state, no agent process is. An orchestrator decides what is
+ready, fires it, and exits; an event (a worker completing, a human
+resolving a block) re-invokes it over freshly assembled state.
+
+**The keystone rule.** *A worker is one LLM call or one deterministic
+action — never a tool-use loop. Anything that resists is decomposed
+into more DAG nodes* (e.g. ADR 0008's plan reviewer, which must *run*
+the plan's checks, splits into a deterministic action node that runs
+them and a single-turn node that judges the result). This rule is
+load-bearing: single-turn workers are what make the record granularity
+align (turn = step = handover), collapse the observer problem, and let
+parallelism be derived. Its falsifier is explicit: **the first task
+that genuinely resists decomposition breaks it.**
+
+**What the single-turn shape resolves here:**
+
+- **Probe 1** is pre-empted, not merely unmeasured: the skill is
+  injected as context, so the question is adherence-to-handed-context,
+  which is `0005`'s handover problem, not a loading problem.
+- **Probe 2** largely dissolves. A one-turn worker has no mid-flight for
+  a sibling to watch. The trajectory that triggers (1)/(3)/(4) need
+  moves up to the **DAG** — a sequence of worker outputs inspected
+  *between* steps by the orchestrator/CA, which it does anyway. The
+  "observer" becomes the orchestrator's between-step inspection, not a
+  paired peer.
+- **The block becomes an exit, not a new mechanism.** Work suspends
+  because the orchestrator exits with nothing ready; the reason persists
+  in the pool; an event resumes it. The "suspendable plan step" is the
+  default, not a schema feature to build.
+- **The orchestrator is mostly deterministic** — a repo-probe over typed
+  state (any ready nodes? any High open after round 3? stop rule met?).
+  An LLM turn is needed only for genuinely fuzzy judgement, and that is
+  itself dispatched as a single-turn worker. So what is built is a
+  deterministic workflow engine plus single-turn LLM nodes, not "an LLM
+  that orchestrates."
+
+**Parallelism is derived, and demoted.** If every worker declares its
+inputs and outputs, the DAG — and the parallelism in it — falls out of
+the contracts rather than being drawn. But the parent currently papers
+over lossy handover by catching breaches live; parallelism removes the
+parent, so a lossy handover that merely annoys serially goes silently
+wrong in parallel. So **self-contained handover comes first; parallel
+execution is the later payoff**, not the way in.
+
+**Where this sits as a bet.** The whole thing concentrates risk in the
+CA, which this reframe makes load-bearing for both planes (see `0005`
+[2026-10-27]). The commitment is to use it until it works, with its
+logs as the iteration mechanism. Because this is a big enough bet to
+need its own ADR(s), and those ADRs will be revised as the CA iterates,
+the sequence is **history skill (0001) → revision process (#92) → the
+harness ADR** — the skills built *just good enough* to unblock and
+iterate the harness, as the on-ramp that earns the right to bet, not a
+deferral of it.
+
 ## Open questions
 
 Two are decisive and directly **probeable** on the current harness;
-answer them before any ADR:
+answer them before any ADR. *(Both are reframed by the [2026-10-27]
+entry above: probe 1 is pre-empted by injecting the skill as context,
+and probe 2 largely dissolves under single-turn workers — a one-turn
+worker has no mid-flight to observe.)*
 
 1. **Does delegating to a worker make skill-use reliable, or just move
    the trigger problem down a level?** The architecture assumes the
