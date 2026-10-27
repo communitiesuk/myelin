@@ -48,9 +48,10 @@ exists, plus any changes requested at acceptance. Check internal
 consistency; consistency with the upstream (does the ADR say what the
 human decided?) and with earlier ADRs, including the closed paths in
 their Alternatives sections and their revision history; and that the
-ADR says nothing about implementation. Until ADR 0004's history skill
-exists, read `docs/adr/` and `git log --follow -p docs/adr/<file>`
-directly. Check form against the rules in the `adr` skill's
+ADR says nothing about implementation. For the earlier-ADRs check, run
+the `history` skill's `history closed-paths <topic>` query rather than
+reading `docs/adr/` or `git log` directly. Check form against the rules
+in the `adr` skill's
 `SKILL.md`: for example, frontmatter, required sections, a
 question-shaped title and the forward-pointer. Text the ADR does not
 need is a finding: cut it.

@@ -1,0 +1,36 @@
+{
+  "context": "Tests whether the history skill, asked which paths are already closed on the topic \"rate limiting\", reports exactly the on-topic closed paths with each one's reason and source — pruning the tree's ADRs to the topic, extracting closed paths from both surviving `## Alternatives considered` bullets and the bodies of `Revises` commits, running its one bounded model step to drop off-topic candidates and to collapse a path recorded in both sources into a single entry that prefers the in-tree Alternatives bullet, and excluding a non-revising `Clarifies` edit.\n\nIMPORTANT — task.md does not name any ADR, does not mention Alternatives sections, Revises or Clarifies trailers, dedupe, or sources. Every property scored below must come from the history skill being loaded and followed. Score the agent's FINAL REPORT to the user (the skill's end-to-end output after its model step), read together with the fixture repository. Do not score any intermediate script output the agent may show on the way; score the conclusion it reports.\n\nThe fixture is built by setup.sh before the agent runs, as a git repository in the working directory with five ADRs under `docs/adr/` and the commit history described below. Inspect it with shell and git. The query topic is \"rate limiting\". The fixture holds exactly three on-topic closed paths and two traps:\n- PATH A (source: alternatives) — ADR 0001 (`docs/adr/0001-request-rate-limiting.md`) decides a token bucket and its `## Alternatives considered` section rejects a FIXED-WINDOW COUNTER (it doubles the effective rate at a window boundary). This reversal's only source is the in-tree Alternatives bullet.\n- PATH B (source: revises) — ADR 0002 (`docs/adr/0002-rate-limit-counter-store.md`) first decided an IN-PROCESS counter and was then revised to Redis. The reason (the in-process counter was per node, so a client spreading requests across nodes got the full budget on each) is carried ONLY in the body of the commit that carries `Revises: docs/adr/0002-rate-limit-counter-store.md`; ADR 0002's own Alternatives section does not restate it. So this path's only source is the Revises commit body.\n- PATH C (source: alternatives, exactly once) — ADR 0003 (`docs/adr/0003-over-limit-behaviour.md`) first decided to DROP OVER-LIMIT REQUESTS SILENTLY and was revised to return HTTP 429. This reversal is recorded in BOTH ADR 0003's current Alternatives bullet AND the body of the commit carrying `Revises: docs/adr/0003-over-limit-behaviour.md`. The skill's model step must collapse the two into a single reported entry, preferring the in-tree Alternatives bullet as its source.\n- TRAP D (must not surface) — ADR 0004 (`docs/adr/0004-rate-limit-headers.md`) is on topic but carries only a non-revising `Clarifies: docs/adr/0004-rate-limit-headers.md` edit (adding a cross-reference). It changes no decision and is not a closed path.\n- TRAP E (must not surface) — ADR 0005 (`docs/adr/0005-configuration-loading.md`) is OFF topic; its Alternatives section rejects reading environment variables at the point of use. The recall-biased prune must drop it.\n\nScore from the agent's final report and the fixture only. A report that says nothing is closed must fail the per-path criteria; a report that lists every Alternatives bullet in the tree (including ADR 0005's) must fail the trap and exactness criteria.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Reports the never-adopted fixed-window counter, sourced from an Alternatives section",
+      "max_score": 18,
+      "description": "The final report names, as a closed path on rate limiting, the FIXED-WINDOW COUNTER rejected in ADR 0001's Alternatives section (rejected because it doubles the effective rate at the window boundary), and attributes its source to an ADR's own Alternatives section rather than to a revision. FAILS IF: this path is absent; its reason is wrong or invented; or it is attributed to a revision's history."
+    },
+    {
+      "name": "Reports the in-process counter reversal, sourced from the revision history",
+      "max_score": 18,
+      "description": "The final report names, as a closed path on rate limiting, the IN-PROCESS rate-limit counter that was adopted and then reversed to Redis, with the reason that an in-process counter was per node so the effective limit scaled with the node count, and attributes its source to the history of a revision (the `Revises` commit), NOT to ADR 0002's Alternatives section — which does not restate it. FAILS IF: this path is absent; the reason is wrong or invented; or it is attributed to an Alternatives section."
+    },
+    {
+      "name": "Reports the silently-dropped over-limit path exactly once, preferring the in-tree source",
+      "max_score": 20,
+      "description": "The final report names, as a closed path on rate limiting, SILENTLY DROPPING over-limit requests — adopted first, then reversed to HTTP 429 because clients given no signal retried blindly and worsened the overload — and reports it EXACTLY ONCE, with its source given as ADR 0003's own Alternatives section (the in-tree restatement), not as the revision. FAILS IF: this path is absent; it is reported twice (once per source) rather than collapsed to one; its reason is wrong; or the single entry is sourced to the revision rather than to the Alternatives section."
+    },
+    {
+      "name": "Does not surface the non-revising Clarifies edit",
+      "max_score": 14,
+      "description": "The final report does NOT present ADR 0004's clarification (the added cross-reference to ADR 0001) as a closed path or a reversed decision. FAILS IF: the report lists ADR 0004's Clarifies edit among the closed paths, treating a non-revising edit as a revision."
+    },
+    {
+      "name": "Does not surface the off-topic decoy",
+      "max_score": 14,
+      "description": "The final report does NOT present ADR 0005's rejected alternative (reading environment variables at the point of use) as a closed path, because it is not about rate limiting. FAILS IF: the report lists the configuration-loading alternative among the rate-limiting closed paths, meaning the topic prune or the model step failed to drop an off-topic candidate."
+    },
+    {
+      "name": "Reports exactly the three on-topic closed paths and no others",
+      "max_score": 16,
+      "description": "The set of closed paths in the final report is exactly PATH A (fixed-window counter), PATH B (in-process counter) and PATH C (silently dropping over-limit requests): three distinct closed paths, no fewer and no more. FAILS IF: the report omits any of the three; adds a fourth closed path (for example TRAP D or TRAP E, or a spurious one); or reports fewer than three because it collapsed distinct paths or returned nothing."
+    }
+  ]
+}
