@@ -68,7 +68,25 @@ commit() {
   fi
 }
 
+# Stage everything in the throwaway repo and commit with SUBJECT and, if
+# given, BODY (used to carry a Revises trailer). For closed-paths fixtures
+# whose files are written directly rather than through commit().
+gc() {
+  git add -A
+  if [ -n "${2:-}" ]; then
+    printf '%s\n\n%s\n' "$1" "$2" | git commit -q --cleanup=whitespace -F -
+  else
+    git commit -q -m "$1"
+  fi
+}
+
 history() {
   OUT_STATUS=0
   OUT="$(bash "$SCRIPT" "$@" 2>"$TMP_ROOT/stderr")" || OUT_STATUS=$?
+}
+
+# Count non-overlapping occurrences of NEEDLE in HAYSTACK (for grouping
+# assertions, e.g. "this path appears in exactly two records").
+count_occurrences() {
+  printf '%s' "$1" | grep -oF -- "$2" | wc -l | tr -d ' '
 }
