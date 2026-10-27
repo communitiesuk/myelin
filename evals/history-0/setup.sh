@@ -132,9 +132,11 @@ git commit -q -m "Add ADR 0002: store the rate-limit counter in process"
 # ---------------------------------------------------------------------------
 # Commit 3: REVISE ADR 0002 to Redis. The commit carries
 # `Revises: docs/adr/0002-...` and its body gives the reason for the
-# adopted-then-reversed decision. The ADR's Alternatives section is left
-# unchanged — it still rejects only the per-request database write — so
-# the Revises body is the ONLY source for closed path #2.
+# adopted-then-reversed decision. The revision drops ADR 0002's
+# Alternatives section (the initial per-request-database-write rejection),
+# so the revised ADR restates nothing and the Revises body is the ONLY
+# source for closed path #2. ADR 0002's title still names rate limiting,
+# so the prune keeps it and its Revises body is extracted.
 # ---------------------------------------------------------------------------
 cat > docs/adr/0002-rate-limit-counter-store.md <<'EOF'
 ---
@@ -155,12 +157,6 @@ client's remaining tokens.
 
 Keep the counter in Redis, keyed by client id, so every delivery node
 reads and writes the same budget.
-
-## Alternatives considered
-
-- **A row per request in the primary database.** Rejected: a write on
-  the hot path for every inbound request, for a value read far more
-  often than it changes.
 
 ## Consequences
 
@@ -245,8 +241,6 @@ frees up.
 
 ## Alternatives considered
 
-- **Blocking the caller until a token frees up.** Rejected: it ties up
-  a server connection for an impatient client and invites timeouts.
 - **Silently dropping the over-limit request.** Tried first, then
   reversed: with no signal, well-behaved clients retried blindly and
   the retries made the overload worse. A 429 with `Retry-After` tells
