@@ -33,6 +33,15 @@ ADR 0010 leaves the keying and dedupe mechanisms to this plan.
   lookup: every commit carrying `Revises: X`, i.e. `X`'s own revision
   history; `X` is never reported as its own downstream node. The query
   reads trailer fields only, never a commit's subject line.
+- **`Clarifies` exclusion.** The revision and closed-path logic above
+  consults the `Revises` trailer only; it excludes `Clarifies` (and the
+  other non-decision trailers — `Completes`, `Consumed-By`,
+  `Abandons`). `Clarifies` marks a sibling self-edge for a
+  *non-revising* ADR edit (typo, citation, metadata, uncaught
+  cross-reference — introduced by ADR 0004's revision and plan 0015):
+  it changes no decision, so it is never a closed path and never part
+  of "what revises X". The script already keys on the `Revises`
+  trailer; this makes the exclusion explicit.
 - **Closed-paths dedupe.** An ADR `X` that was adopted then reversed
   has closed-path evidence from two possible sources, both keyed to
   `X`: `X`'s own current `## Alternatives considered` section (if it
@@ -86,19 +95,29 @@ Author, hand-written (never `tessl scenario generate` — the eval is
 the contract, not yet written):
 
 - **`evals/history-0/`** (`task.md`, `scenario.json`, `criteria.json`,
-  `setup.sh`) for the closed-paths query. Fixture: at least three
-  ADRs in the tree. One carries a `## Alternatives considered` bullet
-  describing a never-adopted path on the query topic. A second was
-  revised by a third (a `Revises` commit whose body gives a reason for
-  an adopted-then-reversed decision on the same topic), and the
-  revising ADR's own Alternatives section does **not** restate it, so
-  the `Revises` body is the only source. A fourth, decoy ADR has an
-  Alternatives bullet on an unrelated topic. `criteria.json` asserts
-  the script's output names exactly the two on-topic closed paths,
-  each with its reason and source (`alternatives` or `revises`) —
-  worded so neither "report nothing" nor "report every Alternatives
-  bullet in the tree" can pass, per the ADR's requirement that
-  assertions discriminate.
+  `setup.sh`) for the closed-paths query. Fixture: at least five ADRs
+  in the tree. One carries a `## Alternatives considered` bullet
+  describing a never-adopted path on the query topic. A second ADR is
+  itself revised — the commit that edits it carries `Revises: <that
+  same ADR>` and its body gives a reason for an adopted-then-reversed
+  decision on the same topic — and that ADR's own Alternatives section
+  does **not** restate it, so the `Revises` body is the only source. A
+  third ADR has both sources for one reversed decision: its current
+  Alternatives section restates the reversal, and the commit editing
+  it also carries a `Revises: <that ADR>` body describing the same
+  reversed decision — exercising the Step-5 dedupe. A fourth ADR
+  carries a `Clarifies: <itself>` edit that changes no decision (per
+  this plan's "`Clarifies` exclusion" mechanism) and must not surface
+  as a closed path. A fifth, decoy ADR has an Alternatives bullet on
+  an unrelated topic. `criteria.json` scores the skill's end-to-end
+  (post-Step-5-model) output, not the raw script's: it asserts the
+  skill reports exactly the three on-topic closed paths — the
+  never-adopted path, the adopted-then-reversed path, and the
+  both-sources path (this last reported exactly once, sourced
+  `alternatives`) — and does not surface the `Clarifies` edit, worded
+  so neither "report nothing" nor "report every Alternatives bullet in
+  the tree" can pass, per the ADR's requirement that assertions
+  discriminate.
 - **`evals/history-1/`** for the downstream/graph query. Fixture: an
   ADR, a plan that `Derives-From` it, and a third artefact that
   `Derives-From` the plan (the two-hop ADR → plan → code closure).
@@ -123,11 +142,15 @@ comment header documenting subcommands, in place of a docstring).
 Document the subcommand `history downstream <path>`, per this plan's
 "Downstream edges" mechanism: prints, one per line, every path
 reachable from `<path>` by following `Derives-From` trailer values
-forward, transitively, with a visited-set so it terminates, plus a
-separate flat (non-transitive) list of every commit carrying
-`Revises: <path>` — `<path>`'s own revision history — never following
-`Revises` as a forward edge and never listing `<path>` itself as a
-downstream node. Read trailer fields via `git log --all
+forward, transitively, with a visited-set so it terminates. Each hop's
+own path — the node identity needed to recurse to the next hop —
+comes from the commit's changed file(s), not from the trailer value:
+the trailer value names the hop's *source* artefact, not the derived
+artefact the commit itself introduces or edits. Separately, the
+subcommand prints a flat (non-transitive) list of every commit
+carrying `Revises: <path>` — `<path>`'s own revision history — never
+following `Revises` as a forward edge and never listing `<path>`
+itself as a downstream node. Read trailer fields via `git log --all
 --format='%(trailers:key=Derives-From,valueonly)'` (and `Revises`)
 rather than any commit subject.
 
@@ -231,9 +254,7 @@ skill exists, read `docs/adr/` and `git log --follow -p
 docs/adr/<file>` directly." Replace that sentence with an instruction
 to run `history closed-paths <topic>` for this check instead, keeping
 the surrounding sentences (consistency with earlier ADRs' closed paths
-and revision history; form checks) unchanged. This edit does not
-change the `adr` skill's `description`, so it carries neither
-directive wrapper, per the plans skill's silent-absence convention.
+and revision history; form checks) unchanged.
 
 Do not edit `docs/adr/0008-stage-reviews.md` itself — the plans skill
 forbids editing an ADR from within a plan's commits; the ADR's own
