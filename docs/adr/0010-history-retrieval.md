@@ -52,26 +52,15 @@ pruned candidates are on the topic. That step is narrow because each
 candidate's Alternatives bullet is a pre-written summary, not source
 text to interpret.
 
-- **The downstream/graph query needs no model at all.** It reads the
-  `Derives-From` and `Revises` trailer *fields*, never the commit
-  subject: a subject grep also catches ADR 0008's review-record
-  commits, which name a path in prose but carry no trailer.
-- **The graph key is the full artefact path, never the number.**
-  Numbers are reused (`plans/0004-releases.md` and
-  `plans/0004-where-does-history-live.md` both exist in history).
-- **The downstream query is transitive.** ADR → plan → code is a
-  deterministic closure, not a single lookup, and that closure is
-  exactly what the revision process needs to find everything a
-  revised ADR's descendants must follow.
-- **The two closed-path sources are not disjoint, and the skill
-  dedupes them.** Current ADRs' Alternatives sections already restate
-  most reversed paths (ADR 0004's own section restates two). The
-  skill prefers the cheap in-tree Alternatives entry and falls back to
-  `Revises` history only for a reversed path no current ADR restates.
-- **`Revises` bodies are trimmed to the reason paragraph.** A
-  `Revises` commit's "Confirmed decision summary" block is long; the
-  reason for the reversal is what the skill retrieves, not the whole
-  body.
+- **The downstream/graph query needs no model**, and resolves edges
+  from trailer fields, never commit-message prose.
+- **Graph identity must survive artefact-number reuse**: a number is
+  not a stable key. The plan settles the keying mechanism.
+- **The downstream query is transitive**: ADR → plan → code is a
+  closure, not a single lookup, matching what the revision process
+  needs.
+- **The two closed-path sources overlap and must be deduped**, not
+  treated as disjoint. The plan settles the dedupe mechanism.
 
 ### What is deferred
 
@@ -122,9 +111,9 @@ larger ADR count is an empirical question this v1 does not answer.
   closed path silently missed, which would reopen a settled decision).
 - Left open and deferred: tuning the prune's recall at a larger ADR
   count, human open-ended queries, detecting "open", and the "one
-  skill or two" question discovery note 0001 raised — the two queries
-  are decided here as one script's two modes, but whether a human-facing
-  skill wraps them separately is not settled.
+  skill or two" question discovery note 0001 raised. Only the
+  script-level shape (one script, two modes) is decided here; whether
+  a human-facing skill wraps the queries separately remains deferred.
 - The topic-input contract (path, keyword, or title, pruned the same
   way) is settled by this ADR; the eval fixture and the skill's
   name/trigger contract are left to `adr` and `skill-forge` to produce
