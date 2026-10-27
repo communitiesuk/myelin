@@ -1,0 +1,31 @@
+{
+  "context": "Tests whether the history skill, asked what derives from `docs/adr/0001-event-bus.md`, reports exactly the transitive closure of downstream artefacts — both hops of the ADR -> plan -> code chain — while excluding the subject-only decoy and the number-sharing decoy that ADR 0010 names as the two rejected alternatives for this query.\n\nIMPORTANT — task.md does not name any plan or source file, does not mention `Derives-From` trailers, and does not mention the decoys. Every property scored below must come from the history skill being loaded and followed. Score the agent's FINAL REPORT to the user (the skill's end-to-end output), read together with the fixture repository. Score the conclusion it reports, not any intermediate script output it may show on the way.\n\nThe fixture is built by setup.sh before the agent runs, as a git repository in the working directory. Its commit history is:\n- `docs/adr/0001-event-bus.md` — the queried ADR (no trailer; not a derivation).\n- `plans/0001-event-bus.md` — added by a commit carrying `Derives-From: docs/adr/0001-event-bus.md`. HOP 1 of the closure.\n- `src/event_bus.py` — added by a commit carrying `Derives-From: plans/0001-event-bus.md`. HOP 2 of the closure.\n- `docs/adr/0002-releases.md`, `plans/0001-releases.md` (carrying `Derives-From: docs/adr/0002-releases.md`) and `src/releases.py` (carrying `Derives-From: plans/0001-releases.md`) — DECOY 2, the number-sharing pair: `plans/0001-releases.md` shares the number 0001 with the real `plans/0001-event-bus.md` but has a different path and a different upstream. None of these three derives from the queried ADR.\n- a commit titled `Document docs/adr/0001-event-bus.md in the README` that edits `README.md` and carries NO trailer — DECOY 1, the subject-only decoy.\n\nScore from the agent's final report and the fixture only. A report that returns nothing must fail the closure criteria; a report that lists every artefact in the repository must fail the decoy and exactness criteria.",
+  "type": "weighted_checklist",
+  "checklist": [
+    {
+      "name": "Reports the first hop (the plan)",
+      "max_score": 20,
+      "description": "The final report names `plans/0001-event-bus.md` as derived from the queried ADR. FAILS IF: the plan is absent from the report."
+    },
+    {
+      "name": "Reports the second hop (the code), transitively",
+      "max_score": 24,
+      "description": "The final report names `src/event_bus.py` as downstream of the queried ADR, reached transitively through the plan — demonstrating the query follows the chain beyond a single direct edge. FAILS IF: `src/event_bus.py` is absent; or the report stops at the plan and does not traverse the second hop."
+    },
+    {
+      "name": "Excludes the subject-only decoy",
+      "max_score": 18,
+      "description": "The final report does NOT list `README.md` (nor the commit `Document docs/adr/0001-event-bus.md in the README`) as a downstream artefact. That commit names the ADR's path only in its subject and carries no `Derives-From` trailer. FAILS IF: `README.md` appears as downstream, meaning the query matched a subject line rather than a trailer field."
+    },
+    {
+      "name": "Excludes the number-sharing decoy",
+      "max_score": 18,
+      "description": "The final report does NOT list `plans/0001-releases.md` or `src/releases.py` as downstream of the queried ADR. They share the number 0001 with the real plan but derive from `docs/adr/0002-releases.md`, not from the queried ADR. FAILS IF: either appears as downstream, meaning the query keyed on the artefact number rather than the full path."
+    },
+    {
+      "name": "Does not list the queried ADR itself, and reports exactly the closure",
+      "max_score": 20,
+      "description": "The set of downstream artefacts in the final report is exactly `plans/0001-event-bus.md` and `src/event_bus.py` — the queried ADR `docs/adr/0001-event-bus.md` is not listed as its own downstream node, and nothing outside the closure is added. FAILS IF: the ADR lists itself; a decoy is included; or a real hop is missing."
+    }
+  ]
+}
