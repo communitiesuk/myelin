@@ -41,8 +41,7 @@ v1 answers two questions, both reading git directly:
 A **recall-biased title/keyword prune** scopes the topic input (an
 artefact path, a keyword, or a candidate ADR title) against existing
 titles and `## Alternatives considered` bullets before anything is
-read in full. Human open-ended queries and detecting "open" (the
-absence of a decision) are out of scope for v1.
+read in full.
 
 ### How it is built: a script, plus one bounded model step
 
@@ -53,7 +52,7 @@ candidate's Alternatives bullet is a pre-written summary, not source
 text to interpret.
 
 - **The downstream/graph query needs no model**, and resolves edges
-  from trailer fields, never commit-message prose.
+  from trailer fields.
 - **Graph identity must survive artefact-number reuse**: a number is
   not a stable key. The plan settles the keying mechanism.
 - **The downstream query is transitive**: ADR → plan → code is a
