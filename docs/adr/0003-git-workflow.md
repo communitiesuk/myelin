@@ -313,7 +313,7 @@ A plan's branch is merged as soon as the plan is written and
 reviewed, before implementation against it begins. A plan is not held
 back until the work it describes is finished.
 
-Two things go wrong otherwise, both observed. ADR 0004 requires that
+Two things go wrong otherwise, both observed. ADR 0011 requires that
 revising an ADR revises every plan **in the tree** whose `adr:` field
 names it, on the same branch; a plan on an unmerged branch is outside
 the reach of that rule and cannot be edited from the ADR's branch at
@@ -407,8 +407,9 @@ artefact rather than from trunk.
   across hosts; the command is not.
 - **Holding a plan's branch unmerged until its work is done.** What
   was in fact done for plan 0003, and reversed above. It puts the plan
-  outside the reach of ADR 0004's rule that revising an ADR revises
-  its plans, and leaves an abandoned plan with no reachable record
+  outside the reach of the rule that revising an ADR revises its plans
+  (now ADR 0011's, relocated there from ADR 0004), and leaves an
+  abandoned plan with no reachable record
   because its file never entered the tree.
 - **Always work in a worktree, never in the primary checkout.** The
   original form of this decision, rejected on first contact with it:
@@ -594,9 +595,9 @@ artefact rather than from trunk.
 - `docs/adr/0001-artifact-embedded-skill-directives.md`
 - `docs/adr/0002-skill-forge.md`
 - `docs/adr/0004-where-does-history-live.md` — the trailer vocabulary
-  the no-squash rule protects, and the rule that revising an ADR
-  revises its plans, which the merge-on-creation decision above makes
-  reachable for every plan.
+  the no-squash rule protects. The rule that revising an ADR revises
+  its plans, which the merge-on-creation decision above makes reachable
+  for every plan, is now ADR 0011's (relocated there from ADR 0004).
 - `skills/test-first-workflow/SKILL.md` — red/green commit mandate
 - `skills/skill-forge/SKILL.md` — frontmatter/scenario/body commits
 - `skills/plans/SKILL.md` — status transitions ride with changes
