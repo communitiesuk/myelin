@@ -43,14 +43,16 @@ code, ADRs, and plans still in the tree (deferred or in progress). For
 each of these on the `downstream:` list, the revision records on the
 same branch exactly one verdict:
 
-- **revised** — edited to match the changed decision, evidenced by a
-  commit touching it;
+- **revised** — edited to match the changed decision; the touching
+  commit corroborates, but the verdict trailer (below) is what the
+  gate reads;
 - **deferred** — plans only, and only when reconciliation is blocked
   on specific named other work (e.g. until the revision of ADR Y
   lands): the plan is set to `deferred` with a reason naming that
-  blocking condition (ADR 0004's existing escape, kept). Never
-  open-ended — if nothing specific blocks it, revise now or record
-  *checked and still correct*;
+  blocking condition (ADR 0004's escape, kept but narrowed to a named
+  condition). Never open-ended — if nothing specific blocks it, revise
+  now or record *checked and still correct*. Discharging a deferral
+  (`land` checking its condition still holds) is deferred to seed #126;
 - **checked and still correct** — examined and found unaffected,
   recorded explicitly.
 
@@ -152,10 +154,11 @@ scope (discovery 0004 territory).
 
 ## Consequences
 
-- This builds on ADR 0004: its ADR → plan "revised or deferred" rule
-  becomes the ADR → plan → skill verdict trichotomy here. ADR 0004's
-  narrower section now has a more general statement elsewhere, a
-  coupling to keep consistent.
+- This ADR depends on revising accepted ADR 0004, with three effects:
+  (i) its ADR → plan "revised or deferred" obligation generalises to
+  the ADR → plan → skill verdict set; (ii) verdict trailer edge types
+  join its exhaustive table; and (iii) its currently open-ended
+  `deferred` escape is narrowed to require a named blocking condition.
 - `land` gains a check that consumes the history skill's `downstream`
   query, coupling the gate to that script; a repository without it
   cannot run the gate.
@@ -166,9 +169,6 @@ scope (discovery 0004 territory).
   separate the provision of verdicts from the revision itself — a
   separate verdict-giver (seed #124, the role-concentration theme of
   #119 and ADR 0008).
-- Verdicts are trailers: new edge types that extend ADR 0004's
-  exhaustive trailer table, an extension made by the revision of ADR
-  0004. The exact keys and the gate's parsing are the plan's.
 - Evals stay outside the revision graph until #119; a revision that
   should change an eval leaves no verdict and no gate catches it.
 - "Downstream" here is the *production graph* (`Derives-From`: ADR →
