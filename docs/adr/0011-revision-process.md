@@ -36,10 +36,12 @@ plan). Its input is the `downstream:` list from
 `history downstream <path>` (ADR 0010). The process **consumes** that
 query; it never re-traverses git itself.
 
-### Every downstream artefact gets a verdict
+### Each durable, in-tree downstream artefact gets a verdict
 
-For each artefact in the `downstream:` list, the revision records on
-the same branch exactly one verdict:
+Verdicts apply only to durable artefacts present in the tree: skills,
+code, ADRs, and plans still in the tree (deferred or in progress). For
+each of these on the `downstream:` list, the revision records on the
+same branch exactly one verdict:
 
 - **revised** — edited to match the changed decision, evidenced by a
   commit touching it;
@@ -48,11 +50,28 @@ the same branch exactly one verdict:
 - **checked and still correct** — examined and found unaffected,
   recorded explicitly.
 
+A **completed plan has left the tree** (ADR 0004: a plan leaves when
+its work is complete) and is not revised. Its place in the
+`downstream:` list is informational — showing which durable outputs
+trace to this ADR — and the revision of those outputs is carried by
+**new plans**, not by editing the gone plan. The completeness
+requirement is thus scoped to durable, in-tree artefacts; removed
+artefacts need no verdict. Filtering the list to what is in the tree
+is the plan's.
+
 This generalises ADR 0004's "revised or deferred" from ADR → plan to
-the whole transitive graph, and adds the explicit *checked and still
+the whole in-tree graph, and adds the explicit *checked and still
 correct* verdict so an unaffected artefact is **recorded as checked**,
-not silently skipped — the hand-found ripple seed #92 names. The gate
-checks that a verdict is present, not that its claim is true; a
+not silently skipped — the hand-found ripple seed #92 names.
+
+Verdicts are recorded as **trailers**, for the reasons ADR 0004
+adopted them: append-only, machine-readable, and timestamped by the
+commit they sit on — so *when* a verdict was made is intrinsic, the
+staleness problem trailers were introduced to solve. These are new
+edge types, so they **extend ADR 0004's exhaustive trailer table**, an
+extension made by the revision of ADR 0004 (a dependency this ADR
+carries). The exact keys and the gate's parsing stay the plan's. The
+gate checks that a verdict is present, not that its claim is true; a
 verdict is the reviser's assertion.
 
 ### A missing verdict is visible, and the gate is `land`
@@ -77,8 +96,8 @@ The gate runs at **`land`**, not at `begin`:
 
 `begin` still has a use: surfacing the `downstream:` worklist so the
 reviser sees the scope up front. That is advisory and blocks nothing.
-Verdicts are recorded on the branch in a form `land` can check without
-judgement; the exact syntax is left to the plan.
+Verdicts are recorded on the branch as trailers `land` can check
+without judgement.
 
 ### Out of scope: eval scenarios
 
@@ -110,6 +129,10 @@ scope (discovery 0004 territory).
   correct* verdict.** Rejected: an unaffected artefact is then skipped
   with no record, which is the silent gap seed #92 names. The explicit
   verdict is what makes "checked" auditable.
+- **Record verdicts in frontmatter or prose.** Rejected: neither is
+  timestamped by its commit, so *when* a verdict was made is not
+  intrinsic — the staleness problem, and inconsistent with ADR 0004's
+  trailer rationale. Verdicts are trailers.
 - **Put eval scenarios in the graph now.** Rejected and deferred to
   #119: evals carry no `Derives-From`, and their authoring workflows
   have no revision lifecycle to hang a verdict on.
@@ -126,9 +149,13 @@ scope (discovery 0004 territory).
 - A *checked and still correct* verdict is a claim nothing re-derives.
   The gate enforces that a verdict exists, not that it is right; the
   ADR 0008 reviewer's fidelity check is the complementary judgement.
-- The verdict-recording syntax is left to the plan. If it is a trailer,
-  it extends ADR 0004's trailer table, which that ADR leaves open to
-  extension by revision.
+- This ADR keeps the reviser-asserts-verdicts model. We may eventually
+  separate the provision of verdicts from the revision itself — a
+  separate verdict-giver (seed #124, the role-concentration theme of
+  #119 and ADR 0008).
+- Verdicts are trailers: new edge types that extend ADR 0004's
+  exhaustive trailer table, an extension made by the revision of ADR
+  0004. The exact keys and the gate's parsing are the plan's.
 - Evals stay outside the revision graph until #119; a revision that
   should change an eval leaves no verdict and no gate catches it.
 - "Downstream" here is the *production graph* (`Derives-From`: ADR →
@@ -146,8 +173,9 @@ scope (discovery 0004 territory).
 
 - `docs/adr/0004-where-does-history-live.md` — the ADR → plan
   "revised or deferred" obligation this ADR generalises to the
-  transitive graph; the trailer graph a verdict may extend; the
-  tree-is-current rule that rules out a second index.
+  in-tree graph; the exhaustive trailer table that verdict trailers
+  extend, by a revision of 0004; the tree-is-current rule that rules
+  out a second index.
 - `docs/adr/0010-history-retrieval.md` — the transitive
   `history downstream` query this process consumes, without
   re-traversing git.
