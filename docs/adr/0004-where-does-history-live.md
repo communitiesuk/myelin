@@ -110,7 +110,9 @@ tree when that purpose is served.
 - A **plan** leaves when its work is complete or abandoned. The
   `done` and `abandoned` statuses are withdrawn; both are expressed
   by removal, and the removing commit says which. A `deferred` plan
-  stays, because deferred work is still intended.
+  stays, because deferred work is still intended; a plan may be
+  deferred only when its reconciliation is blocked on specific named
+  other work (such as another revision landing), never open-ended.
 - A **discovery note** leaves when the ADR it informed is accepted.
 - An **ADR** stays for as long as its decision stands. ADRs are the
   current intention; they are consumed continuously, not once.
@@ -146,6 +148,9 @@ The vocabulary:
 | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
+| `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
+| `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
+| `Defers:` | defers reconciling a downstream plan, blocked on named other work | path of that downstream plan; carries its named blocking condition |
 
 Values are repository-relative paths. A commit may carry several
 trailers, and a key may repeat. `Derives-From` names direct
@@ -163,6 +168,14 @@ The two differ only in what they record — `Revises` for a change to
 the decision, `Clarifies` for a change to its expression. A revising
 edit carries `Revises`; only a non-revising edit carries `Clarifies`,
 and `land` sends it direct to trunk, with no human pull request.
+
+The three verdict trailers are the cross-edge counterpart to those
+self-edges: `Revises` and `Clarifies` link an ADR to itself, whereas a
+verdict links the revised ADR to a *different* durable downstream named
+in its value. Introducing them extends this exhaustive vocabulary,
+which is why their keys are defined here; reading those keys and
+enforcing the verdicts — the gate's parsing — belong to ADR 0011's
+plan.
 
 Trailers record edges between artefacts. Structure inside an
 artefact, such as the order of docstring, test and code commits under
@@ -185,13 +198,13 @@ one artefact, and its prohibition on squash merging now protects
 this too: a squash discards the individual commits, and their
 trailers with them.
 
-### Revising an ADR revises its plans
+### Revising an ADR accounts for what is downstream of it
 
-An ADR is not frozen at merge. It is frozen only with respect to work
-in flight against it. When an ADR is revised, every plan in the tree
-whose `adr:` field names it is, on the same branch, either revised to
-match or set to `deferred` with a reason naming the revision. No plan
-targets a decision that has changed under it.
+When an ADR is revised, every durable downstream artefact in the tree
+must be accounted for. The full obligation to reconcile what the
+revision changes under it, and the verdicts that discharge it, lives in
+ADR 0011 as that obligation's single owner; the scope is stated here,
+the rule is not restated.
 
 ### The bookkeeping exception is adopted as a revision to ADR 0003
 
@@ -264,13 +277,17 @@ question and is deferred to a separate ADR. Until it exists,
   edit could not land without a human-mediated merge — friction for a
   typo fix. `Clarifies` removes that friction: such an edit now adds
   an edge, a self-edge, instead of none.
+- **An open-ended `deferred` escape.** This ADR's original form let a
+  plan be deferred with any reason naming the revision. Narrowed: a
+  deferral must name the specific other work its reconciliation is
+  blocked on, so a landed decision cannot be left unreconciled
+  indefinitely.
 
 ## Consequences
 
 - The `adr` skill changes: question-shaped titles, the edit-or-new
   test, the withdrawal of the immutability and no-delete rules, a
-  smaller frontmatter schema, the `Revises` commit rule, and the
-  rule that revising an ADR revises its plans.
+  smaller frontmatter schema, and the `Revises` commit rule.
 - The `plans` skill changes: `done` and `abandoned` become removal
   with `Completes` and `Abandons`, the no-delete and no-archive rules
   are withdrawn, and the introducing commit carries `Derives-From`.
@@ -279,7 +296,7 @@ question and is deferred to a separate ADR. Until it exists,
 - The git-workflow skill that plan 0003 specifies must carry the
   trailer vocabulary and route a `Clarifies` branch to trunk without
   requiring `Derives-From`, since it is the skill that lands commits.
-  Plan 0003 is revised accordingly under the rule above.
+  Plan 0003 is revised accordingly under ADR 0011.
 - ADR 0003 is revised in place for the first time: the bookkeeping
   exception is folded in, and its claim that the `adr` skill's
   prohibition on editing a merged ADR "becomes meaningful" is
