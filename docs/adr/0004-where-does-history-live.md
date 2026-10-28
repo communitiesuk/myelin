@@ -110,7 +110,9 @@ tree when that purpose is served.
 - A **plan** leaves when its work is complete or abandoned. The
   `done` and `abandoned` statuses are withdrawn; both are expressed
   by removal, and the removing commit says which. A `deferred` plan
-  stays, because deferred work is still intended.
+  stays, because deferred work is still intended; a plan may be
+  deferred only when its reconciliation is blocked on specific named
+  other work (such as another revision landing), never open-ended.
 - A **discovery note** leaves when the ADR it informed is accepted.
 - An **ADR** stays for as long as its decision stands. ADRs are the
   current intention; they are consumed continuously, not once.
@@ -146,6 +148,9 @@ The vocabulary:
 | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
+| verdict *revised* | edits a durable downstream to match the changed decision | path of that downstream |
+| verdict *checked* | records a durable downstream examined and found still correct | path of that downstream |
+| verdict *deferred* | defers reconciling a downstream plan, blocked on named other work | path of that downstream plan |
 
 Values are repository-relative paths. A commit may carry several
 trailers, and a key may repeat. `Derives-From` names direct
@@ -163,6 +168,15 @@ The two differ only in what they record — `Revises` for a change to
 the decision, `Clarifies` for a change to its expression. A revising
 edit carries `Revises`; only a non-revising edit carries `Clarifies`,
 and `land` sends it direct to trunk, with no human pull request.
+
+The three verdict trailers are the cross-edge counterpart to those
+self-edges: `Revises` and `Clarifies` link an ADR to itself, whereas a
+verdict links the revised ADR to a *different* durable downstream (the
+`Derives-From`/`Completes` family), naming it in the value and read
+from the revision's side — the revision revised, checked or deferred
+that downstream. Introducing them extends this exhaustive vocabulary,
+which is why the rows are added here; their exact keys, and the gate
+that reads them, belong to ADR 0011 and its plan, not to this ADR.
 
 Trailers record edges between artefacts. Structure inside an
 artefact, such as the order of docstring, test and code commits under
@@ -185,13 +199,11 @@ one artefact, and its prohibition on squash merging now protects
 this too: a squash discards the individual commits, and their
 trailers with them.
 
-### Revising an ADR revises its plans
+### Revising an ADR accounts for what is downstream of it
 
-An ADR is not frozen at merge. It is frozen only with respect to work
-in flight against it. When an ADR is revised, every plan in the tree
-whose `adr:` field names it is, on the same branch, either revised to
-match or set to `deferred` with a reason naming the revision. No plan
-targets a decision that has changed under it.
+The obligation to reconcile what a revision changes under it now lives
+in ADR 0011. This ADR defers to 0011 as that obligation's single
+owner; it is not restated here.
 
 ### The bookkeeping exception is adopted as a revision to ADR 0003
 
@@ -264,6 +276,11 @@ question and is deferred to a separate ADR. Until it exists,
   edit could not land without a human-mediated merge — friction for a
   typo fix. `Clarifies` removes that friction: such an edit now adds
   an edge, a self-edge, instead of none.
+- **An open-ended `deferred` escape.** This ADR's original form let a
+  plan be deferred with any reason naming the revision. Narrowed: a
+  deferral must name the specific other work its reconciliation is
+  blocked on, so a landed decision cannot be left unreconciled
+  indefinitely.
 
 ## Consequences
 
