@@ -131,6 +131,16 @@ scope (discovery 0004 territory).
   extension by revision.
 - Evals stay outside the revision graph until #119; a revision that
   should change an eval leaves no verdict and no gate catches it.
+- "Downstream" here is the *production graph* (`Derives-From`: ADR →
+  plan → skill/code), not everything that logically depends on an
+  artefact. One ADR building on or constraining another is recorded in
+  prose References, not a `Derives-From` edge — deliberately, since
+  `Derives-From` is acyclic by construction and inter-ADR dependencies
+  are not — so a revision never mechanically surfaces the ADRs that
+  logically depend on it. This ADR is the first instance: 0011 is a
+  logical downstream of 0004 but not a graph one, so revising 0004 will
+  not surface 0011 via `history downstream`. Deferred to seed #120,
+  which touches the decision-decomposition question (seed #94).
 
 ## References
 
