@@ -81,9 +81,8 @@ step here.
 ## Steps
 
 Step 1 and Step 2 modify the executable `git-workflow` script and its
-shell tests, so each carries the `test-first-workflow` wrapper. Step 3
-edits skill prose only and carries no wrapper. Step 1's first commit
-flips this plan's frontmatter from `draft` to `in-progress`.
+shell tests, so each carries the `test-first-workflow` wrapper. Step 1's
+first commit flips this plan's frontmatter from `draft` to `in-progress`.
 
 ### Step 1 — Add the verdict-completeness gate to `cmd_land`
 
@@ -146,8 +145,7 @@ after:
   not the plugin layout), then run `land` from a verdict-complete
   `Revises: docs/adr/0001-one.md` fixture through that copy — `bash
   "$COPY" land`, not `"$SCRIPT"`. `script_dir` resolves to the copy's own
-  directory (`pwd -P` on `BASH_SOURCE[0]`, so a copy relocates it, unlike
-  a symlink), so the sibling lookup fails → exit 2, output naming the
+  directory, so the sibling lookup fails → exit 2, output naming the
   missing history script at the resolved path, branch and worktree kept.
   Even a branch that would otherwise pass refuses, proving the stop is
   reached before the gate's verdict logic.
@@ -156,27 +154,20 @@ Then implement in `git-workflow`. Insert the gate in `cmd_land`
 immediately after the `Derives-From`/`Clarifies` validation block and
 before the `if [ "$remote" != none ]` push block, guarded by a
 `Revises:`-present test (reuse the `%(trailers:key=Revises,valueonly)`
-read that already sets `decision`). Mechanism:
+read that already sets `decision`). The gate follows the five-step
+"Mechanism the gate must follow" section above; the code-specific
+details not covered there are:
 
-1. Resolve the history script relative to `script_dir`:
-   `$(script_dir)/../../history/scripts/history` (git-workflow's
-   `scripts/` and history's `scripts/` are sibling skill directories in
-   the plugin). If that path is not an executable file, the gate cannot
-   run: refuse (exit 2) with a message that the revision gate needs the
-   history skill's script and it was not found at the resolved path —
-   this is ADR 0011's "a repository without it cannot run the gate"
-   consequence, made a hard stop so an incomplete revision cannot slip
-   through on a missing dependency.
-2. For each `Revises:` value, run `bash "$hist" downstream "$value"` and
-   read the lines of its `downstream:` section (between the `downstream:`
-   and `revises:` headers).
-3. Filter each to `git cat-file -e HEAD:"$path"` success (in-tree).
-4. Build the verdict set from `%(trailers:key=Reconciles,valueonly)`,
-   `...Confirms...` and `...Defers...` over `$trunk..HEAD`; for `Defers`,
-   reduce each value to its first whitespace-delimited token.
-5. For every in-tree downstream not in the verdict set, collect it;
-   if the collection is non-empty, `die 2` naming each path, one per
-   line.
+- **History script resolution.** Resolve the history script relative to
+  `script_dir`: `$(script_dir)/../../history/scripts/history`
+  (git-workflow's `scripts/` and history's `scripts/` are sibling skill
+  directories in the plugin). If that path is not an executable file,
+  the gate cannot run: refuse (exit 2) with a message that the revision
+  gate needs the history skill's script and it was not found at the
+  resolved path — a hard stop so an incomplete revision cannot slip
+  through on a missing dependency.
+- **Refusal formatting.** When any in-tree downstream lacks a verdict,
+  `die 2` naming each missing path, one per line.
 
 Run `bash skills/git-workflow/scripts/tests/run.sh
 skills/git-workflow/scripts/tests/land.sh` — red before the code, green
@@ -257,10 +248,6 @@ Files: `skills/git-workflow/SKILL.md`,
   repository without it cannot run the gate. Note that `begin` surfaces
   the same `downstream:` list as an advisory worklist that blocks
   nothing.
-
-These are edits to existing skill bodies with no `description` (trigger
-contract) change, so they are neither `test-first-workflow` nor
-`skill-forge` work and carry no wrapper.
 
 ## Verification
 
