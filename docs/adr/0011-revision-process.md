@@ -33,9 +33,8 @@ explicit record. This ADR generalises it.
 The revision process covers the links stable today: ADR → plan →
 skill (plans link by `adr:`; skills link transitively through their
 plan). Its input is the `downstream:` list from
-`bash "$SKILL_DIR/scripts/history" downstream docs/adr/NNNN-<slug>.md`
-(ADR 0010). The process **consumes** that query; it never re-traverses
-git itself.
+`history downstream <path>` (ADR 0010). The process **consumes** that
+query; it never re-traverses git itself.
 
 ### Every downstream artefact gets a verdict
 
@@ -65,7 +64,7 @@ and names each artefact still without a verdict.
 The gate runs at **`land`**, not at `begin`:
 
 - `land` already stops a `Revises` branch — a decision branch, landed
-  by a human (ADR 0003, exit 3) — and already parses trailers. The
+  by a human (ADR 0003) — and already parses trailers. The
   verdict-completeness check is the same shape of mechanical check at a
   moment that already exists and already does decision-branch work; no
   new gate moment is introduced.
@@ -91,8 +90,10 @@ workflows have no revision lifecycle — `test-first-workflow` is
 append-only but for an "invalid test" escape hatch framed for
 mistakes, and `skill-forge` skips evals on a body-only edit and bars
 retrofitting. Decomposing those workflows (the test-production
-separation) is harness-era work, also #119. Release schedule and
-distribution are out of scope (discovery 0004 territory).
+separation) is harness-era work, also #119.
+
+Release schedule and distribution are a separate boundary, also out of
+scope (discovery 0004 territory).
 
 ## Alternatives considered
 
@@ -141,7 +142,7 @@ distribution are out of scope (discovery 0004 territory).
   `history downstream` query this process consumes, without
   re-traversing git.
 - `docs/adr/0003-git-workflow.md` — `land` stops a `Revises` branch
-  (exit 3) and parses trailers, the moment this gate attaches to; and
+  and parses trailers, the moment this gate attaches to; and
   plan-merge-on-creation, which makes a revised ADR's plans "in the
   tree" so the downstream set is complete.
 - `docs/adr/0008-stage-reviews.md` — the review loop a revision is
