@@ -10,7 +10,7 @@ date: 2026-10-28
 ## Context
 
 ADR 0011 defined the `deferred` verdict (`Defers: <D> <condition>`): a
-revision may defer reconciling a durable downstream `D`, blocked on
+revision may defer reconciling a downstream plan `D`, blocked on
 named other work, typically "until the revision of ADR `Y` lands."
 0011 explicitly handed off what happens once that condition is met to
 seed #126. #126 was later decomposed, scoping this ADR to the
@@ -64,8 +64,7 @@ branch:
 - **`Confirms: D`** — examined and still correct; or
 - **`Defers: D <fresh condition>`** — re-deferred, only when the new
   condition (a) differs from the one just satisfied and (b) is itself
-  evaluable as currently unmet. A re-defer that re-cites the
-  just-satisfied condition is not a valid escape.
+  evaluable as currently unmet.
 
 This reuses ADR 0011's verdict vocabulary and trailer keys (ADR 0004)
 without adding new ones: discharging a deferral is recorded the same
@@ -124,14 +123,13 @@ order, not a cycle.
   runs. That is a wider check than `land` has needed before.
 - Because there is no per-path ownership, the obligation to discharge
   `D` falls on whoever lands `D`'s blocker, who may be unconnected to
-  `D` or to the revision that deferred it. The re-defer escape is what
-  keeps that cost bounded rather than open-ended.
+  `D` or to the revision that deferred it. The escape is one trailer,
+  so this cost stays bounded rather than becoming an afternoon of
+  reasoning around the system for a lander who just wants to land
+  their own, unrelated work.
 - Tightening the condition form itself (making "until `Y` lands"
   mechanically checkable) is a separate `Revises: 0011` slice, not
   part of this decision.
-- Eval scenarios remain outside the revision graph per ADR 0011; a
-  discharge that should touch an eval leaves no verdict and nothing
-  here catches it.
 
 ## References
 
