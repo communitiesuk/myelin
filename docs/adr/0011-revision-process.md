@@ -45,8 +45,12 @@ same branch exactly one verdict:
 
 - **revised** — edited to match the changed decision, evidenced by a
   commit touching it;
-- **deferred** — plans only: a plan set to `deferred` with a reason
-  naming the revision (ADR 0004's existing escape, kept);
+- **deferred** — plans only, and only when reconciliation is blocked
+  on specific named other work (e.g. until the revision of ADR Y
+  lands): the plan is set to `deferred` with a reason naming that
+  blocking condition (ADR 0004's existing escape, kept). Never
+  open-ended — if nothing specific blocks it, revise now or record
+  *checked and still correct*;
 - **checked and still correct** — examined and found unaffected,
   recorded explicitly.
 
@@ -68,11 +72,19 @@ Verdicts are recorded as **trailers**, for the reasons ADR 0004
 adopted them: append-only, machine-readable, and timestamped by the
 commit they sit on — so *when* a verdict was made is intrinsic, the
 staleness problem trailers were introduced to solve. These are new
-edge types, so they **extend ADR 0004's exhaustive trailer table**, an
+edge types that **extend ADR 0004's exhaustive trailer table**, an
 extension made by the revision of ADR 0004 (a dependency this ADR
-carries). The exact keys and the gate's parsing stay the plan's. The
-gate checks that a verdict is present, not that its claim is true; a
-verdict is the reviser's assertion.
+carries). They are **cross-edges**: `Revises`/`Clarifies` are the
+self-edges (an ADR to itself), whereas a verdict links the revised ADR
+to a *different* durable downstream (the `Derives-From`/`Completes`
+family). The trailer **names that downstream in its value**, read from
+the revision's side — "the revision revised / checked / deferred
+`<D>`" — because the *checked and still correct* verdict has no commit
+touching the downstream to carry it, and the gate must know which
+downstream a verdict covers; being on the branch that carries
+`Revises` scopes it to this revision. The exact keys and the gate's
+parsing stay the plan's. The gate checks that a verdict is present,
+not that its claim is true; a verdict is the reviser's assertion.
 
 ### A missing verdict is visible, and the gate is `land`
 
@@ -169,6 +181,14 @@ scope (discovery 0004 territory).
   logical downstream of 0004 but not a graph one, so revising 0004 will
   not surface 0011 via `history downstream`. Deferred to seed #120,
   which touches the decision-decomposition question (seed #94).
+- The production graph records what was *produced from* a decision
+  (`Derives-From`, immutable), not what it currently *governs* (scope,
+  which a revision changes). So the gate cannot see an artefact a
+  revision newly brings **into** scope (no edge — a false negative),
+  and it keeps surfacing one a revision pushes **out of** scope (the
+  edge persists — a false positive). Determining current governance is
+  **planning-stage** work (the `plans` skill), not a graph traversal.
+  Deferred to seed #125 (cf. #120, #94).
 
 ## References
 
