@@ -362,7 +362,8 @@ t "gate: a revision missing a verdict refuses, naming the downstream, and nothin
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=2"
   assert_contains "$out" "plans/9001-downstream.md"
-  assert_eq "" "$(bare_tip "$R/rev1" adr-0001-one)" "the branch must not be pushed: an incomplete revision reached the host"
+  # show-ref, not bare_tip: `git rev-parse <missing-ref>` echoes the name back (cf. wc3)
+  git --git-dir="$R/rev1/.origin/repo.git" show-ref --verify --quiet refs/heads/adr-0001-one && fail "the branch was pushed: an incomplete revision reached the host"
   assert_eq "adr-0001-one" "$(cd "$R/rev1" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
   [ -n "$(cd "$R/rev1" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on a refusal"
 

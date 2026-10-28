@@ -415,6 +415,43 @@ cmd_land() {
     printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
   fi
 
+  # The verdict-completeness gate (ADR 0011). A Revises branch revises an
+  # accepted ADR; every durable, in-tree downstream of that ADR must carry
+  # a verdict. Runs here, before the push, so an incomplete revision never
+  # reaches the host. New-ADR decisions have no downstream to reconcile and
+  # must not trigger it, so the gate is guarded by Revises being present.
+  local revises
+  revises="$(git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD" | sed '/^$/d')"
+  if [ -n "$revises" ]; then
+    local hist; hist="$(script_dir)/../../history/scripts/history"
+    [ -x "$hist" ] || die 2 "the revision gate needs the history skill's script; it is not an executable file at $hist"
+    # The verdict set: Reconciles/Confirms/Defers values on trunk..HEAD. For
+    # Defers, the leading whitespace-delimited token (the downstream path)
+    # only; the remainder is the opaque blocking condition.
+    local verdicts
+    verdicts="$(
+      git log --format='%(trailers:key=Reconciles,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Confirms,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Defers,valueonly)'     "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
+    )"
+    local missing="" value d
+    while IFS= read -r value; do
+      [ -n "$value" ] || continue
+      # Only the downstream: section: the lines strictly between the
+      # downstream: and revises: headers history prints.
+      while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        git cat-file -e "HEAD:$d" 2>/dev/null || continue           # keep durable in-tree downstreams only
+        printf '%s\n' "$verdicts" | grep -qxF "$d" && continue      # a verdict names it: presence, not truth
+        missing="$missing$d
+"
+      done < <(bash "$hist" downstream "$value" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f{print}')
+    done < <(printf '%s\n' "$revises" | sort -u)
+    if [ -n "$missing" ]; then
+      die 2 "$(printf 'this revision does not account for every durable downstream; no verdict (Reconciles/Confirms/Defers) names:\n%s' "$(printf '%s' "$missing" | sort -u)")"
+    fi
+  fi
+
   local primary here inplace=0 wt=""
   primary="$(primary_checkout)"
   here="$(physical "$(git rev-parse --show-toplevel)")"
