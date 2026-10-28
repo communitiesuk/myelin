@@ -88,8 +88,13 @@ Artefacts form a graph — a plan derives from an ADR, an ADR from a discovery n
 | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
+| `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
+| `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
+| `Defers:` | defers reconciling a downstream plan, blocked on named other work | path of that downstream plan; carries its named blocking condition |
 
 Values are repository-relative paths, in the trailer block at the end of the message, one per line in `Key: value` form — never in prose, which `git interpret-trailers` cannot see. **`Derives-From` sits on the first commit of the artefact's branch, whatever that commit contains**, and names direct upstreams only: a skill produced by a plan step names the plan, not the ADR behind it. Before the first commit, ask what this artefact was produced from and write the path down; `land` refuses a branch whose first commit lacks it, unless the branch is a decision or its first commit carries `Clarifies`, which `land` sends direct to trunk with no human pull request. **The body carries the reason**: a `Revises`, `Clarifies`, `Abandons` or deleting commit says what changed and why, in sentences.
+
+The last three are **verdict** trailers (ADR 0011), recorded by the reviser on a `Revises` branch — one per durable in-tree downstream of the revised ADR, naming that downstream from the revision's side. `land` refuses such a branch while any durable, in-tree downstream (from `history downstream`, filtered to the tree) carries none; see Rule 15. `begin` surfaces the same list as an advisory worklist that blocks nothing.
 
 ### Rule 13 — Merging is not mandatory, and nothing of anyone else's is yours to tidy
 

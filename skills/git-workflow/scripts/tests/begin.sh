@@ -219,3 +219,31 @@ t "trunk: trunk checked out in another worktree, remote ahead -> exit 1, no bran
   has_branch "$R/k6" adr-0002-x && fail "branch created"
   assert_eq "$wt_before" "$(cd "$R/trunk-wt" && git rev-parse HEAD)" "the other worktree's dev moved"
   assert_eq "dev" "$(cd "$R/trunk-wt" && git rev-parse --abbrev-ref HEAD)"
+
+# --- Step 2: the advisory downstream worklist (ADR 0011, plan 0017) ----------
+
+t "worklist: a revision of an on-trunk ADR surfaces its downstream advisorily, in place"
+  fixture "$R/wl1" --trunk dev >/dev/null
+  (cd "$R/wl1" && mkdir -p plans && printf -- '---\ntitle: d\n---\n' > plans/9001-downstream.md && g add plans/9001-downstream.md \
+    && g commit -q -m "$(printf 'Add downstream\n\nDerives-From: docs/adr/0001-one.md\n')")
+  out="$(begin "$R/wl1" docs/adr/0001-one.md; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_contains "$out" "worklist:"
+  assert_contains "$out" "plans/9001-downstream.md"
+  for k in trunk branch dir; do [ -n "$(line "$out" $k)" ] || fail "missing $k= alongside the worklist"; done
+
+t "worklist: a new ADR not on the trunk surfaces no worklist"
+  fixture "$R/wl2" --trunk dev >/dev/null
+  out="$(begin "$R/wl2" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  case "$out" in *worklist:*) fail "a new ADR must surface no worklist: $out" ;; esac
+
+t "worklist: the advisory block prints on the worktree path too, and never blocks begin"
+  fixture "$R/wl3" --trunk dev --branch topic >/dev/null
+  (cd "$R/wl3" && mkdir -p plans && printf -- '---\ntitle: d\n---\n' > plans/9001-downstream.md && g add plans/9001-downstream.md \
+    && g commit -q -m "$(printf 'Add downstream\n\nDerives-From: docs/adr/0001-one.md\n')" && g switch -q topic)
+  out="$(begin "$R/wl3" docs/adr/0001-one.md; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_contains "$out" "worklist:"
+  assert_contains "$out" "plans/9001-downstream.md"
+  [ -d "$R/wl3/.worktrees/adr-0001-one" ] || fail "worktree not created"

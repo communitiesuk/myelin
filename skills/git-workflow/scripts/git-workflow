@@ -158,6 +158,13 @@ cmd_check() {
 # Prints trunk=<ref>, branch=<name> and dir=<absolute path to work in>,
 # then include=.gitignore when it added the ignore line, naming the file
 # the artefact's first commit must include.
+# When the artefact path is an ADR that already exists on the trunk (a
+# revision of it, not a new ADR), additionally prints the ADR's downstream:
+# worklist under a worklist: header, one indented path per line, after the
+# trunk=/branch=/dir=/include= lines, so the reviser sees the scope up
+# front (ADR 0011). It is advisory: it blocks nothing, is skipped silently
+# when the history skill's script is absent, and never changes begin's exit
+# code.
 # Exits 2 when the branch already exists, when the path is ungoverned and
 # --slug is missing, or when check would; exits 1 when the local trunk
 # cannot be brought current.
@@ -186,6 +193,24 @@ copy_if_present() {
     [ -e "$wt/$f" ] && continue
     mkdir -p "$wt/$(dirname "$f")" && cp -pP "$root/$f" "$wt/$f"
   done
+  return 0
+}
+
+# begin_worklist PATH TRUNK — print the advisory downstream worklist.
+#
+# Only when PATH is an ADR already on the trunk (a revision, not a new ADR):
+# resolve the sibling history script and print its downstream: section under
+# a worklist: header, one indented path per line. Advisory — skips silently
+# when PATH is not an on-trunk ADR or the history script is absent, and never
+# changes begin's exit code. Invoked at both of cmd_begin's exit points.
+begin_worklist() {
+  local path="$1" trunk="$2"
+  case "$path" in docs/adr/*.md) ;; *) return 0 ;; esac
+  git cat-file -e "$trunk:$path" 2>/dev/null || return 0
+  local hist; hist="$(script_dir)/../../history/scripts/history"
+  [ -x "$hist" ] || return 0
+  printf 'worklist:\n'
+  bash "$hist" downstream "$path" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f && $0!=""{print "  " $0}'
   return 0
 }
 
@@ -218,6 +243,7 @@ cmd_begin() {
   if [ "$contention" = in-place ]; then
     git switch -q -c "$branch" "$trunk" || die 2 "could not create $branch"
     printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$root"
+    begin_worklist "$path" "$trunk"
     return 0
   fi
   local wt="$root/.worktrees/$branch"
@@ -230,6 +256,7 @@ cmd_begin() {
   fi
   printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$wt"
   [ -z "$include" ] || printf 'include=%s\n' "$include"
+  begin_worklist "$path" "$trunk"
 }
 # land — integrate the artefact branch, or stop and say why.
 #
@@ -249,7 +276,22 @@ cmd_begin() {
 #      self-edge from the ADR to itself rather than deriving from an
 #      upstream (ADR 0004). Any Derives-From or Clarifies that is present
 #      must be repository-relative (not starting with / or ./), or landing
-#      refuses (exit 2). A decision is then pushed and proposed through the host
+#      refuses (exit 2).
+#   2a. The verdict-completeness gate (ADR 0011), run before anything is
+#      pushed so an incomplete revision never reaches the host. When a
+#      Revises trailer is present on trunk..HEAD (a revision; new-ADR
+#      decisions do not trigger it), consume history downstream
+#      <revised-ADR> for each distinct Revises value, filter its
+#      downstream: section to paths still in HEAD's tree (git cat-file -e),
+#      and read the Reconciles/Confirms/Defers verdict trailers on
+#      trunk..HEAD (for Defers, the leading path token only). Refuse
+#      (exit 2) naming each in-tree downstream carrying no verdict. The
+#      gate consumes the sibling history skill's script
+#      (../../history/scripts/history from script_dir) and refuses (exit 2)
+#      naming the resolved path when it is not an executable file — a hard
+#      stop, so an incomplete revision cannot slip through on a missing
+#      dependency. Presence is checked, never the truth of the claim.
+#      A decision is then pushed and proposed through the host
 #      module, then exit 3 with a report naming the pull request: a human
 #      merges it. With no remote a decision cannot be proposed: exit 3,
 #      branch left in place.
@@ -391,6 +433,43 @@ cmd_land() {
     { [ "$decision" -eq 1 ] || [ -n "$clarifies" ]; } || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
   else
     printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
+  fi
+
+  # The verdict-completeness gate (ADR 0011). A Revises branch revises an
+  # accepted ADR; every durable, in-tree downstream of that ADR must carry
+  # a verdict. Runs here, before the push, so an incomplete revision never
+  # reaches the host. New-ADR decisions have no downstream to reconcile and
+  # must not trigger it, so the gate is guarded by Revises being present.
+  local revises
+  revises="$(git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD" | sed '/^$/d')"
+  if [ -n "$revises" ]; then
+    local hist; hist="$(script_dir)/../../history/scripts/history"
+    [ -x "$hist" ] || die 2 "the revision gate needs the history skill's script; it is not an executable file at $hist"
+    # The verdict set: Reconciles/Confirms/Defers values on trunk..HEAD. For
+    # Defers, the leading whitespace-delimited token (the downstream path)
+    # only; the remainder is the opaque blocking condition.
+    local verdicts
+    verdicts="$(
+      git log --format='%(trailers:key=Reconciles,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Confirms,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Defers,valueonly)'     "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
+    )"
+    local missing="" value d
+    while IFS= read -r value; do
+      [ -n "$value" ] || continue
+      # Only the downstream: section: the lines strictly between the
+      # downstream: and revises: headers history prints.
+      while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        git cat-file -e "HEAD:$d" 2>/dev/null || continue           # keep durable in-tree downstreams only
+        printf '%s\n' "$verdicts" | grep -qxF "$d" && continue      # a verdict names it: presence, not truth
+        missing="$missing$d
+"
+      done < <(bash "$hist" downstream "$value" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f{print}')
+    done < <(printf '%s\n' "$revises" | sort -u)
+    if [ -n "$missing" ]; then
+      die 2 "$(printf 'this revision does not account for every durable downstream; no verdict (Reconciles/Confirms/Defers) names:\n%s' "$(printf '%s' "$missing" | sort -u)")"
+    fi
   fi
 
   local primary here inplace=0 wt=""

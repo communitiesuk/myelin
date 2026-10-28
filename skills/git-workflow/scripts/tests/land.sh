@@ -332,3 +332,102 @@ t "github: trunk checked out in another worktree, behind -> note, that worktree 
   assert_contains "$out" "could not fast-forward" "no note for the trunk checked out elsewhere: $out"
   assert_eq "$wt_head_before" "$(cd "$R/trunk-wt" && git rev-parse HEAD)" "the other worktree's HEAD moved"
   assert_eq "$wt_status_before" "$(cd "$R/trunk-wt" && git status --porcelain)" "the other worktree's status changed"
+
+# --- Step 1: the verdict-completeness gate (ADR 0011, plan 0017) -------------
+#
+# revision DIR [fixture options...] — build a Revises branch of
+# docs/adr/0001-one.md carrying a durable in-tree downstream
+# plans/9001-downstream.md (Derives-From: docs/adr/0001-one.md) committed
+# first, then the ADR edit committed with Revises: docs/adr/0001-one.md and
+# any trailer lines held in $VERDICT. begin is in-place (the fixture is on a
+# clean trunk), so wd is the repository root. Echoes wd. history downstream
+# docs/adr/0001-one.md therefore returns plans/9001-downstream.md.
+revision() {
+  local dir="$1"; shift
+  fixture "$dir" --trunk dev "$@" >/dev/null || return 2
+  local out wd
+  out="$(cd "$dir" && bash "$SCRIPT" begin docs/adr/0001-one.md 2>&1)" || { echo "$out"; return 2; }
+  wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  ( cd "$wd" \
+    && mkdir -p plans && printf -- '---\ntitle: d\n---\n' > plans/9001-downstream.md \
+    && g add plans/9001-downstream.md \
+    && g commit -q -m "$(printf 'Add downstream\n\nDerives-From: docs/adr/0001-one.md\n')" \
+    && printf 'changed\n' >> docs/adr/0001-one.md && g add -A \
+    && g commit -q -m "$(printf 'Revise\n\nRevises: docs/adr/0001-one.md\n'; [ -n "${VERDICT:-}" ] && printf '%s\n' "$VERDICT")" )
+  echo "$wd"
+}
+
+t "gate: a revision missing a verdict refuses, naming the downstream, and nothing reaches the host"
+  wd="$(revision "$R/rev1" --remote origin)"; githubify "$R/rev1"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=2"
+  assert_contains "$out" "plans/9001-downstream.md"
+  # show-ref, not bare_tip: `git rev-parse <missing-ref>` echoes the name back (cf. wc3)
+  git --git-dir="$R/rev1/.origin/repo.git" show-ref --verify --quiet refs/heads/adr-0001-one && fail "the branch was pushed: an incomplete revision reached the host"
+  assert_eq "adr-0001-one" "$(cd "$R/rev1" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
+  [ -n "$(cd "$R/rev1" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on a refusal"
+
+t "gate: a Confirms verdict for the downstream passes the gate (reaches the decision path, not exit 2)"
+  wd="$(VERDICT="Confirms: plans/9001-downstream.md" revision "$R/rev2")"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate refused a Confirms verdict: $out" ;; esac
+
+t "gate: a Reconciles verdict for the downstream passes the gate"
+  wd="$(VERDICT="Reconciles: plans/9001-downstream.md" revision "$R/rev3")"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate refused a Reconciles verdict: $out" ;; esac
+
+t "gate: a Defers verdict passes, its free-text condition parsed only for the leading path"
+  wd="$(VERDICT="Defers: plans/9001-downstream.md until docs/adr/0007-x.md lands" revision "$R/rev4")"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate refused a Defers verdict: $out" ;; esac
+  # a second, differently-worded condition proves the remainder is opaque
+  wd="$(VERDICT="Defers: plans/9001-downstream.md blocked on the seed-126 discharge work" revision "$R/rev5")"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate parsed the Defers condition instead of ignoring it: $out" ;; esac
+
+t "gate: a downstream that has left the tree needs no verdict"
+  wd="$(revision "$R/rev6")"
+  (cd "$wd" && g rm -q plans/9001-downstream.md && g commit -q -m "$(printf 'Complete the downstream\n\nCompletes: plans/9001-downstream.md\n')")
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate demanded a verdict for a completed downstream: $out" ;; esac
+
+t "gate: a new-ADR decision with no Revises does not fire the gate"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/rev7" --where worktree)"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate fired on a new-ADR decision: $out" ;; esac
+
+t "gate: two revised ADRs refuse until both in-tree downstreams carry a verdict"
+  fixture "$R/rev8" --trunk dev >/dev/null
+  (cd "$R/rev8" && printf -- '---\ntitle: three\n---\n' > docs/adr/0003-three.md && g add docs/adr/0003-three.md && g commit -q -m "fixture: a second ADR")
+  out="$(cd "$R/rev8" && bash "$SCRIPT" begin docs/adr/0001-one.md 2>&1)"; wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  ( cd "$wd" && mkdir -p plans \
+    && printf -- '---\ntitle: d1\n---\n' > plans/9001-downstream.md && g add plans/9001-downstream.md && g commit -q -m "$(printf 'Add d1\n\nDerives-From: docs/adr/0001-one.md\n')" \
+    && printf -- '---\ntitle: d2\n---\n' > plans/9002-two.md && g add plans/9002-two.md && g commit -q -m "$(printf 'Add d2\n\nDerives-From: docs/adr/0003-three.md\n')" \
+    && printf 'c1\n' >> docs/adr/0001-one.md && printf 'c3\n' >> docs/adr/0003-three.md && g add -A \
+    && g commit -q -m "$(printf 'Revise both\n\nConfirms: plans/9001-downstream.md\nRevises: docs/adr/0001-one.md\nRevises: docs/adr/0003-three.md\n')" )
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=2"
+  assert_contains "$out" "plans/9002-two.md"
+  case "$out" in *plans/9001-downstream.md*) fail "9001 carries a verdict and must not be named: $out" ;; esac
+  # with both verdicts recorded, the gate passes
+  (cd "$wd" && g commit -q --allow-empty -m "$(printf 'Confirm the second downstream\n\nConfirms: plans/9002-two.md\n')")
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate refused with both downstreams verdicted: $out" ;; esac
+
+t "gate: the history script absent is a hard stop, before the verdict logic"
+  wd="$(VERDICT="Confirms: plans/9001-downstream.md" revision "$R/rev9")"   # verdict-complete: would otherwise pass
+  mkdir -p "$R/nohist" && cp "$SCRIPT" "$R/nohist/git-workflow" && chmod +x "$R/nohist/git-workflow"
+  out="$( (cd "$wd" && bash "$R/nohist/git-workflow" land 2>&1); echo "exit=$?" )"
+  assert_contains "$out" "exit=2"
+  assert_contains "$out" "history/scripts/history"
+  assert_contains "$out" "nohist"
+  assert_eq "adr-0001-one" "$(cd "$R/rev9" && git rev-parse --abbrev-ref HEAD)" "the hard stop must change nothing"
+  [ -n "$(cd "$R/rev9" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on the hard stop"
