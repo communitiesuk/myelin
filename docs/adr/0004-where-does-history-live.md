@@ -148,9 +148,9 @@ The vocabulary:
 | `Consumed-By:` | removes a discovery note | path of the ADR it informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
-| verdict *revised* | edits a durable downstream to match the changed decision | path of that downstream |
-| verdict *checked* | records a durable downstream examined and found still correct | path of that downstream |
-| verdict *deferred* | defers reconciling a downstream plan, blocked on named other work | path of that downstream plan |
+| `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
+| `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
+| `Defers:` | defers reconciling a downstream plan, blocked on named other work | path of that downstream plan; carries its named blocking condition |
 
 Values are repository-relative paths. A commit may carry several
 trailers, and a key may repeat. `Derives-From` names direct
@@ -173,8 +173,9 @@ The three verdict trailers are the cross-edge counterpart to those
 self-edges: `Revises` and `Clarifies` link an ADR to itself, whereas a
 verdict links the revised ADR to a *different* durable downstream named
 in its value. Introducing them extends this exhaustive vocabulary,
-which is why the rows are added here; their exact keys and the gate's
-parsing belong to ADR 0011's plan, not to this ADR.
+which is why their keys are defined here; reading those keys and
+enforcing the verdicts — the gate's parsing — belong to ADR 0011's
+plan.
 
 Trailers record edges between artefacts. Structure inside an
 artefact, such as the order of docstring, test and code commits under
@@ -199,9 +200,11 @@ trailers with them.
 
 ### Revising an ADR accounts for what is downstream of it
 
-The obligation to reconcile what a revision changes under it now lives
-in ADR 0011. This ADR defers to 0011 as that obligation's single
-owner; it is not restated here.
+When an ADR is revised, every durable downstream artefact in the tree
+must be accounted for. The full obligation to reconcile what the
+revision changes under it, and the verdicts that discharge it, lives in
+ADR 0011 as that obligation's single owner; the scope is stated here,
+the rule is not restated.
 
 ### The bookkeeping exception is adopted as a revision to ADR 0003
 
