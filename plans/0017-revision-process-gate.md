@@ -18,8 +18,7 @@ The verdict trailer **keys** are already defined by ADR 0004's trailer
 table (`docs/adr/0004-where-does-history-live.md`): `Reconciles:`,
 `Confirms:`, `Defers:`, each valued with the repository-relative path of
 the downstream it covers, read from the revision's side. This plan owns
-only the gate's **parsing and enforcement** of those keys, as ADR 0011
-and ADR 0004 both state.
+only the gate's **parsing and enforcement** of those keys.
 
 This plan builds on two scripts already in the tree, not reimplementing
 either:
@@ -46,12 +45,8 @@ step here.
 - **The `Defers:` parser is format-agnostic.** The gate extracts the
   **leading repository-relative path** as the downstream `D` and treats
   the remainder of the value — the named blocking condition — as
-  **opaque text it neither parses nor validates**. Rationale, recorded
-  so the implementer does not invent a condition grammar: a future
-  `Revises: 0011` (seed #126) may tighten the condition into a
-  graph-expressible form; an opaque-remainder parser means that
-  tightening needs no gate code change. The gate hard-codes no condition
-  syntax.
+  **opaque text it neither parses nor validates**. The gate hard-codes
+  no condition syntax.
 - **The gate checks presence, not truth.** It enforces that a verdict
   trailer exists for each durable in-tree downstream; it never judges
   whether the verdict's claim is correct (that is the ADR 0008
@@ -118,10 +113,13 @@ through the real repo (see Step 1 note below), so these tests exercise
 the real `downstream` query. Cover, each red before the code and green
 after:
 
-- **refuse, verdict missing**: a `Revises: docs/adr/0001-one.md` branch
-  with `plans/9001-downstream.md` in the tree and in history, and **no**
-  verdict trailer → exit 2, output names `plans/9001-downstream.md`,
-  nothing pushed, branch and worktree kept.
+- **refuse, verdict missing, nothing reaches the host**: a `githubify`
+  fixture (`--remote origin`, then `githubify`) on a `Revises:
+  docs/adr/0001-one.md` branch with `plans/9001-downstream.md` in the
+  tree and in history, and **no** verdict trailer → exit 2, output names
+  `plans/9001-downstream.md`, branch and worktree kept, and the bare
+  origin tip for the branch did **not** move (`bare_tip`, as the existing
+  push assertions do) — proving the gate refuses before the push.
 - **pass, `Confirms:`**: the same branch carrying `Confirms:
   plans/9001-downstream.md` → the gate passes and `land` reaches the
   decision path (exit 3, proposed to a human — or exit 3 with no remote),
@@ -142,6 +140,17 @@ after:
 - **multiple revised ADRs**: a branch carrying two `Revises:` trailers,
   each with an in-tree downstream, refuses unless both downstreams carry
   a verdict.
+- **history script absent is a hard stop**: drive the absent-script
+  branch. Copy the `git-workflow` script alone to a temp directory that
+  has **no** `../../history/scripts/history` sibling (a bare `bin/`, say,
+  not the plugin layout), then run `land` from a verdict-complete
+  `Revises: docs/adr/0001-one.md` fixture through that copy — `bash
+  "$COPY" land`, not `"$SCRIPT"`. `script_dir` resolves to the copy's own
+  directory (`pwd -P` on `BASH_SOURCE[0]`, so a copy relocates it, unlike
+  a symlink), so the sibling lookup fails → exit 2, output naming the
+  missing history script at the resolved path, branch and worktree kept.
+  Even a branch that would otherwise pass refuses, proving the stop is
+  reached before the gate's verdict logic.
 
 Then implement in `git-workflow`. Insert the gate in `cmd_land`
 immediately after the `Derives-From`/`Clarifies` validation block and
@@ -202,13 +211,17 @@ Failing tests next, in `tests/begin.sh`, matching its helpers (`begin`,
   trunk) prints no advisory downstream block.
 - **advisory, never blocks**: `begin` still exits 0 in both cases.
 
-Then implement in `cmd_begin`, after the branch/worktree is created and
-the key=value lines are printed: if the path matches `docs/adr/*.md` and
-`git cat-file -e "$trunk":"$path"` succeeds, resolve the history script
-as in Step 1 and print its `downstream:` section under an advisory
-header (e.g. `worklist:` then one indented path per line). If the history
-script is absent, skip silently — the worklist is advisory and blocks
-nothing. Never fail `begin` on the worklist.
+Then implement in `cmd_begin`, after the key=value lines are printed: if
+the path matches `docs/adr/*.md` and `git cat-file -e "$trunk":"$path"`
+succeeds, resolve the history script as in Step 1 and print its
+`downstream:` section under an advisory header (e.g. `worklist:` then one
+indented path per line). `cmd_begin` has **two** exit points — the
+in-place early `return 0` (around line 221) and the worktree path's
+fall-through to the end of the function (around line 233) — and the
+worklist must print on **both**, so factor it into one helper invoked
+before each prints its result, not appended once at the function's end.
+If the history script is absent, skip silently — the worklist is advisory
+and blocks nothing. Never fail `begin` on the worklist.
 
 Run `bash skills/git-workflow/scripts/tests/run.sh
 skills/git-workflow/scripts/tests/begin.sh` — red before, green after,
@@ -237,11 +250,13 @@ Files: `skills/git-workflow/SKILL.md`,
   execution (RULES.md's standing purpose), what the gate enforces: a
   `Revises` branch lands only when every durable, in-tree downstream of
   the revised ADR (from `history downstream`, filtered to the tree)
-  carries exactly one verdict trailer; the gate checks presence, not
-  truth; `Defers:` is parsed for its leading path only; the gate
-  consumes the history script and a repository without it cannot run the
-  gate. Note that `begin` surfaces the same `downstream:` list as an
-  advisory worklist that blocks nothing.
+  carries a verdict trailer — the gate checks presence (at least one),
+  not truth. Recording *exactly one* verdict per downstream is ADR 0011's
+  norm, not something the gate enforces. `Defers:` is parsed for its
+  leading path only; the gate consumes the history script and a
+  repository without it cannot run the gate. Note that `begin` surfaces
+  the same `downstream:` list as an advisory worklist that blocks
+  nothing.
 
 These are edits to existing skill bodies with no `description` (trigger
 contract) change, so they are neither `test-first-workflow` nor
@@ -269,22 +284,13 @@ contract) change, so they are neither `test-first-workflow` nor
 - **Documentation parity.** `skills/git-workflow/SKILL.md`'s Rule 9
   trailer table lists all nine ADR 0004 trailers including the three
   verdicts, and `references/RULES.md` carries the gate rule.
-- **Live-test forward-pointer (seed #126).** The gate and this plan are
-  themselves downstream of ADR 0011 by the production graph: this plan
-  derives from ADR 0011, and the durable gate code (the `git-workflow`
-  script changes) is produced from this plan. The eventual `Revises:
-  docs/adr/0011-revision-process.md` that tightens the `deferred` prose
-  into a graph-expressible condition (seed #126, Q3) is the **intended
-  first live exercise** of this gate: at that revision's `land`, the gate
-  will run `history downstream docs/adr/0011-revision-process.md`,
-  surface the durable in-tree gate code as a downstream, and refuse to
-  land without a verdict on it (expected: `Confirms:`, since tightening
-  the prose does not change the gate's behaviour). This expectation is
-  recorded here as a forward-pointer only; its durable record lives on
-  seed #126, not in this plan.
 
 ## Progress notes
 
 - 2026-10-28: Plan written against ADR 0011 as accepted on `dev`
   (merged via #130). Discharging a deferral left out of scope per the
   ADR (seed #126).
+- Forward-pointer: the eventual `Revises:
+  docs/adr/0011-revision-process.md` that tightens the `deferred`
+  condition (seed #126) is the gate's intended first live exercise; that
+  expectation's durable record lives on seed #126, not in this plan.
