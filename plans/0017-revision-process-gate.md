@@ -1,6 +1,6 @@
 ---
 title: Gate land on verdict completeness when a revision accounts for its downstream
-status: draft
+status: in-progress
 adr: 0011
 date: 2026-10-28
 deferred_reason: null
