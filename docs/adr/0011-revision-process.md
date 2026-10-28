@@ -84,8 +84,9 @@ the revision's side — "the revision revised / checked / deferred
 `<D>`" — because the *checked and still correct* verdict has no commit
 touching the downstream to carry it, and the gate must know which
 downstream a verdict covers; being on the branch that carries
-`Revises` scopes it to this revision. The exact keys and the gate's
-parsing stay the plan's. The gate checks that a verdict is present,
+`Revises` scopes it to this revision. The keys are defined in ADR
+0004's trailer table; the gate's parsing stays the plan's. The gate
+checks that a verdict is present,
 not that its claim is true; a verdict is the reviser's assertion.
 
 ### A missing verdict is visible, and the gate is `land`
