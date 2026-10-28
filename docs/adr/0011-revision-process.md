@@ -45,8 +45,8 @@ same branch exactly one verdict:
 
 - **revised** — edited to match the changed decision, evidenced by a
   commit touching it;
-- **deferred** — a plan set to `deferred` with a reason naming the
-  revision (ADR 0004's existing escape, kept);
+- **deferred** — plans only: a plan set to `deferred` with a reason
+  naming the revision (ADR 0004's existing escape, kept);
 - **checked and still correct** — examined and found unaffected,
   recorded explicitly.
 
@@ -76,9 +76,10 @@ verdict is the reviser's assertion.
 
 ### A missing verdict is visible, and the gate is `land`
 
-A verdict is missing when the `downstream:` list contains an artefact
-with no verdict on the branch. The gate refuses to land such a branch
-and names each artefact still without a verdict.
+A verdict is missing when a durable, in-tree artefact — the filtered
+`downstream:` list, not the raw one — has no verdict on the branch.
+The gate refuses to land such a branch and names each artefact still
+without a verdict.
 
 The gate runs at **`land`**, not at `begin`:
 
