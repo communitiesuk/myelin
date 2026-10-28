@@ -196,6 +196,24 @@ copy_if_present() {
   return 0
 }
 
+# begin_worklist PATH TRUNK — print the advisory downstream worklist.
+#
+# Only when PATH is an ADR already on the trunk (a revision, not a new ADR):
+# resolve the sibling history script and print its downstream: section under
+# a worklist: header, one indented path per line. Advisory — skips silently
+# when PATH is not an on-trunk ADR or the history script is absent, and never
+# changes begin's exit code. Invoked at both of cmd_begin's exit points.
+begin_worklist() {
+  local path="$1" trunk="$2"
+  case "$path" in docs/adr/*.md) ;; *) return 0 ;; esac
+  git cat-file -e "$trunk:$path" 2>/dev/null || return 0
+  local hist; hist="$(script_dir)/../../history/scripts/history"
+  [ -x "$hist" ] || return 0
+  printf 'worklist:\n'
+  bash "$hist" downstream "$path" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f && $0!=""{print "  " $0}'
+  return 0
+}
+
 cmd_begin() {
   local path="" slug=""
   while [ $# -gt 0 ]; do
@@ -225,6 +243,7 @@ cmd_begin() {
   if [ "$contention" = in-place ]; then
     git switch -q -c "$branch" "$trunk" || die 2 "could not create $branch"
     printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$root"
+    begin_worklist "$path" "$trunk"
     return 0
   fi
   local wt="$root/.worktrees/$branch"
@@ -237,6 +256,7 @@ cmd_begin() {
   fi
   printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$wt"
   [ -z "$include" ] || printf 'include=%s\n' "$include"
+  begin_worklist "$path" "$trunk"
 }
 # land — integrate the artefact branch, or stop and say why.
 #
