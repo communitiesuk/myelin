@@ -313,7 +313,7 @@ A plan's branch is merged as soon as the plan is written and
 reviewed, before implementation against it begins. A plan is not held
 back until the work it describes is finished.
 
-Two things go wrong otherwise, both observed. ADR 0004 requires that
+Two things go wrong otherwise, both observed. ADR 0011 requires that
 revising an ADR revises every plan **in the tree** whose `adr:` field
 names it, on the same branch; a plan on an unmerged branch is outside
 the reach of that rule and cannot be edited from the ADR's branch at
