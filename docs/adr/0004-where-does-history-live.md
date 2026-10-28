@@ -171,12 +171,10 @@ and `land` sends it direct to trunk, with no human pull request.
 
 The three verdict trailers are the cross-edge counterpart to those
 self-edges: `Revises` and `Clarifies` link an ADR to itself, whereas a
-verdict links the revised ADR to a *different* durable downstream (the
-`Derives-From`/`Completes` family), naming it in the value and read
-from the revision's side — the revision revised, checked or deferred
-that downstream. Introducing them extends this exhaustive vocabulary,
-which is why the rows are added here; their exact keys, and the gate
-that reads them, belong to ADR 0011 and its plan, not to this ADR.
+verdict links the revised ADR to a *different* durable downstream named
+in its value. Introducing them extends this exhaustive vocabulary,
+which is why the rows are added here; their exact keys and the gate's
+parsing belong to ADR 0011's plan, not to this ADR.
 
 Trailers record edges between artefacts. Structure inside an
 artefact, such as the order of docstring, test and code commits under
@@ -286,8 +284,7 @@ question and is deferred to a separate ADR. Until it exists,
 
 - The `adr` skill changes: question-shaped titles, the edit-or-new
   test, the withdrawal of the immutability and no-delete rules, a
-  smaller frontmatter schema, the `Revises` commit rule, and the
-  rule that revising an ADR revises its plans.
+  smaller frontmatter schema, and the `Revises` commit rule.
 - The `plans` skill changes: `done` and `abandoned` become removal
   with `Completes` and `Abandons`, the no-delete and no-archive rules
   are withdrawn, and the introducing commit carries `Derives-From`.
@@ -296,7 +293,7 @@ question and is deferred to a separate ADR. Until it exists,
 - The git-workflow skill that plan 0003 specifies must carry the
   trailer vocabulary and route a `Clarifies` branch to trunk without
   requiring `Derives-From`, since it is the skill that lands commits.
-  Plan 0003 is revised accordingly under the rule above.
+  Plan 0003 is revised accordingly under ADR 0011.
 - ADR 0003 is revised in place for the first time: the bookkeeping
   exception is folded in, and its claim that the `adr` skill's
   prohibition on editing a merged ADR "becomes meaningful" is
