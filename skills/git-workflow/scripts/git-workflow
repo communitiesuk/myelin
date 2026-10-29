@@ -24,7 +24,9 @@
 #           since the fork point carries Derives-From or a Clarifies edit
 #           to an existing ADR; hand a decision (a new file under docs/adr/,
 #           or a Revises trailer) to a human via the host's pull request;
-#           otherwise merge with two parents,
+#           print every outstanding deferral now due, and refuse when this
+#           branch's own trigger is what makes one due unless it also
+#           carries a discharge verdict; otherwise merge with two parents,
 #           locally where there is no remote and through hosts/<name>
 #           otherwise, bringing the local trunk current after a host merge
 #           or noting why not; then clean up, leaving the primary checkout
@@ -295,6 +297,40 @@ cmd_begin() {
 #      module, then exit 3 with a report naming the pull request: a human
 #      merges it. With no remote a decision cannot be proposed: exit 3,
 #      branch left in place.
+#   2b. The discharge-due check (ADR 0012), run immediately after 2a and
+#      still before anything is pushed. The history-script-executable
+#      hard stop and the Reconciles/Confirms/Defers verdict pool computed
+#      in 2a are hoisted out of the Revises guard and run unconditionally
+#      on every land, since this check needs them whether or not the
+#      branch revises an ADR; the 0011 downstream-walk itself stays
+#      guarded by Revises, now reading the hoisted pool rather than
+#      recomputing it. Then: consume history outstanding-deferrals once,
+#      and echo every record it reports due: true under a due-deferrals:
+#      header (D:/origin:/condition: per record) — advisory, never
+#      changes the exit code. Separately, read this branch's own
+#      trunk..HEAD trigger pool (Reconciles/Revises/Derives-From
+#      valueonly; unlike the verdict reads, no token-stripping, since
+#      these trailers carry only a path). A record is this branch's to
+#      discharge only when its origin matches (grep -qxF) a value in that
+#      pool AND the query reports it due: false — a pool match already
+#      due: true (satisfied by something other than this branch) gets
+#      visibility only, never the hard-stop: ADR 0012 rejects a global
+#      hard-stop. No in-tree filter runs here (unlike 2a's
+#      git cat-file -e): outstanding-ness already scopes the set, a
+#      deferred artefact is not a completed one, and an escape verdict
+#      needs no file to exist. For each triggered record (D, origin O1),
+#      discharge needs one of: Reconciles: D or Confirms: D present in
+#      the hoisted verdict pool (presence only, same convention as 2a);
+#      or a fresh Defers: D O2 <condition> whose O2 differs from O1
+#      (string compare) and is currently unmet — no commit anywhere on
+#      trunk (a full scan, not trunk..HEAD) carries a
+#      Reconciles/Revises/Derives-From trailer valued O2, and O2 is not
+#      itself in this branch's own trigger pool. Refuse (exit 2) naming
+#      every triggered D lacking a valid escape: a D with no verdict at
+#      all under "this branch triggers a due deferral with no discharge
+#      verdict for:", and a D whose only verdict is a Defers: failing
+#      either check under "this branch triggers a due deferral with an
+#      invalid re-defer (condition unchanged or already met) for:".
 #   3. Otherwise, by host. none: from the primary checkout with the trunk
 #      checked out (switching to it first when the work was in place),
 #      git merge --no-ff. A host module: push, propose, then merge, both

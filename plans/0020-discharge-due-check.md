@@ -1,6 +1,6 @@
 ---
 title: Discharge-due check at land
-status: draft
+status: in-progress
 adr: 0012
 date: 2026-10-29
 deferred_reason: null
