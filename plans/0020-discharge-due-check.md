@@ -49,10 +49,36 @@ query in ADR 0010) are on `dev`.
   path filter, the discharge-due check applies none: outstanding-ness
   already scopes the set, a deferred artefact is not a completed one,
   and an escape verdict needs no file to exist.
-- **Escape check.** For each triggered deferral, its `D` must appear in the
-  (now-unconditional) verdict pool, else it is missing.
-- **Refusal.** `die 2`, naming every triggered `D` lacking an escape:
-  `"this branch triggers a due deferral with no discharge verdict (Reconciles/Confirms/Defers) for:\n<D...>"`
+- **Escape check — three verdicts, two check depths.** For each triggered
+  deferral (`D`, with `origin: O1` — the origin this branch's trigger just
+  satisfied), discharge requires one of:
+  - `Reconciles: D` or `Confirms: D` present in the hoisted verdict pool —
+    **presence only**: the gate checks presence, not truth, per ADR 0011's
+    convention (`Reconciles:`/`Confirms:` are never mechanically checked
+    for correctness anywhere in this plan); or
+  - `Defers: D <O2> <condition>` present (the re-defer escape), which ADR
+    0012 bounds and the human decided to enforce mechanically, not just by
+    presence: (a) **differs** — `O2 != O1` (string compare; `O2` is the
+    leading token after `D`, the same convention the history script's
+    `origin_for[D]` parse uses); and (b) **currently unmet** — no commit on
+    trunk (a full scan of trunk's own history, not `trunk..HEAD`, using the
+    same `Reconciles`/`Revises`/`Derives-From` trailer reads as the
+    Branch-local trigger pool mechanism) carries a satisfying trailer
+    valued `O2`, AND `O2` is not itself a value in this branch's own
+    trigger pool (landing this branch would then satisfy `O2` too). This
+    is a direct presence scan over a different value (`O2`), not a
+    re-derivation of the `outstanding-deferrals` query's due-ness logic for
+    `D`'s original condition.
+
+  If `D` has no verdict at all in the pool, it lacks a discharge verdict.
+  If `D`'s only verdict is a `Defers:` failing (a) or (b), the re-defer is
+  invalid and `D` is treated as lacking a valid escape either way.
+- **Refusal.** `die 2`, naming every triggered `D` lacking a valid escape,
+  distinguishing why: a `D` with no `Reconciles`/`Confirms`/`Defers` verdict
+  at all is listed under
+  `"this branch triggers a due deferral with no discharge verdict for:"`;
+  a `D` whose only verdict is a `Defers:` failing (a) or (b) is listed under
+  `"this branch triggers a due deferral with an invalid re-defer (condition unchanged or already met) for:"`
   — same exit code and phrasing convention as the ADR 0011 gate's refusal.
 - **Position.** Both the visibility print and the hard-stop run immediately
   after the ADR 0011 gate block, before the primary-checkout/push section —
@@ -87,20 +113,37 @@ query in ADR 0010) are on `dev`.
       `D`, refuses (exit 2), naming `D`;
    3. the same, triggered by `Revises: <origin>`;
    4. the same, triggered by `Reconciles: <origin>`;
-   5. escape: the triggering branch also carrying `Reconciles: D` lands;
-   6. escape: the triggering branch also carrying `Confirms: D` lands;
-   7. escape: the triggering branch also carrying `Defers: D <fresh condition>`
-      lands;
-   8. no regression: a `Revises` branch missing an ADR 0011 verdict for its
+   5. escape: the triggering branch also carrying `Reconciles: D` lands —
+      presence only, no mechanical check of the `Reconciles:` claim;
+   6. escape: the triggering branch also carrying `Confirms: D` lands —
+      presence only, same;
+   7. escape: the triggering branch also carrying
+      `Defers: D <O2> <fresh condition>`, `O2` differing from the triggered
+      deferral's `origin` (`O1`) and unmet (no trunk trigger, not in this
+      branch's own pool) — lands (exit 0): the ADR-0012-compliant re-defer;
+   8. invalid re-defer, (a) fails: the triggering branch carries
+      `Defers: D <O1> <condition>` — the re-defer re-cites the same origin
+      this branch's trigger just satisfied — refuses (exit 2), naming `D`
+      under "invalid re-defer";
+   9. invalid re-defer, (b) fails via trunk: the triggering branch carries
+      `Defers: D <O2> <condition>` with `O2 != O1`, but a commit already on
+      trunk carries a satisfying trailer (e.g. `Reconciles: O2`) — refuses
+      (exit 2), naming `D` under "invalid re-defer";
+   10. invalid re-defer, (b) fails via branch pool: the triggering branch
+      carries `Defers: D <O2> <condition>` with `O2 != O1`, and this same
+      branch's `trunk..HEAD` also carries a trigger for `O2` (e.g.
+      `Derives-From: O2`) — refuses (exit 2), naming `D` under "invalid
+      re-defer";
+   11. no regression: a `Revises` branch missing an ADR 0011 verdict for its
       own in-tree downstream still refuses (exit 2) naming that downstream,
       on a branch that triggers no 0012 deferral — proving the hoist in
       Mechanism 2 left the 0011 gate's own behaviour unchanged;
-   9. not outstanding: a branch whose `trunk..HEAD` carries a trigger for a
+   12. not outstanding: a branch whose `trunk..HEAD` carries a trigger for a
       deferral's origin, but that deferral was already discharged by an
       earlier `Reconciles:`/`Confirms: D` and so is not outstanding — the
       branch still lands (exit 0), proving the check keys off the
       outstanding-deferrals query, not off every `Defers:` ever recorded;
-   10. already-due: an outstanding deferral reported `due: true` against
+   13. already-due: an outstanding deferral reported `due: true` against
       trunk, and a new branch whose `trunk..HEAD` re-carries a trigger for
       that deferral's origin but is unrelated to discharging it —
       visibility only: printed under `due-deferrals:`, branch still lands
@@ -125,8 +168,18 @@ query in ADR 0010) are on `dev`.
      `due-deferrals:` visibility section, compute the branch-local trigger
      pool, match it against every record whose `origin` is in the pool
      and whose `due` is `false` (a pool match already `due: true` stays
-     visibility-only), check the hoisted verdict pool for each triggered
-     `D`, and `die 2` naming any missing.
+     visibility-only);
+   - for each triggered deferral (`D`, origin `O1`): accept `Reconciles: D`
+     or `Confirms: D` from the hoisted verdict pool by presence alone; for
+     a `Defers: D <O2> <condition>` escape, parse `O2` as the leading token
+     after `D` (mirroring `origin_for[D]` in `skills/history/scripts/history`)
+     and mechanically check (a) `O2 != O1` and (b) `O2` unmet — scan all of
+     trunk's history (not `trunk..HEAD`) for a `Reconciles:`/`Revises:`/
+     `Derives-From:` trailer valued `O2`, and check `O2` against this
+     branch's own trigger pool — either a hit fails (b);
+   - `die 2`, naming any `D` with no verdict at all under "no discharge
+     verdict", and any `D` whose only verdict is a `Defers:` failing (a) or
+     (b) under "invalid re-defer (condition unchanged or already met)".
 
    Run `bash skills/git-workflow/scripts/tests/run.sh` (the whole
    `git-workflow` suite, including `land.sh` and the new `discharge.sh`) and
