@@ -112,7 +112,12 @@ tree when that purpose is served.
   by removal, and the removing commit says which. A `deferred` plan
   stays, because deferred work is still intended; a plan may be
   deferred only when its reconciliation is blocked on specific named
-  other work (such as another revision landing), never open-ended.
+  other work (such as another revision landing), never open-ended. The
+  `Defers:` verdict generalises this beyond the plan lifecycle: it
+  marks any durable downstream (skill, code, or plan) as deferred
+  pending reconciliation — for a plan it keeps the plan in the tree, as
+  above; for a skill or code it is a staleness marker, those never
+  leaving the tree on completion.
 - A **discovery note** leaves when the ADR it informed is accepted.
 - An **ADR** stays for as long as its decision stands. ADRs are the
   current intention; they are consumed continuously, not once.
@@ -150,7 +155,7 @@ The vocabulary:
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
 | `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
 | `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
-| `Defers:` | defers reconciling a downstream plan, blocked on named other work | path of that downstream plan; carries its named blocking condition |
+| `Defers:` | defers reconciling a durable downstream artefact, blocked on named other work | path of that downstream artefact; carries its named blocking condition |
 
 Values are repository-relative paths. A commit may carry several
 trailers, and a key may repeat. `Derives-From` names direct

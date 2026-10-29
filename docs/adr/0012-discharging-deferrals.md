@@ -10,7 +10,8 @@ date: 2026-10-28
 ## Context
 
 ADR 0011 defined the `deferred` verdict (`Defers: <D> <condition>`): a
-revision may defer reconciling a downstream plan `D`, blocked on
+revision may defer reconciling a durable downstream artefact `D`
+(skill, code, or plan), blocked on
 named other work, typically "until the revision of ADR `Y` lands."
 0011 explicitly handed off what happens once that condition is met to
 seed #126. #126 was later decomposed, scoping this ADR to the
@@ -56,11 +57,16 @@ nothing it does gates on it.
 ### The escape
 
 On the blocking branch, the lander must resolve each due deferral
-before it lands, by recording one of two verdicts against `D`, on that
-same branch:
+before it lands, by recording one of three verdicts against `D`, on
+that same branch:
 
 - **`Reconciles: D`** — `D` is revised to match the now-current
-  decision; or
+  decision;
+- **`Confirms: D`** — `D` turns out unaffected: the reconciling work
+  leaves it untouched. "Examined and still correct" is a valid
+  discharge outcome because the blast-radius model (ADR 0011) records
+  deferrals conservatively, without per-item judgement — the
+  conservative case that model produces; or
 - **`Defers: D <fresh condition>`** — re-deferred, only when the new
   condition (a) differs from the one just satisfied and (b) is itself
   evaluable as currently unmet.
@@ -111,11 +117,13 @@ order, not a cycle.
   condition.** Disallowed: that would make `deferred` a permanent
   escape rather than a bounded one.
 - **A `Confirms: D` discharge verdict**, closing a due deferral by
-  judging `D` still correct. Disallowed: a deferral is only ever
-  recorded because reconciling `D` was judged necessary but postponed,
-  so by the time it comes due `D` is known to be out of alignment —
-  "examined and still correct" is not an outcome available on
-  discharge, only reconciling now or re-deferring.
+  finding `D` still correct. Previously disallowed, on the premise
+  that a deferral is only recorded because reconciling `D` was judged
+  necessary, so `D` would be known out of alignment by the time it
+  comes due. Reversed (ADR 0011): the blast-radius model records
+  deferrals conservatively, without per-item judgement, so "examined
+  and still correct" is an available discharge outcome — adopted as the
+  third escape verdict above.
 
 ## Consequences
 
@@ -140,8 +148,11 @@ order, not a cycle.
 
 - `docs/adr/0011-revision-process.md` — defines the `deferred` verdict
   and the `Reconciles:`/`Confirms:`/`Defers:` vocabulary this ADR
-  reuses for discharge; hands off discharge itself to this ADR; fixes
-  the gate at `land`, not `begin`, which this ADR follows.
+  reuses for discharge; its blast-radius default records deferrals
+  conservatively, without per-item judgement, which is why `Confirms:`
+  is an available discharge verdict here; hands off discharge itself to
+  this ADR; fixes the gate at `land`, not `begin`, which this ADR
+  follows.
 - `docs/adr/0004-where-does-history-live.md` — the exhaustive trailer
   table carrying the verdict keys, and the append-only graph convention
   that lets a later commit, on a different branch, discharge an

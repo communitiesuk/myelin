@@ -46,7 +46,8 @@ same branch exactly one verdict:
 - **Reconciled** — edited to match the changed decision; the touching
   commit corroborates, but the verdict trailer (below) is what the
   gate reads;
-- **Deferred** — plans only, and only when reconciliation is blocked
+- **Deferred** — applies to any durable, in-tree downstream (skill,
+  code, or plan), and only when reconciliation is blocked
   on a durable, in-tree artefact's own future change — at minimum an
   accepted ADR; a seed or a plan is too ephemeral to anchor on (ADR
   0004's escape, narrowed further here). The **origin** is that
@@ -64,8 +65,21 @@ same branch exactly one verdict:
   landing agent, not necessarily a human. Never open-ended — if
   nothing specific blocks it, reconcile now or record *Confirmed*.
   Discharging a due deferral is ADR 0012's;
-- **Confirmed** — examined and found unaffected,
-  recorded explicitly.
+- **Confirmed** — a downstream found unaffected, recorded explicitly.
+  This is now primarily a **discharge-time re-verdict** (ADR 0012): an
+  untouched downstream is confirmed when the reconciling plan arrives
+  and leaves it alone, rather than judged unaffected up front by the
+  reviser.
+
+**The blast-radius default.** The revision enumerates its transitive
+downstream — the blast radius — up front: a readout of how much work
+revising this ADR implies. (This is the `downstream:` worklist `begin`
+already surfaces; see below.) It records *Reconciled* for what it edits
+on its own branch, and marks the untouched remainder *Deferred* until a
+plan derives from this ADR — conservatively, without per-item
+judgement. That per-item judgement is deferred to discharge (ADR 0012),
+where each deferred downstream is re-verdicted *Reconciled* (the plan
+touched it) or *Confirmed* (it did not).
 
 A **completed plan has left the tree** (ADR 0004: a plan leaves when
 its work is complete) and is not revised. Its place in the
@@ -231,8 +245,9 @@ scope (discovery 0004 territory).
 - `docs/adr/0004-where-does-history-live.md` — the ADR → plan
   "Reconciled or Deferred" obligation this ADR generalises to the
   in-tree graph; the exhaustive trailer table that verdict trailers
-  extend, by a revision of 0004; the tree-is-current rule that rules
-  out a second index.
+  extend, by a revision of 0004 — including its `Defers:` row, which
+  this model generalises beyond plans to any durable downstream; the
+  tree-is-current rule that rules out a second index.
 - `docs/adr/0010-history-retrieval.md` — the transitive
   `history downstream` query this process consumes, without
   re-traversing git.
@@ -244,6 +259,8 @@ scope (discovery 0004 territory).
   drafted under; its reviewer's fidelity check complements this gate.
 - `skills/history/SKILL.md` — the `downstream:` output this consumes.
 - `docs/adr/0012-discharging-deferrals.md` — discharges a deferral
-  stated in the form defined here once it comes due.
+  stated in the form defined here once it comes due, re-verdicting the
+  deferred downstream and reinstating `Confirms:` as a discharge
+  verdict for the conservative case the blast-radius default produces.
 - Seed #92 — the gap this answers. Seed #119 — the test-production
   process that owns evals.
