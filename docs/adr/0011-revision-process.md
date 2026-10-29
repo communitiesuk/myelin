@@ -48,8 +48,8 @@ same branch exactly one verdict:
   gate reads;
 - **Deferred** — applies to any durable, in-tree downstream (skill,
   code, or plan), and only when reconciliation is blocked
-  on some other durable, in-tree artefact's own future change — at
-  minimum an accepted ADR; a seed or a plan is too ephemeral to
+  on some other artefact's own future change — accepted ADR at
+  minimum; a plan or seed is too ephemeral to
   anchor on (ADR 0004's escape, narrowed further here). The
   **origin** is that blocking artefact, named directly — never its
   upstream. The condition is the
@@ -72,7 +72,7 @@ same branch exactly one verdict:
   blast-radius default below for when each verdict lands.
 
 **The blast-radius default.** The revision enumerates its transitive
-downstream — the blast radius — up front: a readout of how much work
+downstreams — the blast radius — up front: a readout of how much work
 revising this ADR implies. (This is the `downstream:` worklist `begin`
 already surfaces; see below.) It records *Reconciled* for what it edits
 on its own branch, and marks the untouched remainder *Deferred* until a
