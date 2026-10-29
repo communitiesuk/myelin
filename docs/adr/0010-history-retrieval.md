@@ -29,14 +29,17 @@ harness.
 
 ## Decision
 
-### Scope: two deterministic queries and a recall-biased prune
+### Scope: three deterministic queries and a recall-biased prune
 
-v1 answers two questions, both reading git directly:
+v1 answers three questions, all reading git directly:
 
 - **Closed paths.** For a topic, which paths are closed, with the
   reason and source of each. The reviewer's need from ADR 0008.
 - **Downstream/graph.** What derives from or revises a given artefact.
   The revision process's need.
+- **Outstanding deferrals.** Every deferral with no later verdict,
+  each with whether it is due. Supports ADR 0012's discharge check at
+  `land`.
 
 A **recall-biased title/keyword prune** scopes the topic input (an
 artefact path, a keyword, or a candidate ADR title) against existing
@@ -60,11 +63,26 @@ text to interpret.
   needs.
 - **The two closed-path sources overlap and must be deduped**, not
   treated as disjoint. The plan settles the dedupe mechanism.
+- **The outstanding-deferrals query needs no model**: pure trailer
+  traversal. It enumerates every `Defers: <D> <condition>` with no
+  later verdict (`Reconciles:`/`Confirms:`/`Defers:`) on the same `D`
+  (ADR 0012's "outstanding"); for each it reads the origin from the
+  condition and finds the candidate trigger trailers —
+  `Reconciles:`/`Revises:`/`Derives-From: <origin>` — landed on trunk
+  after the deferral. It returns, per outstanding deferral, the
+  deferred `D`, its origin, the condition, and due/not-due, where
+  **due is a non-empty candidate set**. It does not read the
+  condition's description or match against it: where more than one
+  candidate is returned, that disambiguation is the consuming agent's
+  (ADR 0012), not the query's.
 
 ### What is deferred
 
 Tuning or validating the prune at scale, human open-ended queries, and
-detecting "open" are deferred. No scaling index is built now: the
+detecting "open" are deferred. Detecting "open" (open-ended human
+queries over the graph) stays deferred and is distinct from the
+outstanding-deferrals query added above, which is a mechanical lookup
+with a fixed output (ADR 0012). No scaling index is built now: the
 prune is an additive, cheap mechanism, and whether it holds at a
 larger ADR count is an empirical question this v1 does not answer.
 
@@ -91,6 +109,16 @@ larger ADR count is an empirical question this v1 does not answer.
   is real in this repository's own history (`plans/0004-releases.md`
   and `plans/0004-where-does-history-live.md`), so a number is not a
   stable key. The full path is.
+- **Folding the outstanding-deferrals query into the downstream
+  query.** Not chosen: it answers a different question — which
+  deferrals are outstanding and due, not what derives from an
+  artefact — so it is a third query mode, not an extension of the
+  second.
+- **Having the outstanding-deferrals query evaluate the condition's
+  description.** Rejected: the query returns the mechanical candidate
+  set, and where more than one candidate is returned the
+  description-match that picks between them is the consuming agent's
+  (ADR 0012, condition form per #136), not the query's.
 - **Building a scaling index now.** Not chosen. ADR 0004 already
   rejected a hand-maintained index file as duplicating what trailers
   record; that rejection still holds. The cheap, additive recall-biased
@@ -105,6 +133,10 @@ larger ADR count is an empirical question this v1 does not answer.
 - The revision process (#92) can build its "what must change
   downstream" step directly on the downstream/graph query rather than
   re-deriving graph traversal itself.
+- ADR 0012's discharge check at `land` consumes the
+  outstanding-deferrals query for its reverse-lookup due-check rather
+  than re-deriving the traversal, and the same query can back the
+  advisory due-deferral visibility at `begin`/`land`.
 - Because the prune is recall-biased, it costs false positives (an
   irrelevant ADR read and discarded) rather than false negatives (a
   closed path silently missed, which would reopen a settled decision).
@@ -133,3 +165,9 @@ larger ADR count is an empirical question this v1 does not answer.
   decision is built from.
 - Issue #92, the revision process — the next skill planned, which
   shares this ADR's graph substrate.
+- `docs/adr/0012-discharging-deferrals.md` — consumes the
+  outstanding-deferrals query added here for its discharge due-check at
+  `land`; defines the "outstanding" and due vocabulary this query
+  reports against, and the condition form (origin + description) it
+  reads the origin from. Its "detecting open" is a different, still-
+  deferred question.
