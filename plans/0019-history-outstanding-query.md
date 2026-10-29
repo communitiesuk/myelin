@@ -48,7 +48,16 @@ plan settles:
    `{Reconciles: D, Confirms: D, Defers: D <condition>}` seen. `D` is
    outstanding only when the latest such event is a `Defers:`; an
    earlier, superseded `Defers: D` is never independently reported.
-6. **Output record shape**: one record per outstanding deferral,
+6. **Due-trigger set**: a candidate for `D`'s `due` check is any trunk
+   commit whose Step 3 sequence number is strictly greater than the
+   `Defers:` commit's, carrying `Reconciles: <origin>`,
+   `Revises: <origin>`, or `Derives-From: <origin>` — matching the
+   deferral's own **origin** path, not `D`. This is distinct from the
+   verdicts on `D` itself (`Reconciles: D`, `Confirms: D`,
+   `Defers: D <condition>`, Mechanism 5) that decide whether `D` is
+   still outstanding: origin-triggers drive `due`; `D`-verdicts drive
+   outstanding-ness.
+7. **Output record shape**: one record per outstanding deferral,
    separated by a blank line: `D:`, `origin:`, `condition:` (the raw
    value after `D`, unmodified — including the origin token, so the
    consuming agent can read the full condition without a second
@@ -69,7 +78,7 @@ Extend `skills/history/scripts/history`:
   `Subcommands` block, in the same documentation style as the existing
   `downstream` and `closed-paths` entries: no argument; prints every
   outstanding deferral found on the resolved trunk, per the record
-  shape in Mechanism 6, computed per Mechanisms 2, 3 and 5. Document
+  shape in Mechanism 7, computed per Mechanisms 2, 3, 5 and 6. Document
   that it is purely mechanical — no model step, like `downstream` —
   and that it reads `Defers:`/`Reconciles:`/`Confirms:`/`Revises:`/
   `Derives-From:` trailers on the trunk only (never `--all`), via
@@ -83,7 +92,7 @@ Extend `skills/history/scripts/history`:
   the existing `downstream` and `closed-paths` cases. It takes no
   positional argument; an extra argument is a usage error (exit 2),
   matching the other two subcommands' strict argument handling.
-- Implement the algorithm from Mechanisms 2, 3, 5 and 6.
+- Implement the algorithm from Mechanisms 2, 3, 5, 6 and 7.
 
 Write failing tests first at
 `skills/history/scripts/tests/outstanding-deferrals.sh`, following
@@ -120,6 +129,14 @@ each built with `newrepo`/`commit`/`gc` from `lib.sh`:
    `due: true` with a `candidate:` line for the origin2-triggering
    commit, and that `origin1` and `cond1` appear nowhere in that
    record.
+7. **A `Reconciles:` targeting the origin, not `D`: due, distinguished
+   from a `D`-verdict.** A `Defers: D <origin> <cond>`, then a later
+   commit carrying `Reconciles: <origin>` — note this targets
+   `<origin>` (an origin-trigger, Mechanism 6), not `D` (which would
+   be a `Reconciles: D` discharge verdict per Mechanism 5, making `D`
+   not outstanding). Assert `D` is still outstanding: the record for
+   `D` is printed with `due: true` and a `candidate:` line naming that
+   commit.
 
 Run `bash skills/history/scripts/tests/run.sh skills/history/scripts/tests/outstanding-deferrals.sh`
 and confirm every new test fails first (the subcommand does not
@@ -157,7 +174,7 @@ Files changed: `skills/history/SKILL.md` (frontmatter and body).
 ## Verification
 
 - `bash skills/history/scripts/tests/run.sh` exits 0, reporting the
-  full suite (including `outstanding-deferrals.sh`'s six new tests)
+  full suite (including `outstanding-deferrals.sh`'s seven new tests)
   passed.
 - Smoke invocation against this repository's own real history, run
   from this branch (forked from `dev`, so `git log dev ...` already
