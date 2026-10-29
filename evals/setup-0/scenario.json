@@ -1,0 +1,1 @@
+{ "description": "Running myelin's manual setup/doctor against a repository whose host violates the merge-commits-only opinion and where the user holds no host admin: re-run the check and report it, offer but never silently apply the merge-settings fix, never attempt the admin-only PATCH without admin, and report — never set — the gh pr merge opt-in" }
