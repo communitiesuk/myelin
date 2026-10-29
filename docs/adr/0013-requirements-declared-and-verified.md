@@ -31,8 +31,8 @@ is a small extension, not a new packaging regime.
 
 A machine-readable **manifest** in the plugin is the single source of
 truth for the repository requirements it carries — the tiered checks
-below. (The model floor—a property of the model running the agent,
-established by evals—is not a pass/fail repository fact a script can
+below. (The model floor — a property of the model running the agent,
+established by evals — is not a pass/fail repository fact a script can
 check, so it stays outside the manifest and remains owned by
 `git-workflow`'s `compatibility` frontmatter, serviced by the release-time
 README read.) One check script, shipped in the plugin, reads it; two
