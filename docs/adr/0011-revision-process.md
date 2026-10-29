@@ -39,7 +39,7 @@ query; it never re-traverses git itself.
 ### Each durable, in-tree downstream artefact gets a verdict
 
 Verdicts apply only to durable artefacts present in the tree: skills,
-code, ADRs, and plans still in the tree (Deferred or in progress). For
+code, ADRs, and plans still in the tree (deferred or in progress). For
 each of these on the `downstream:` list, the revision records on the
 same branch exactly one verdict:
 
@@ -78,7 +78,7 @@ is the plan's.
 
 This generalises ADR 0004's "Reconciled or Deferred" from ADR → plan to
 the whole in-tree graph, and adds the explicit *Confirmed*
-verdict so an unaffected artefact is **recorded as checked**,
+verdict so an unaffected artefact is **recorded as Confirmed**,
 not silently skipped — the hand-found ripple seed #92 names.
 
 Verdicts are recorded as **trailers**, for the reasons ADR 0004
@@ -155,7 +155,7 @@ scope (discovery 0004 territory).
 - **Keep ADR 0004's "Reconciled or Deferred" with no *Confirmed*
   verdict.** Rejected: an unaffected artefact is then skipped
   with no record, which is the silent gap seed #92 names. The explicit
-  verdict is what makes "checked" auditable.
+  verdict is what makes *Confirmed* auditable.
 - **Record verdicts in frontmatter or prose.** Rejected: neither is
   timestamped by its commit, so *when* a verdict was made is not
   intrinsic — the staleness problem, and inconsistent with ADR 0004's
@@ -189,7 +189,7 @@ scope (discovery 0004 territory).
   (i) its ADR → plan "Reconciled or Deferred" obligation generalises to
   the ADR → plan → skill verdict set; (ii) verdict trailer edge types
   join its exhaustive table; and (iii) its currently open-ended
-  `Deferred` escape is narrowed to require a named blocking condition.
+  `deferred` escape is narrowed to require a named blocking condition.
 - `land` gains a check that consumes the history skill's `downstream`
   query, coupling the gate to that script; a repository without it
   cannot run the gate.
@@ -200,7 +200,7 @@ scope (discovery 0004 territory).
   separate the provision of verdicts from the revision itself — a
   separate verdict-giver (seed #124, the role-concentration theme of
   #119 and ADR 0008).
-- Narrowing the `Deferred` condition to `origin-path + description`
+- Narrowing the deferral's condition to `origin-path + description`
   makes ADR 0012's due-deferral check mechanical: `land` tests
   `Reconciles: <origin>`, `Revises: <origin>`, or
   `Derives-From: <origin>` against trunk, no judgement required to
