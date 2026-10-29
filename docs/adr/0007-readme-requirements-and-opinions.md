@@ -157,8 +157,7 @@ not only the install command it has today.
   store and read-not-write rule the opinions section documents, deferred
   here from plan 0006.
 - `skills/git-workflow/SKILL.md` — the `compatibility` frontmatter that
-  is the source of record for the requirements and the model floor the
-  README restates.
+  is the source of record for the model floor the README restates.
 - `docs/adr/0013-requirements-declared-and-verified.md` — the runtime
   verification of these same requirements, and the machine-readable
   manifest that is now their single source of truth, from which these
