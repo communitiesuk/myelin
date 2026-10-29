@@ -38,9 +38,12 @@ README states, in prose, before launch.
 
 The README states myelin's operating contract to a new user in prose,
 up front, as two explicit sections a reader meets before they run
-anything — not left implicit in the ADRs, and not deferred to a
-runtime check. Verification is out of scope here and deferred to the
-init-check decision.
+anything — not left implicit in the ADRs. The requirements and
+opinions are declared in a machine-readable manifest that is their
+single source of truth, and these README sections are regenerated from
+it — save the model floor, which `git-workflow` owns and the
+release-time README read still services (see Consequences); runtime
+verification of them is ADR 0013's job.
 
 ### Requirements — stated plainly, as an explicit section
 
@@ -101,7 +104,8 @@ not only the install command it has today.
 
 - **Verify at runtime instead of stating in prose** — a `SessionStart`
   hook or a `myelin doctor` command that checks the requirements and
-  fails loudly. Not rejected on its merits; deferred. It is
+  fails loudly. Not rejected on its merits; deferred — now decided in
+  ADR 0013. It is
   harness-shaped, under-determined (how much it knows about *this*
   repo; how it handles the permission it cannot decide for the user),
   and wants its own discovery. Prose ships now; the check is a later
@@ -120,15 +124,13 @@ not only the install command it has today.
 
 ## Consequences
 
-- The README now restates facts owned elsewhere — the model floor in
-  `git-workflow`'s frontmatter, the `gh pr merge` line, the fork-point
-  ladder. These are coupling points: if the floor moves or the landing
-  behaviour changes, the README must follow. ADR 0005's documentation
-  gate checks only the skill list mechanically; the rest is the
-  `release` skill's README read — an agent read fired every release
-  that looks for any statement the tree contradicts and fixes it on the
-  release branch. So this coupling is serviced there, by a judgement
-  read rather than a mechanical check.
+- The requirements and opinions the manifest carries are regenerated
+  at release from that manifest — their single source of truth
+  (ADR 0013) — not hand-maintained prose. The model floor, owned by
+  `git-workflow`'s frontmatter, stays outside the manifest and remains
+  a coupling point serviced by the `release` skill's README read
+  (ADR 0005) — an agent read fired every release that fixes any
+  statement the tree contradicts on the release branch.
 - Prose does not enforce. A user can still ignore it and hit the wall
   the `gh pr merge` incident describes; closing that is the init-check
   decision's job, and its absence is felt until it lands. This ADR
@@ -155,8 +157,8 @@ not only the install command it has today.
   store and read-not-write rule the opinions section documents, deferred
   here from plan 0006.
 - `skills/git-workflow/SKILL.md` — the `compatibility` frontmatter that
-  is the source of record for the requirements and the model floor the
-  README restates.
-- The setup/init-check decision (the harness-shaped twin) — where
-  runtime verification of these same requirements is deferred, rather
-  than stated as prose. Not yet an ADR; captured as a `#C` seed.
+  is the source of record for the model floor the README restates.
+- `docs/adr/0013-requirements-declared-and-verified.md` — the runtime
+  verification of these same requirements, and the machine-readable
+  manifest that is now their single source of truth, from which these
+  README sections are regenerated.
