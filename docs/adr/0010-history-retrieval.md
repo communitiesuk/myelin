@@ -23,15 +23,15 @@ ADRs with `Derives-From`/`Revises`/`Clarifies`/`Completes` trailers and
 `## Alternatives considered` sections — see
 `docs/discovery/0001-history-skill.md`, 2026-10-27 entry) established
 how the skill is built. The constraint, from that note and from ADR
-0008's own growth problem, is that v1 need only be **just good
-enough** to support the on-ramp to a single-turn orchestration
+0008's own growth problem, is that the skill need only be **just
+good enough** to support the on-ramp to a single-turn orchestration
 harness.
 
 ## Decision
 
 ### Scope: three deterministic queries and a recall-biased prune
 
-v1 answers three questions, all reading git directly:
+The skill answers three questions, all reading git directly:
 
 - **Closed paths.** For a topic, which paths are closed, with the
   reason and source of each. The reviewer's need from ADR 0008.
@@ -84,7 +84,7 @@ queries over the graph) stays deferred and is distinct from the
 outstanding-deferrals query added above, which is a mechanical lookup
 with a fixed output (ADR 0012). No scaling index is built now: the
 prune is an additive, cheap mechanism, and whether it holds at a
-larger ADR count is an empirical question this v1 does not answer.
+larger ADR count is an empirical question this ADR does not answer.
 
 ## Alternatives considered
 
@@ -122,7 +122,7 @@ larger ADR count is an empirical question this v1 does not answer.
 - **Building a scaling index now.** Not chosen. ADR 0004 already
   rejected a hand-maintained index file as duplicating what trailers
   record; that rejection still holds. The cheap, additive recall-biased
-  prune is what v1 adds instead, and tuning it at a larger ADR count
+  prune is what this ADR adds instead, and tuning it at a larger ADR count
   is deferred rather than solved speculatively now.
 
 ## Consequences
