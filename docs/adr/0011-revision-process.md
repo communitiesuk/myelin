@@ -52,12 +52,13 @@ same branch exactly one verdict:
   0004's escape, narrowed further here). The condition names that
   artefact's current path, the **origin**, plus a description,
   load-bearing only when the origin's path alone yields more than one
-  candidate event. It is due, with zero judgement, once a commit on
-  trunk carries `Revises: <origin>` (the origin is itself revised) or
-  `Derives-From: <origin>` (the origin produces a new downstream) —
-  anchored on the origin whose revision drives the change, never on
-  the artefact that merely changes as a result. The match may be
-  asserted by the landing agent, not necessarily a human. Never
+  candidate event. It is due, with zero judgement, once a commit that
+  lands on trunk **after this deferral** carries `Revises: <origin>`
+  (the origin is itself revised — anchored on the origin whose
+  revision drives the change, never on the artefact that merely
+  changes as a result) or `Derives-From: <origin>` (the origin
+  produces a new downstream). The match may be asserted by the
+  landing agent, not necessarily a human. Never
   open-ended — if nothing specific blocks it, revise now or record
   *checked and still correct*. Discharging a due deferral is ADR
   0012's;
@@ -166,6 +167,11 @@ scope (discovery 0004 territory).
   false-trigger it. External, non-repo conditions (dates, "when
   someone gets round to it") are excluded for the same reason:
   unevaluable against trunk.
+- **Pre-specifying the to-be-created artefact's path in the origin.**
+  Rejected: history-based artefact numbering allocates the new path
+  only at creation, so the origin cannot name it up front; the
+  condition anchors on the origin's existing path instead, and the
+  new path is discovered at check time.
 - **A mandatory structured `kind` tag** (e.g. `produced:<kind>`), or a
   description required on every deferral. Superseded: the origin's
   path is load-bearing on its own except where it resolves to more
@@ -232,6 +238,6 @@ scope (discovery 0004 territory).
   drafted under; its reviewer's fidelity check complements this gate.
 - `skills/history/SKILL.md` — the `downstream:` output this consumes.
 - `docs/adr/0012-discharging-deferrals.md` — discharges a deferral
-  once the condition form defined here comes due.
+  stated in the form defined here once it comes due.
 - Seed #92 — the gap this answers. Seed #119 — the test-production
   process that owns evals.
