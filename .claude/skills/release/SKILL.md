@@ -66,7 +66,17 @@ diff <(grep -oE '^[0-9]+\. \*\*`[^`]+`' README.md | sed 's/.*`\(.*\)`/\1/' | sor
      <(tar tzf <scratch>/myelin.tgz | grep -oE 'skills/[^/]+/' | sed 's#skills/##;s#/##' | sort -u)
 ```
 
-Must print nothing. Then read the README once, looking for any statement the tree contradicts, and fix it on this branch if found.
+Must print nothing.
+
+Then regenerate the README's manifest-owned sections from the single source of truth rather than only reading them. Run `skills/setup/scripts/render-requirements` and update each manifest-backed piece of the README to match its output, wherever that piece sits:
+
+- the REQUIRED requirement bullets, under `## Requirements`;
+- the merge-settings DESIRABLE opinion — the merge-commits-only bullet — under `## Opinions`;
+- the `gh pr merge` opt-in subsection, with its exact line `Bash(gh pr merge *)`.
+
+These three are all the script emits; it does **not** own the rest of `## Opinions`, so replace only those pieces, not the whole section. Leave a note on the regenerated sections that they are manifest-generated, so no one hand-edits them out of step with `skills/setup/manifest.json`.
+
+Then read the README once for the remainder the manifest does **not** own — the `git-workflow` model floor and the non-manifest Opinions prose — looking for any statement the tree contradicts, and fix it on this branch if found.
 
 ## 8. Gate 5 — notes
 
