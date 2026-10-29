@@ -26,21 +26,16 @@ plan settles:
    0010's illustrative `history outstanding`.
 2. **Condition parsing**: a `Defers:` trailer's value is whitespace-
    tokenized; the first token is `D`, the second is the origin path,
-   everything after is the condition's free-text remainder. This
-   matches the real trailer already on trunk (commit `7a0c6c86`):
-   `Defers: skills/history/SKILL.md docs/adr/0010-history-retrieval.md until a plan derives from it adding the outstanding-deferrals query`.
-   A malformed legacy value whose second token is not a real path
-   (trunk already carries one, commit `720040922`:
-   `Defers: .tessl-plugin/plugin.json blocked on the plan implementing ADR 0013 ...`)
-   needs no special-casing: no commit will ever carry a trigger
-   trailer with that literal value, so it mechanically reports
-   `due: false` forever — the correct, conservative output for an
-   unparseable condition, not a case the script must detect.
-3. **Ordering ("after the deferral")**: trunk ancestry, not commit
-   timestamp — a single `git log <trunk> --topo-order --reverse` pass
-   assigns each commit an increasing sequence number; a trigger counts
-   only when its sequence number is strictly greater than the
-   deferral's own commit's.
+   everything after is the condition's free-text remainder (matches
+   the real trailer on trunk, commit `7a0c6c86`). A malformed legacy
+   value whose second token is not a real path (commit `720040922`)
+   is not special-cased: it mechanically reports `due: false`.
+3. **Ordering ("after the deferral")**: the sequence a single
+   `git log <trunk> --topo-order --reverse` pass assigns — topological
+   where an ancestor relation exists, commit-date order otherwise (two
+   commits landed via separate merged branches). A trigger counts only
+   when its sequence number is strictly greater than the deferral's
+   own commit's.
 4. **Trunk resolution**: a local helper reimplementing
    `skills/git-workflow/scripts/git-workflow`'s `derive_trunk` ladder
    (local `dev`, then local `develop`, then `refs/remotes/origin/HEAD`)
@@ -53,10 +48,6 @@ plan settles:
    `{Reconciles: D, Confirms: D, Defers: D <condition>}` seen. `D` is
    outstanding only when the latest such event is a `Defers:`; an
    earlier, superseded `Defers: D` is never independently reported.
-   This is exercised by real trunk history: `.claude/skills/release/SKILL.md`
-   carries both a `Defers:` (commit `720040922`) and a later `Confirms:`
-   (commit `1adea3eb`, strictly later in trunk topo-order) and is
-   therefore not outstanding.
 6. **Output record shape**: one record per outstanding deferral,
    separated by a blank line: `D:`, `origin:`, `condition:` (the raw
    value after `D`, unmodified — including the origin token, so the
@@ -94,8 +85,9 @@ Extend `skills/history/scripts/history`:
   matching the other two subcommands' strict argument handling.
 - Implement the algorithm from Mechanisms 2, 3, 5 and 6.
 
-Write failing tests first at `skills/history/scripts/tests/outstanding.sh`,
-following `downstream.sh`'s and `closed-paths.sh`'s structure exactly
+Write failing tests first at
+`skills/history/scripts/tests/outstanding-deferrals.sh`, following
+`downstream.sh`'s and `closed-paths.sh`'s structure exactly
 (sourced by `run.sh` automatically — it globs every `*.sh` beside it
 except itself and `lib.sh`, so no edit to `run.sh` is needed). Cover,
 each built with `newrepo`/`commit`/`gc` from `lib.sh`:
@@ -120,26 +112,34 @@ each built with `newrepo`/`commit`/`gc` from `lib.sh`:
    followed by two later commits, one carrying `Derives-From: <origin>`
    and the other carrying `Revises: <origin>`. Assert `due: true` and
    two `candidate:` lines, one per commit.
+6. **A re-defer: the second `Defers:` wins.** `Defers: D origin1 cond1`,
+   then a later `Defers: D origin2 cond2` (a new origin and
+   condition), then a still-later commit carrying
+   `Derives-From: origin2`. Assert exactly one record for `D`:
+   `origin: origin2` and `condition:` from the second `Defers:`,
+   `due: true` with a `candidate:` line for the origin2-triggering
+   commit, and that `origin1` and `cond1` appear nowhere in that
+   record.
 
-Run `bash skills/history/scripts/tests/run.sh outstanding.sh` and
-confirm every new test fails first (the subcommand does not exist),
-then implement `outstanding-deferrals` until
+Run `bash skills/history/scripts/tests/run.sh skills/history/scripts/tests/outstanding-deferrals.sh`
+and confirm every new test fails first (the subcommand does not
+exist), then implement `outstanding-deferrals` until
 `bash skills/history/scripts/tests/run.sh` (the full suite, all files)
 is green.
 
 Files changed: `skills/history/scripts/history` (modified),
-`skills/history/scripts/tests/outstanding.sh` (new).
+`skills/history/scripts/tests/outstanding-deferrals.sh` (new).
 
 ### Step 2 — document the query in `skills/history/SKILL.md`
 
 Update `skills/history/SKILL.md`:
 
-- Frontmatter `description`: it currently says the skill "retrieves
-  two things" (closed paths, the graph); update it to name the third,
-  outstanding deferrals, with a `TRIGGER` clause covering "is a
-  deferral outstanding and due" and keep the existing `SKIP` clause
-  that already distinguishes this from detecting whether a topic is
-  "open" (ADR 0010/0012's distinction, already correctly drawn there).
+- Frontmatter `description`: update only the factual summary — the
+  skill "retrieves two things" becomes "retrieves three things",
+  naming the outstanding-deferrals query. The `TRIGGER` and `SKIP`
+  clauses are unchanged: `land` calls the script directly, with no
+  new human-facing trigger, so this edit does not retrigger the
+  contract.
 - Body: add a third section, `## The outstanding-deferrals question`,
   in the same style as `## The downstream / graph question` (no model
   step — state that the query is run and its output reported
@@ -157,7 +157,8 @@ Files changed: `skills/history/SKILL.md` (frontmatter and body).
 ## Verification
 
 - `bash skills/history/scripts/tests/run.sh` exits 0, reporting the
-  full suite (including `outstanding.sh`'s five new tests) passed.
+  full suite (including `outstanding-deferrals.sh`'s six new tests)
+  passed.
 - Smoke invocation against this repository's own real history, run
   from this branch (forked from `dev`, so `git log dev ...` already
   includes every commit below):
