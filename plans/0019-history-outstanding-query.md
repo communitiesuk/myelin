@@ -1,6 +1,6 @@
 ---
 title: The history skill's outstanding-deferrals query
-status: draft
+status: in-progress
 adr: 0010
 date: 2026-10-29
 deferred_reason: null

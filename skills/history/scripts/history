@@ -9,6 +9,7 @@
 # Usage:
 #   bash history downstream <path>
 #   bash history closed-paths <topic>
+#   bash history outstanding-deferrals
 #   bash history --help
 #
 # Subcommands
@@ -44,6 +45,28 @@
 #       Edges are read from trailer fields
 #       (`git log --all --format='%(trailers:key=Derives-From,valueonly)'`
 #       and the Revises equivalent), never from a commit subject.
+#   outstanding-deferrals
+#       Print every outstanding deferral found on the resolved trunk (local
+#       dev, then local develop, then the branch named by
+#       refs/remotes/origin/HEAD — this subcommand's own trunk-only mode;
+#       downstream and closed-paths keep scanning --all and are unchanged).
+#       No argument. Purely mechanical, no model step, like downstream.
+#       Per D (the artefact a Defers: trailer names), walk trunk commits in
+#       a single `git log <trunk> --topo-order --reverse` pass and track
+#       the latest of Reconciles: D, Confirms: D or Defers: D <origin>
+#       <condition> seen; D is outstanding only when that latest event is
+#       a Defers:. For each outstanding D, due is true when any later
+#       commit (strictly after the Defers: commit, in that same ordering)
+#       carries Reconciles:, Revises: or Derives-From: naming the
+#       deferral's own origin path — distinct from the D-verdicts above,
+#       which decide outstanding-ness, not due-ness. Prints one record per
+#       outstanding deferral, separated by a blank line: D:, origin:,
+#       condition: (the raw value after D, unmodified, including the
+#       origin token), due: true|false, and zero or more
+#       candidate: <short-hash> <subject> lines, present only when due is
+#       true. Reads Defers:/Reconciles:/Confirms:/Revises:/Derives-From:
+#       trailers via `git log <trunk> --format=...`, never a commit
+#       subject.
 #
 # Exit codes
 #   0  the query ran and its sections were printed
