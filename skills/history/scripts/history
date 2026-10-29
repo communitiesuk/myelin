@@ -9,6 +9,7 @@
 # Usage:
 #   bash history downstream <path>
 #   bash history closed-paths <topic>
+#   bash history outstanding-deferrals
 #   bash history --help
 #
 # Subcommands
@@ -44,6 +45,28 @@
 #       Edges are read from trailer fields
 #       (`git log --all --format='%(trailers:key=Derives-From,valueonly)'`
 #       and the Revises equivalent), never from a commit subject.
+#   outstanding-deferrals
+#       Print every outstanding deferral found on the resolved trunk (local
+#       dev, then local develop, then the branch named by
+#       refs/remotes/origin/HEAD — this subcommand's own trunk-only mode;
+#       downstream and closed-paths keep scanning --all and are unchanged).
+#       No argument. Purely mechanical, no model step, like downstream.
+#       Per D (the artefact a Defers: trailer names), walk trunk commits in
+#       a single `git log <trunk> --topo-order --reverse` pass and track
+#       the latest of Reconciles: D, Confirms: D or Defers: D <origin>
+#       <condition> seen; D is outstanding only when that latest event is
+#       a Defers:. For each outstanding D, due is true when any later
+#       commit (strictly after the Defers: commit, in that same ordering)
+#       carries Reconciles:, Revises: or Derives-From: naming the
+#       deferral's own origin path — distinct from the D-verdicts above,
+#       which decide outstanding-ness, not due-ness. Prints one record per
+#       outstanding deferral, separated by a blank line: D:, origin:,
+#       condition: (the raw value after D, unmodified, including the
+#       origin token), due: true|false, and zero or more
+#       candidate: <short-hash> <subject> lines, present only when due is
+#       true. Reads Defers:/Reconciles:/Confirms:/Revises:/Derives-From:
+#       trailers via `git log <trunk> --format=...`, never a commit
+#       subject.
 #
 # Exit codes
 #   0  the query ran and its sections were printed
@@ -250,12 +273,158 @@ $bullets" || continue
   done
 }
 
+# Resolve this repository's trunk (Mechanism 4): local dev, then local
+# develop, then the branch named by refs/remotes/origin/HEAD. Reimplements
+# skills/git-workflow/scripts/git-workflow's derive_trunk ladder rather
+# than sourcing that script, so this script keeps its header claim to
+# depend on git and nothing else. Prints the trunk's branch name and
+# returns 0, or returns 1 with nothing printed when none resolves.
+_derive_trunk() {
+  if git rev-parse --verify --quiet refs/heads/dev >/dev/null; then
+    printf 'dev\n'; return 0
+  fi
+  if git rev-parse --verify --quiet refs/heads/develop >/dev/null; then
+    printf 'develop\n'; return 0
+  fi
+  local head
+  if head="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"; then
+    printf '%s\n' "${head#origin/}"; return 0
+  fi
+  return 1
+}
+
+# Print, one line per commit on $1 (the trunk) in `--topo-order --reverse`
+# order (Mechanism 3), the fields `cmd_outstanding_deferrals` needs:
+# `<short-hash>\x1f<subject>\x1f<Defers values>\x1f<Reconciles values>\x1f
+# <Confirms values>\x1f<Revises values>\x1f<Derives-From values>`, each
+# trailer field's multiple values (a commit may carry a key more than
+# once) joined by \x1d. One git pass.
+_outstanding_deferrals_log() {
+  local trunk="$1"
+  git log "$trunk" --topo-order --reverse \
+    --format='%h%x1f%s%x1f%(trailers:key=Defers,valueonly,separator=%x1d)%x1f%(trailers:key=Reconciles,valueonly,separator=%x1d)%x1f%(trailers:key=Confirms,valueonly,separator=%x1d)%x1f%(trailers:key=Revises,valueonly,separator=%x1d)%x1f%(trailers:key=Derives-From,valueonly,separator=%x1d)'
+}
+
+cmd_outstanding_deferrals() {
+  [ $# -eq 0 ] || { usage >&2; return 2; }
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+    printf 'history: not inside a git repository\n' >&2; return 2; }
+
+  local trunk
+  trunk="$(_derive_trunk)" || {
+    printf 'history: no trunk resolves: looked for refs/heads/dev, refs/heads/develop and the branch named by refs/remotes/origin/HEAD\n' >&2
+    return 2
+  }
+
+  # Mechanisms 2, 3, 5, 6, 7. A single pass over the trunk's trailers
+  # (oldest first, per _outstanding_deferrals_log's ordering) tracks, per
+  # D, the latest of {Defers: D <origin> <condition>, Reconciles: D,
+  # Confirms: D} (Mechanism 5) and collects every Reconciles:/Revises:/
+  # Derives-From: value seen, with its sequence number, as a candidate
+  # due-trigger pool (Mechanism 6). The END block then reports every D
+  # whose latest event is still a Defers:, checking that pool for any
+  # entry whose value matches that deferral's origin with a strictly
+  # greater sequence number than the Defers: commit's own.
+  # Note: fields are split with split($0, f, "\x1f") rather than
+  # `-F'\x1f'`/FS, because macOS's awk does not expand a \x escape given
+  # on the command line (or in FS) but does expand one inside a string
+  # literal passed to split().
+  _outstanding_deferrals_log "$trunk" | awk '
+    function trim(s) { gsub(/^[ \t\r]+|[ \t\r]+$/, "", s); return s }
+    {
+      split($0, f, "\x1f")
+      h = f[1]; subj = f[2]; defers = f[3]; reconciles = f[4]; confirms = f[5]; revises = f[6]; derivesfrom = f[7]
+      seq = NR
+
+      if (defers != "") {
+        nd = split(defers, dlist, "\x1d")
+        for (i = 1; i <= nd; i++) {
+          v = trim(dlist[i])
+          if (v == "") continue
+          if (!match(v, /^[^ \t]+/)) continue
+          D = substr(v, RSTART, RLENGTH)
+          rest = v
+          if (match(rest, /^[^ \t]+[ \t]+/)) { rest = substr(rest, RSTART + RLENGTH) } else { rest = "" }
+          origin = ""
+          if (match(rest, /^[^ \t]+/)) origin = substr(rest, RSTART, RLENGTH)
+          if (!(D in seen)) { seen[D] = 1; dorder[++dn] = D }
+          state[D] = "defer"
+          origin_for[D] = origin
+          cond_for[D] = rest
+          defer_seq[D] = seq
+        }
+      }
+
+      if (reconciles != "") {
+        nr = split(reconciles, rlist, "\x1d")
+        for (i = 1; i <= nr; i++) {
+          v = trim(rlist[i])
+          if (v == "") continue
+          if (v in state) state[v] = "reconciled"
+          te++; tseq[te] = seq; th[te] = h; ts[te] = subj; tval[te] = v
+        }
+      }
+
+      if (confirms != "") {
+        nc = split(confirms, clist, "\x1d")
+        for (i = 1; i <= nc; i++) {
+          v = trim(clist[i])
+          if (v == "") continue
+          if (v in state) state[v] = "confirmed"
+        }
+      }
+
+      if (revises != "") {
+        nv = split(revises, vlist, "\x1d")
+        for (i = 1; i <= nv; i++) {
+          v = trim(vlist[i])
+          if (v == "") continue
+          te++; tseq[te] = seq; th[te] = h; ts[te] = subj; tval[te] = v
+        }
+      }
+
+      if (derivesfrom != "") {
+        nf = split(derivesfrom, flist, "\x1d")
+        for (i = 1; i <= nf; i++) {
+          v = trim(flist[i])
+          if (v == "") continue
+          te++; tseq[te] = seq; th[te] = h; ts[te] = subj; tval[te] = v
+        }
+      }
+    }
+    END {
+      for (i = 1; i <= dn; i++) {
+        D = dorder[i]
+        if (state[D] != "defer") continue
+        origin = origin_for[D]
+        cond = cond_for[D]
+        dseq = defer_seq[D]
+        due = "false"
+        cands = ""
+        for (j = 1; j <= te; j++) {
+          if (tval[j] == origin && tseq[j] > dseq) {
+            due = "true"
+            cands = cands "candidate: " th[j] " " ts[j] "\n"
+          }
+        }
+        printf "D: %s\n", D
+        printf "origin: %s\n", origin
+        printf "condition: %s\n", cond
+        printf "due: %s\n", due
+        if (due == "true") printf "%s", cands
+        printf "\n"
+      }
+    }
+  '
+}
+
 main() {
   if [ $# -eq 0 ]; then usage >&2; return 2; fi
   case "$1" in
     -h|--help) usage; return 0 ;;
     downstream) shift; cmd_downstream "$@" ;;
     closed-paths) shift; cmd_closed_paths "$@" ;;
+    outstanding-deferrals) shift; cmd_outstanding_deferrals "$@" ;;
     *) printf 'history: unknown subcommand: %s\n' "$1" >&2; usage >&2; return 2 ;;
   esac
 }

@@ -1,15 +1,15 @@
 ---
 name: history
-description: The history skill retrieves two things from git history — closed paths (for a topic, which decisions are already closed, each with its reason and source) and the artefact graph (what derives from or revises a given artefact, transitively). TRIGGER before drafting or reviewing an ADR, or planning a revision, when you need to know whether a topic is already closed, or what derives from or revises artefact X. SKIP for human open-ended history browsing, for detecting whether a topic is still "open", and for tuning the prune at scale — all deferred by ADR 0010.
+description: The history skill retrieves three things from git history — closed paths (for a topic, which decisions are already closed, each with its reason and source), the artefact graph (what derives from or revises a given artefact, transitively), and outstanding deferrals (which deferred conditions are due a recheck). TRIGGER before drafting or reviewing an ADR, or planning a revision, when you need to know whether a topic is already closed, or what derives from or revises artefact X. SKIP for human open-ended history browsing, for detecting whether a topic is still "open", and for tuning the prune at scale — all deferred by ADR 0010.
 ---
 
 # The history skill
 
 Completed and superseded artefacts leave the working tree (see the
 `git-workflow` and `adr` skills), so what is decided and what derives
-from what lives in git history. This skill retrieves it, for two
-questions that arise before you draft or review an ADR or plan a
-revision:
+from what lives in git history. This skill retrieves it, for three
+questions that arise before you draft or review an ADR, plan a
+revision, or land an artefact carrying a deferral:
 
 - **Closed paths** — for a topic, which decisions are already closed,
   each with its reason and its source. The ADR reviewer's check that a
@@ -17,10 +17,13 @@ revision:
 - **Downstream / the graph** — what derives from, or revises, a given
   artefact, transitively. What a revision must carry downstream so no
   plan or implementation is left stranded against a changed decision.
+- **Outstanding deferrals** — which deferred conditions (`Defers:`
+  trailers) are still outstanding, and which of those are due a
+  recheck because their triggering condition has since landed.
 
-Both are deterministic retrievals over git trailers and in-tree ADR
-sections. A script does the retrieval; exactly one narrow model step
-runs, and only for the closed-paths relevance judgement.
+All three are deterministic retrievals over git trailers and in-tree
+ADR sections. A script does the retrieval; exactly one narrow model
+step runs, and only for the closed-paths relevance judgement.
 
 The harness states this skill's base directory when it loads the skill.
 Call that `$SKILL_DIR`; the script is run with Bash, never by path
@@ -93,6 +96,30 @@ Report the surviving closed paths, each with its reason and its source.
 If no candidate is printed, or none survives the judgement, report that
 nothing is closed on the topic — do not fall back to reading `docs/adr/`
 or `git log` by hand.
+
+## The outstanding-deferrals question
+
+Run the query and report its output. There is no model step.
+
+```sh
+bash "$SKILL_DIR/scripts/history" outstanding-deferrals
+```
+
+No argument: the query always runs against the resolved trunk (never
+`--all`). The script prints one record per outstanding deferral,
+separated by a blank line: `D:` (the deferred artefact), `origin:` (the
+path whose landing re-triggers the check), `condition:` (the full
+condition text, unmodified, including the origin token), `due:`
+(`true` or `false`), and, only when `due: true`, one `candidate:
+<short-hash> <subject>` line per commit that may have discharged the
+condition.
+
+Report every record. For a `due: true` record with more than one
+`candidate:` line, judging which candidate (if any) actually satisfies
+the condition's free-text description is your own narrow read of the
+`condition:` text against each candidate's subject — the script never
+does this matching; candidacy (who triggered a recheck) is the whole
+of what it decides.
 
 ## Do not
 
