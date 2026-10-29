@@ -48,10 +48,11 @@ same branch exactly one verdict:
   gate reads;
 - **Deferred** — applies to any durable, in-tree downstream (skill,
   code, or plan), and only when reconciliation is blocked
-  on a durable, in-tree artefact's own future change — at minimum an
-  accepted ADR; a seed or a plan is too ephemeral to anchor on (ADR
-  0004's escape, narrowed further here). The **origin** is that
-  artefact, named directly — never its upstream. The condition is the
+  on some other durable, in-tree artefact's own future change — at
+  minimum an accepted ADR; a seed or a plan is too ephemeral to
+  anchor on (ADR 0004's escape, narrowed further here). The
+  **origin** is that blocking artefact, named directly — never its
+  upstream. The condition is the
   origin's path plus a description, load-bearing only when the path
   alone yields more than one candidate event; the description
   disambiguates — e.g. naming the upstream the origin is reconciled
@@ -66,10 +67,9 @@ same branch exactly one verdict:
   nothing specific blocks it, reconcile now or record *Confirmed*.
   Discharging a due deferral is ADR 0012's;
 - **Confirmed** — a downstream found unaffected, recorded explicitly.
-  This is now primarily a **discharge-time re-verdict** (ADR 0012): an
-  untouched downstream is confirmed when the reconciling plan arrives
-  and leaves it alone, rather than judged unaffected up front by the
-  reviser.
+  This is now primarily a **discharge-time re-verdict** (ADR 0012),
+  not judged unaffected up front by the reviser — see the
+  blast-radius default below for when each verdict lands.
 
 **The blast-radius default.** The revision enumerates its transitive
 downstream — the blast radius — up front: a readout of how much work
@@ -91,9 +91,11 @@ artefacts need no verdict. Filtering the list to what is in the tree
 is the plan's.
 
 This generalises ADR 0004's "Reconciled or Deferred" from ADR → plan to
-the whole in-tree graph, and adds the explicit *Confirmed*
-verdict so an unaffected artefact is **recorded as Confirmed**,
-not silently skipped — the hand-found ripple seed #92 names.
+the whole in-tree graph, and adds the explicit *Confirmed* verdict: an
+unaffected artefact is **recorded as Confirmed** — typically at
+discharge, when the reconciling plan leaves it untouched, rather than
+judged up front — not silently skipped, the hand-found ripple seed #92
+names.
 
 Verdicts are recorded as **trailers**, for the reasons ADR 0004
 adopted them: append-only, machine-readable, and timestamped by the
