@@ -47,12 +47,20 @@ same branch exactly one verdict:
   commit corroborates, but the verdict trailer (below) is what the
   gate reads;
 - **deferred** — plans only, and only when reconciliation is blocked
-  on specific named other work (e.g. until the revision of ADR Y
-  lands): the plan is set to `deferred` with a reason naming that
-  blocking condition (ADR 0004's escape, kept but narrowed to a named
-  condition). Never open-ended — if nothing specific blocks it, revise
-  now or record *checked and still correct*. Discharging a deferral
-  (`land` checking its condition still holds) is deferred to seed #126;
+  on a durable, in-tree artefact's own future change — at minimum an
+  accepted ADR; a seed or a plan is too ephemeral to anchor on (ADR
+  0004's escape, narrowed further here). The condition names that
+  artefact's current path, the **origin**, plus a description,
+  load-bearing only when the origin's path alone yields more than one
+  candidate event. It is due, with zero judgement, once a commit on
+  trunk carries `Revises: <origin>` (the origin is itself revised) or
+  `Derives-From: <origin>` (the origin produces a new downstream) —
+  anchored on the origin whose revision drives the change, never on
+  the artefact that merely changes as a result. The match may be
+  asserted by the landing agent, not necessarily a human. Never
+  open-ended — if nothing specific blocks it, revise now or record
+  *checked and still correct*. Discharging a due deferral is ADR
+  0012's;
 - **checked and still correct** — examined and found unaffected,
   recorded explicitly.
 
@@ -152,6 +160,17 @@ scope (discovery 0004 territory).
 - **Put eval scenarios in the graph now.** Rejected and deferred to
   #119: evals carry no `Derives-From`, and their authoring workflows
   have no revision lifecycle to hang a verdict on.
+- **Anchoring a deferral's condition on the blocking artefact itself**
+  ("until Y is revised") instead of on the upstream whose revision
+  drives Y's change. Rejected: an unrelated revision of Y would then
+  false-trigger it. External, non-repo conditions (dates, "when
+  someone gets round to it") are excluded for the same reason:
+  unevaluable against trunk.
+- **A mandatory structured `kind` tag** (e.g. `produced:<kind>`), or a
+  description required on every deferral. Superseded: the origin's
+  path is load-bearing on its own except where it resolves to more
+  than one candidate event, and only then does a description earn its
+  keep.
 
 ## Consequences
 
@@ -170,6 +189,10 @@ scope (discovery 0004 territory).
   separate the provision of verdicts from the revision itself — a
   separate verdict-giver (seed #124, the role-concentration theme of
   #119 and ADR 0008).
+- Narrowing the `deferred` condition to `origin-path + description`
+  makes ADR 0012's due-deferral check mechanical: `land` tests
+  `Revises: <origin>` or `Derives-From: <origin>` against trunk, no
+  judgement required to decide whether a deferral is due.
 - Evals stay outside the revision graph until #119; a revision that
   should change an eval leaves no verdict and no gate catches it.
 - "Downstream" here is the *production graph* (`Derives-From`: ADR →
@@ -208,5 +231,7 @@ scope (discovery 0004 territory).
 - `docs/adr/0008-stage-reviews.md` — the review loop a revision is
   drafted under; its reviewer's fidelity check complements this gate.
 - `skills/history/SKILL.md` — the `downstream:` output this consumes.
+- `docs/adr/0012-discharging-deferrals.md` — discharges a deferral
+  once the condition form defined here comes due.
 - Seed #92 — the gap this answers. Seed #119 — the test-production
   process that owns evals.
