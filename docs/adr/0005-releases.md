@@ -199,9 +199,10 @@ and no `main` to move.
   trailers. Until the history skill exists they are a `git log`
   between two tags; when it exists it can take the job over.
 - The README is checked mechanically only for its list of skills.
-  Everything else in it is a read at release time, and a
-  documentation site would make that read larger. The site is
-  deferred, and this gate is where it would attach.
+  Its requirements/opinions section is regenerated from the manifest
+  (ADR 0013) rather than read; everything else in it is a read at
+  release time, and a documentation site would make that read larger.
+  The site is deferred, and this gate is where it would attach.
 - `.claude/` gains tracked content. ADR 0003's worktree bootstrap
   copies that directory for its untracked files, and is unaffected.
 - The eval runner can score any git ref, so an old release can be
@@ -229,6 +230,9 @@ and no `main` to move.
 - `docs/adr/0004-where-does-history-live.md` — the rule against
   stale files in the tree that rules out a changelog, and the
   trailer table this decision leaves unchanged.
+- `docs/adr/0013-requirements-declared-and-verified.md` — the
+  manifest from which gate 4 regenerates the README's
+  requirements/opinions section instead of reading it.
 - `tessl plugin publish --help`, `tessl eval run --help` — the
   `--dry-run`, `--context`, `--agent` and `--model` flags the gates
   rely on. `--arms-json` varies agent, model and context inclusion

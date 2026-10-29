@@ -15,21 +15,24 @@ not have to know they must invoke a setup skill. ADR 0007 states
 myelin's requirements and opinions in README prose and *defers*
 verifying them, leaving the executable twin (a `SessionStart` hook or a
 `doctor` command) to its own decision. That deferral is reversed here:
-prose a user skims did not close the `gh pr merge` surprise or the
-host merge-settings misconfiguration seed #122 was raised for (concrete
-case #76).
+prose a user skims closed neither the `gh pr merge` surprise nor the
+host merge-settings misconfiguration seed #122 was raised for — as in
+issue #76, where the host still allowed squash and rebase merges and
+nothing caught it until land time.
 
 A plugin can now distribute a hook, not just skills: it declares hooks
 in `.tessl-plugin/plugin.json`, `SessionStart` is supported, and
 `${TESSL_PLUGIN_DIR}` lets the hook script ship inside the plugin and
-run from there without being copied into the user's repo (tessl hooks
-docs, References). `.tessl-plugin/plugin.json` already exists, so this
+run from there without being copied into the user's repo (see
+References). `.tessl-plugin/plugin.json` already exists, so this
 is a small extension, not a new packaging regime.
 
 ## Decision
 
 A machine-readable **manifest** in the plugin is the single source of
-truth for myelin's repository requirements. One check script, shipped
+truth for the repository requirements it carries — the tiered checks
+below. (The model floor `git-workflow` declares stays outside it,
+still serviced by the release-time README read.) One check script, shipped
 in the plugin, reads it; two delivery paths run that script; and
 ADR 0007's README requirements section is regenerated from the same
 manifest.
@@ -91,14 +94,13 @@ ADR 0007), rather than hand-maintained and read for contradictions.
   the user knowing the skill exists, while the manual skill remains for
   on-demand re-check and fixes.
 - The manifest becomes the one coupling point for requirements; the
-  README section and both delivery paths derive from it, so the
-  release-time README read (ADR 0005) is replaced by regeneration for
-  this section.
+  README section and both delivery paths derive from it. This revises
+  ADR 0005's gate-4 README read: for this section the release
+  regenerates from the manifest rather than reading it.
 - Fixes that change a user's repository or host settings are gated on
   explicit `.permissions.admin` consent and never applied silently; the
   `gh pr merge` opt-in is reported, never set.
-- Out of scope: the updater (#57), post-merge verification (#103), and
-  deeper harness wiring beyond the `SessionStart` hook.
+- Out of scope: deeper harness wiring beyond the `SessionStart` hook.
 
 ## References
 
@@ -107,8 +109,8 @@ ADR 0007), rather than hand-maintained and read for contradictions.
   runtime-verification deferral it reverses.
 - `docs/adr/0003-git-workflow.md` — the merge-commits-only contract the
   DESIRABLE merge-settings check enforces.
-- `docs/adr/0005-releases.md` — the release-time README/documentation
-  gate that the manifest-driven regeneration folds into.
+- `docs/adr/0005-releases.md` — its gate-4 README read, revised here
+  so this section is regenerated from the manifest rather than read.
 - tessl hooks documentation,
   https://docs.tessl.io/reference/configuration#hooks — that a plugin
   distributes a `SessionStart` hook via `.tessl-plugin/plugin.json` and

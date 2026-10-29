@@ -41,7 +41,9 @@ up front, as two explicit sections a reader meets before they run
 anything — not left implicit in the ADRs. The requirements and
 opinions are declared in a machine-readable manifest that is their
 single source of truth, and these README sections are regenerated from
-it; runtime verification of them is ADR 0013's job.
+it — save the model floor, which `git-workflow` owns and the
+release-time README read still services (see Consequences); runtime
+verification of them is ADR 0013's job.
 
 ### Requirements — stated plainly, as an explicit section
 
@@ -102,7 +104,8 @@ not only the install command it has today.
 
 - **Verify at runtime instead of stating in prose** — a `SessionStart`
   hook or a `myelin doctor` command that checks the requirements and
-  fails loudly. Not rejected on its merits; deferred. It is
+  fails loudly. Not rejected on its merits; deferred — now decided in
+  ADR 0013. It is
   harness-shaped, under-determined (how much it knows about *this*
   repo; how it handles the permission it cannot decide for the user),
   and wants its own discovery. Prose ships now; the check is a later
