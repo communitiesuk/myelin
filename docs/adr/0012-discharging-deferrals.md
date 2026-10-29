@@ -56,12 +56,11 @@ nothing it does gates on it.
 ### The escape
 
 On the blocking branch, the lander must resolve each due deferral
-before it lands, by recording one verdict against `D`, on that same
-branch:
+before it lands, by recording one of two verdicts against `D`, on that
+same branch:
 
 - **`Reconciles: D`** — `D` is revised to match the now-current
   decision; or
-- **`Confirms: D`** — examined and still correct; or
 - **`Defers: D <fresh condition>`** — re-deferred, only when the new
   condition (a) differs from the one just satisfied and (b) is itself
   evaluable as currently unmet.
@@ -111,6 +110,12 @@ order, not a cycle.
 - **Allowing a re-defer that re-cites the same, now-satisfied
   condition.** Disallowed: that would make `deferred` a permanent
   escape rather than a bounded one.
+- **A `Confirms: D` discharge verdict**, closing a due deferral by
+  judging `D` still correct. Disallowed: a deferral is only ever
+  recorded because reconciling `D` was judged necessary but postponed,
+  so by the time it comes due `D` is known to be out of alignment —
+  "examined and still correct" is not an outcome available on
+  discharge, only reconciling now or re-deferring.
 
 ## Consequences
 
