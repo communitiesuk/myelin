@@ -41,12 +41,16 @@ repository requirements myelin carries. JSON, to match
 
 Encode three groups (see ADR 0013 for the tiers):
 
-- **`required`** — `git` present, Bash present, and a route to the remote
-  where a remote exists (a remote is configured and a trunk resolves:
-  local `dev`/`develop` or `refs/remotes/origin/HEAD`). Each item carries
-  an `id`, a `label`, the human-facing prose used by the README render
-  (Step 5), and the exact fix command (for the remote route:
-  `git remote set-head origin -a`).
+- **`required`** — `git` present, Bash present, and, where a remote
+  exists, two remote-route items: the host CLI present (`command -v gh`;
+  generally the host CLI for the remote's host) and a resolvable trunk
+  (local `dev`/`develop` or `refs/remotes/origin/HEAD`). Each item
+  carries an `id`, a `label`, and the human-facing prose used by the
+  README render (Step 5). The host-CLI item's prose says the PR path
+  needs it — without it the workflow pushes the branch and stops — and
+  its fix is install guidance (install the host CLI, e.g.
+  https://cli.github.com), not a shell command to run. The trunk item's
+  fix command is `git remote set-head origin -a`.
 - **`desirable`** — the merge-settings opinion: host configured for merge
   commits only (no squash, no rebase, no fast-forward). Fix command:
   the `gh api -X PATCH` that disables the squash and rebase buttons.
@@ -79,8 +83,9 @@ Behaviour:
 - Resolves `manifest.json` relative to its own directory, so it runs
   correctly when invoked as `${TESSL_PLUGIN_DIR}/skills/setup/scripts/check`.
 - Reads the manifest and, for each REQUIRED and DESIRABLE item, emits one
-  line: pass/fail plus, on failure, the exact fix command from the
-  manifest. Prints the `reported` item's opt-in line verbatim; never
+  line: pass/fail plus, on failure, the manifest's fix (a command where
+  the item carries one, otherwise its install guidance). Prints the
+  `reported` item's opt-in line verbatim; never
   tests or sets it.
 - Default mode: full per-item report (this is what the `doctor` skill
   runs).
@@ -91,8 +96,10 @@ Behaviour:
 
 Tests (under `skills/setup/scripts/tests/`, each building fixtures in a
 fresh temp repo): a healthy repo passes silently in `--hook` mode; a repo
-with no resolvable trunk fails the remote-route REQUIRED check and prints
-`git remote set-head origin -a`; a repo whose host allows squash/rebase
+with no resolvable trunk fails the trunk REQUIRED check and prints
+`git remote set-head origin -a`; a repo with a remote but no `gh` on
+`PATH` fails the host-CLI REQUIRED check and prints its install guidance;
+a repo whose host allows squash/rebase
 fails the DESIRABLE check and prints its fix command; the reported opt-in
 line is printed verbatim and never acted on; `--hook` mode exits 0 in
 every case.
@@ -120,8 +127,8 @@ directory:
 
 (Confirm the key — `hooks` for cross-agent vs `nativeHooks` for
 Claude-Code-only — against the tessl hooks reference in ADR 0013's
-References before committing; use the cross-agent `hooks` form so every
-host agent gets the tripwire.) No executable logic is added here — the
+References before committing; use the cross-agent `hooks` form.) No
+executable logic is added here — the
 quiet/advisory/exit-0 behaviour lives in the Step 2 script — so this step
 is configuration only.
 
@@ -181,7 +188,8 @@ frontmatter and stays serviced by the release-time README read (ADR 0013,
 ADR 0005 gate 4). The script emits only what the manifest owns.
 
 Tests: the rendered output contains a bullet per manifest REQUIRED and
-DESIRABLE item with its fix command, and the exact opt-in line
+DESIRABLE item with its fix command where the item carries one (and the
+host-CLI bullet with its install guidance), and the exact opt-in line
 `Bash(gh pr merge *)`; it emits no model-floor bullet.
 
 Commit: `Add the README requirements render script`.
