@@ -3,5 +3,18 @@
   "version": "0.4.0",
   "description": "Thinking tools and engineering conventions to accelerate project development",
   "private": true,
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": ["${TESSL_PLUGIN_DIR}/skills/setup/scripts/check", "--hook"]
+          }
+        ]
+      }
+    ]
+  }
 }
