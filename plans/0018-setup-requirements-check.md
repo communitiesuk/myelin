@@ -1,6 +1,6 @@
 ---
 title: Declare and verify myelin's repository requirements
-status: draft
+status: in-progress
 adr: 0013
 date: 2026-10-29
 deferred_reason: null
