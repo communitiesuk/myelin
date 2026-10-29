@@ -39,30 +39,32 @@ query; it never re-traverses git itself.
 ### Each durable, in-tree downstream artefact gets a verdict
 
 Verdicts apply only to durable artefacts present in the tree: skills,
-code, ADRs, and plans still in the tree (deferred or in progress). For
+code, ADRs, and plans still in the tree (Deferred or in progress). For
 each of these on the `downstream:` list, the revision records on the
 same branch exactly one verdict:
 
-- **revised** — edited to match the changed decision; the touching
+- **Reconciled** — edited to match the changed decision; the touching
   commit corroborates, but the verdict trailer (below) is what the
   gate reads;
-- **deferred** — plans only, and only when reconciliation is blocked
+- **Deferred** — plans only, and only when reconciliation is blocked
   on a durable, in-tree artefact's own future change — at minimum an
   accepted ADR; a seed or a plan is too ephemeral to anchor on (ADR
-  0004's escape, narrowed further here). The condition names that
-  artefact's current path, the **origin**, plus a description,
-  load-bearing only when the origin's path alone yields more than one
-  candidate event. It is due, with zero judgement, once a commit that
-  lands on trunk **after this deferral** carries `Revises: <origin>`
-  (the origin is itself revised — anchored on the origin whose
-  revision drives the change, never on the artefact that merely
-  changes as a result) or `Derives-From: <origin>` (the origin
-  produces a new downstream). The match may be asserted by the
-  landing agent, not necessarily a human. Never
-  open-ended — if nothing specific blocks it, revise now or record
-  *checked and still correct*. Discharging a due deferral is ADR
-  0012's;
-- **checked and still correct** — examined and found unaffected,
+  0004's escape, narrowed further here). The **origin** is that
+  artefact, named directly — never its upstream. The condition is the
+  origin's path plus a description, load-bearing only when the path
+  alone yields more than one candidate event; the description
+  disambiguates — e.g. naming the upstream the origin is reconciled
+  *to*. It is due, with zero judgement, once a commit landing on
+  trunk **after this deferral** carries a keyed trailer targeting the
+  origin: `Reconciles: <origin>` (until `<Y>` is reconciled to `<U>`,
+  the description naming `<U>`, matched by a co-landing
+  `Revises: <U>` on the same branch), `Revises: <origin>` (the origin
+  is an ADR revised directly), or `Derives-From: <origin>` (the
+  origin produces a new downstream). The match may be asserted by the
+  landing agent, not necessarily a human. Never open-ended — if
+  nothing specific blocks it, reconcile now or record *Confirmed*.
+  Discharging a due deferral is ADR 0012's;
+- **Confirmed** — examined and found unaffected,
   recorded explicitly.
 
 A **completed plan has left the tree** (ADR 0004: a plan leaves when
@@ -74,9 +76,9 @@ requirement is thus scoped to durable, in-tree artefacts; removed
 artefacts need no verdict. Filtering the list to what is in the tree
 is the plan's.
 
-This generalises ADR 0004's "revised or deferred" from ADR → plan to
-the whole in-tree graph, and adds the explicit *checked and still
-correct* verdict so an unaffected artefact is **recorded as checked**,
+This generalises ADR 0004's "Reconciled or Deferred" from ADR → plan to
+the whole in-tree graph, and adds the explicit *Confirmed*
+verdict so an unaffected artefact is **recorded as checked**,
 not silently skipped — the hand-found ripple seed #92 names.
 
 Verdicts are recorded as **trailers**, for the reasons ADR 0004
@@ -89,8 +91,8 @@ carries). They are **cross-edges**: `Revises`/`Clarifies` are the
 self-edges (an ADR to itself), whereas a verdict links the revised ADR
 to a *different* durable downstream (the `Derives-From`/`Completes`
 family). The trailer **names that downstream in its value**, read from
-the revision's side — "the revision revised / checked / deferred
-`<D>`" — because the *checked and still correct* verdict has no commit
+the revision's side — "the revision Reconciled / Confirmed / Deferred
+`<D>`" — because the *Confirmed* verdict has no commit
 touching the downstream to carry it, and the gate must know which
 downstream a verdict covers; being on the branch that carries
 `Revises` scopes it to this revision. The keys are defined in ADR
@@ -150,8 +152,8 @@ scope (discovery 0004 territory).
   0010 already decided the transitive downstream query is the history
   skill's, and ADR 0004 rejected building a second graph. The process
   consumes `history downstream`.
-- **Keep ADR 0004's "revised or deferred" with no *checked and still
-  correct* verdict.** Rejected: an unaffected artefact is then skipped
+- **Keep ADR 0004's "Reconciled or Deferred" with no *Confirmed*
+  verdict.** Rejected: an unaffected artefact is then skipped
   with no record, which is the silent gap seed #92 names. The explicit
   verdict is what makes "checked" auditable.
 - **Record verdicts in frontmatter or prose.** Rejected: neither is
@@ -161,12 +163,15 @@ scope (discovery 0004 territory).
 - **Put eval scenarios in the graph now.** Rejected and deferred to
   #119: evals carry no `Derives-From`, and their authoring workflows
   have no revision lifecycle to hang a verdict on.
-- **Anchoring a deferral's condition on the blocking artefact itself**
-  ("until Y is revised") instead of on the upstream whose revision
-  drives Y's change. Rejected: an unrelated revision of Y would then
-  false-trigger it. External, non-repo conditions (dates, "when
-  someone gets round to it") are excluded for the same reason:
-  unevaluable against trunk.
+- **Anchoring a deferral's condition on the driving upstream `U`**
+  rather than on the awaited artefact itself. Rejected: the deferral
+  must point at the artefact whose own change discharges it; `U` is
+  the disambiguating description, not the anchor. The false-trigger
+  worry — an unrelated revision wrongly satisfying the condition — is
+  handled by the description and the specific reconciliation event,
+  not by moving the anchor. External, non-repo conditions (dates,
+  "when someone gets round to it") are excluded as unevaluable
+  against trunk.
 - **Pre-specifying the to-be-created artefact's path in the origin.**
   Rejected: history-based artefact numbering allocates the new path
   only at creation, so the origin cannot name it up front; the
@@ -181,24 +186,25 @@ scope (discovery 0004 territory).
 ## Consequences
 
 - This ADR depends on revising accepted ADR 0004, with three effects:
-  (i) its ADR → plan "revised or deferred" obligation generalises to
+  (i) its ADR → plan "Reconciled or Deferred" obligation generalises to
   the ADR → plan → skill verdict set; (ii) verdict trailer edge types
   join its exhaustive table; and (iii) its currently open-ended
-  `deferred` escape is narrowed to require a named blocking condition.
+  `Deferred` escape is narrowed to require a named blocking condition.
 - `land` gains a check that consumes the history skill's `downstream`
   query, coupling the gate to that script; a repository without it
   cannot run the gate.
-- A *checked and still correct* verdict is a claim nothing re-derives.
+- A *Confirmed* verdict is a claim nothing re-derives.
   The gate enforces that a verdict exists, not that it is right; the
   ADR 0008 reviewer's fidelity check is the complementary judgement.
 - This ADR keeps the reviser-asserts-verdicts model. We may eventually
   separate the provision of verdicts from the revision itself — a
   separate verdict-giver (seed #124, the role-concentration theme of
   #119 and ADR 0008).
-- Narrowing the `deferred` condition to `origin-path + description`
+- Narrowing the `Deferred` condition to `origin-path + description`
   makes ADR 0012's due-deferral check mechanical: `land` tests
-  `Revises: <origin>` or `Derives-From: <origin>` against trunk, no
-  judgement required to decide whether a deferral is due.
+  `Reconciles: <origin>`, `Revises: <origin>`, or
+  `Derives-From: <origin>` against trunk, no judgement required to
+  decide whether a deferral is due.
 - Evals stay outside the revision graph until #119; a revision that
   should change an eval leaves no verdict and no gate catches it.
 - "Downstream" here is the *production graph* (`Derives-From`: ADR →
@@ -223,7 +229,7 @@ scope (discovery 0004 territory).
 ## References
 
 - `docs/adr/0004-where-does-history-live.md` — the ADR → plan
-  "revised or deferred" obligation this ADR generalises to the
+  "Reconciled or Deferred" obligation this ADR generalises to the
   in-tree graph; the exhaustive trailer table that verdict trailers
   extend, by a revision of 0004; the tree-is-current rule that rules
   out a second index.
