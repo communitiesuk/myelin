@@ -89,7 +89,7 @@ larger ADR count is an empirical question this v1 does not answer.
 ## Alternatives considered
 
 - **A conversational skill, judged turn by turn.** Rejected on
-  prototype evidence: both queries are deterministic traversals over
+  prototype evidence: the queries are deterministic traversals over
   trailers and in-tree sections, and only topic-relevance needs a
   model. Building the skill as a script with one bounded model step
   keeps the judgement to that single narrow place, and gives eval
@@ -143,7 +143,7 @@ larger ADR count is an empirical question this v1 does not answer.
 - Left open and deferred: tuning the prune's recall at a larger ADR
   count, human open-ended queries, detecting "open", and the "one
   skill or two" question discovery note 0001 raised. Only the
-  script-level shape (one script, two modes) is decided here; whether
+  script-level shape (one script, three modes) is decided here; whether
   a human-facing skill wraps the queries separately remains deferred.
 - The topic-input contract (path, keyword, or title, pruned the same
   way) is settled by this ADR; the eval fixture and the skill's
