@@ -38,10 +38,17 @@ query in ADR 0010) are on `dev`.
 - **Branch-local trigger pool.** Three `%(trailers:...,valueonly)` reads over
   `trunk..HEAD` — `Reconciles`, `Revises`, `Derives-From` — no token-stripping
   (unlike the `Defers`/verdict reads, these trailers carry only a path).
-- **Trigger match.** A deferral is this branch's to discharge when its
-  `origin` line exactly matches (`grep -qxF`) a value in the trigger pool —
-  checked for every record the query returns, due or not against trunk,
-  since the branch's own trigger is not yet on trunk.
+- **Trigger match.** A deferral is this branch's to discharge only when
+  both hold: its `origin` line exactly matches (`grep -qxF`) a value in
+  the trigger pool, and the query reports it `due: false` against trunk —
+  this branch's own trigger is not yet on trunk, so landing it is what
+  first satisfies the condition. A pool match already `due: true`
+  (satisfied by something other than this branch) gets visibility only,
+  never the hard-stop: ADR 0012 rejects a global hard-stop.
+- **No in-tree filter.** Unlike the ADR 0011 gate's `git cat-file -e`
+  path filter, the discharge-due check applies none: outstanding-ness
+  already scopes the set, a deferred artefact is not a completed one,
+  and an escape verdict needs no file to exist.
 - **Escape check.** For each triggered deferral, its `D` must appear in the
   (now-unconditional) verdict pool, else it is missing.
 - **Refusal.** `die 2`, naming every triggered `D` lacking an escape:
@@ -57,8 +64,6 @@ query in ADR 0010) are on `dev`.
 ## Steps
 
 1. **Document the discharge-due check.**
-
-   > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
    Edit `skills/git-workflow/scripts/git-workflow`: extend the top-of-file
    `land` summary and the `cmd_land` body comment with a new `2b` entry,
@@ -89,7 +94,17 @@ query in ADR 0010) are on `dev`.
    8. no regression: a `Revises` branch missing an ADR 0011 verdict for its
       own in-tree downstream still refuses (exit 2) naming that downstream,
       on a branch that triggers no 0012 deferral — proving the hoist in
-      Mechanism 2 left the 0011 gate's own behaviour unchanged.
+      Mechanism 2 left the 0011 gate's own behaviour unchanged;
+   9. not outstanding: a branch whose `trunk..HEAD` carries a trigger for a
+      deferral's origin, but that deferral was already discharged by an
+      earlier `Reconciles:`/`Confirms: D` and so is not outstanding — the
+      branch still lands (exit 0), proving the check keys off the
+      outstanding-deferrals query, not off every `Defers:` ever recorded;
+   10. already-due: an outstanding deferral reported `due: true` against
+      trunk, and a new branch whose `trunk..HEAD` re-carries a trigger for
+      that deferral's origin but is unrelated to discharging it —
+      visibility only: printed under `due-deferrals:`, branch still lands
+      (exit 0), not blocked.
 
    Run `bash skills/git-workflow/scripts/tests/run.sh skills/git-workflow/scripts/tests/discharge.sh`
    and confirm every new test fails (red): `cmd_land` does not implement the
@@ -108,8 +123,10 @@ query in ADR 0010) are on `dev`.
      block, now reading the hoisted verdict pool rather than recomputing it;
    - after that block, call `history outstanding-deferrals`, print the
      `due-deferrals:` visibility section, compute the branch-local trigger
-     pool, match it against every record's `origin`, check the hoisted
-     verdict pool for each triggered `D`, and `die 2` naming any missing.
+     pool, match it against every record whose `origin` is in the pool
+     and whose `due` is `false` (a pool match already `due: true` stays
+     visibility-only), check the hoisted verdict pool for each triggered
+     `D`, and `die 2` naming any missing.
 
    Run `bash skills/git-workflow/scripts/tests/run.sh` (the whole
    `git-workflow` suite, including `land.sh` and the new `discharge.sh`) and
@@ -137,7 +154,8 @@ query in ADR 0010) are on `dev`.
   2. on a fresh branch off `dev`, commit `Revises: docs/adr/0001-one.md` with
      no escape verdict for `plans/0001-x.md`; `land` refuses, exit 2, naming
      `plans/0001-x.md`.
-  3. add `Confirms: plans/0001-x.md` to the same branch; `land` now succeeds.
+  3. add `Confirms: plans/0001-x.md` to the same branch; `land` now passes
+     the discharge-due gate (reaches the decision/propose path).
   4. on a third, unrelated branch, `land` prints `due-deferrals:` for any
      still-outstanding due deferral but does not block.
 
