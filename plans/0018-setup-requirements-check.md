@@ -228,7 +228,7 @@ fixtures git-init the cwd):
    `SessionStart` hook runs the check and is silent.
 3. **Hook, broken.** In a scratch repo with no resolvable trunk and a
    host allowing squash/rebase, start a session: the hook surfaces the
-   REQUIRED remote-route failure prominently with
+   trunk REQUIRED failure prominently with
    `git remote set-head origin -a`, nudges on the DESIRABLE
    merge-settings failure with its `gh api -X PATCH` fix, reports the
    `gh pr merge` opt-in line, and the session still starts (exit 0).
