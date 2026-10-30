@@ -24,7 +24,9 @@
 #           since the fork point carries Derives-From or a Clarifies edit
 #           to an existing ADR; hand a decision (a new file under docs/adr/,
 #           or a Revises trailer) to a human via the host's pull request;
-#           otherwise merge with two parents,
+#           print every outstanding deferral now due, and refuse when this
+#           branch's own trigger is what makes one due unless it also
+#           carries a discharge verdict; otherwise merge with two parents,
 #           locally where there is no remote and through hosts/<name>
 #           otherwise, bringing the local trunk current after a host merge
 #           or noting why not; then clean up, leaving the primary checkout
@@ -295,6 +297,40 @@ cmd_begin() {
 #      module, then exit 3 with a report naming the pull request: a human
 #      merges it. With no remote a decision cannot be proposed: exit 3,
 #      branch left in place.
+#   2b. The discharge-due check (ADR 0012), run immediately after 2a and
+#      still before anything is pushed. The history-script-executable
+#      hard stop and the Reconciles/Confirms/Defers verdict pool computed
+#      in 2a are hoisted out of the Revises guard and run unconditionally
+#      on every land, since this check needs them whether or not the
+#      branch revises an ADR; the 0011 downstream-walk itself stays
+#      guarded by Revises, now reading the hoisted pool rather than
+#      recomputing it. Then: consume history outstanding-deferrals once,
+#      and echo every record it reports due: true under a due-deferrals:
+#      header (D:/origin:/condition: per record) — advisory, never
+#      changes the exit code. Separately, read this branch's own
+#      trunk..HEAD trigger pool (Reconciles/Revises/Derives-From
+#      valueonly; unlike the verdict reads, no token-stripping, since
+#      these trailers carry only a path). A record is this branch's to
+#      discharge only when its origin matches (grep -qxF) a value in that
+#      pool AND the query reports it due: false — a pool match already
+#      due: true (satisfied by something other than this branch) gets
+#      visibility only, never the hard-stop: ADR 0012 rejects a global
+#      hard-stop. No in-tree filter runs here (unlike 2a's
+#      git cat-file -e): outstanding-ness already scopes the set, a
+#      deferred artefact is not a completed one, and an escape verdict
+#      needs no file to exist. For each triggered record (D, origin O1),
+#      discharge needs one of: Reconciles: D or Confirms: D present in
+#      the hoisted verdict pool (presence only, same convention as 2a);
+#      or a fresh Defers: D O2 <condition> whose O2 differs from O1
+#      (string compare) and is currently unmet — no commit anywhere on
+#      trunk (a full scan, not trunk..HEAD) carries a
+#      Reconciles/Revises/Derives-From trailer valued O2, and O2 is not
+#      itself in this branch's own trigger pool. Refuse (exit 2) naming
+#      every triggered D lacking a valid escape: a D with no verdict at
+#      all under "this branch triggers a due deferral with no discharge
+#      verdict for:", and a D whose only verdict is a Defers: failing
+#      either check under "this branch triggers a due deferral with an
+#      invalid re-defer (condition unchanged or already met) for:".
 #   3. Otherwise, by host. none: from the primary checkout with the trunk
 #      checked out (switching to it first when the work was in place),
 #      git merge --no-ff. A host module: push, propose, then merge, both
@@ -442,18 +478,31 @@ cmd_land() {
   # must not trigger it, so the gate is guarded by Revises being present.
   local revises
   revises="$(git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD" | sed '/^$/d')"
+
+  # Hoisted unconditional prerequisites (ADR 0012 mechanism 2): the
+  # discharge-due check below needs both the history script and the
+  # verdict pool whether or not this branch revises an ADR, so they run
+  # here, outside the revises guard. The ADR 0011 downstream-walk itself
+  # stays guarded below, reading this same pool rather than recomputing it.
+  local hist; hist="$(script_dir)/../../history/scripts/history"
+  [ -x "$hist" ] || die 2 "the revision gate needs the history skill's script; it is not an executable file at $hist"
+  # The verdict set: Reconciles/Confirms/Defers values on trunk..HEAD. For
+  # Defers, the leading whitespace-delimited token (the downstream path)
+  # only; the remainder is the opaque blocking condition. reconciles_confirms
+  # is the Reconciles/Confirms-only subset the discharge-due check needs,
+  # since (unlike this gate) it never accepts a Defers escape by presence
+  # alone.
+  local reconciles_confirms verdicts
+  reconciles_confirms="$(
+    git log --format='%(trailers:key=Reconciles,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+    git log --format='%(trailers:key=Confirms,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+  )"
+  verdicts="$(
+    printf '%s\n' "$reconciles_confirms"
+    git log --format='%(trailers:key=Defers,valueonly)' "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
+  )"
+
   if [ -n "$revises" ]; then
-    local hist; hist="$(script_dir)/../../history/scripts/history"
-    [ -x "$hist" ] || die 2 "the revision gate needs the history skill's script; it is not an executable file at $hist"
-    # The verdict set: Reconciles/Confirms/Defers values on trunk..HEAD. For
-    # Defers, the leading whitespace-delimited token (the downstream path)
-    # only; the remainder is the opaque blocking condition.
-    local verdicts
-    verdicts="$(
-      git log --format='%(trailers:key=Reconciles,valueonly)' "$trunk..HEAD" | sed '/^$/d'
-      git log --format='%(trailers:key=Confirms,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
-      git log --format='%(trailers:key=Defers,valueonly)'     "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
-    )"
     local missing="" value d
     while IFS= read -r value; do
       [ -n "$value" ] || continue
@@ -470,6 +519,98 @@ cmd_land() {
     if [ -n "$missing" ]; then
       die 2 "$(printf 'this revision does not account for every durable downstream; no verdict (Reconciles/Confirms/Defers) names:\n%s' "$(printf '%s' "$missing" | sort -u)")"
     fi
+  fi
+
+  # The discharge-due check (ADR 0012). Consumes history
+  # outstanding-deferrals once; its output backs both the visibility list
+  # and the hard-stop. Advisory visibility first, never changing the exit
+  # code; the hard-stop, below, can.
+  local outstanding
+  outstanding="$(bash "$hist" outstanding-deferrals)"
+  printf 'due-deferrals:\n'
+  printf '%s\n' "$outstanding" | awk '
+    /^D: / { d=substr($0,4); next }
+    /^origin: / { o=substr($0,9); next }
+    /^condition: / { c=substr($0,12); next }
+    /^due: / {
+      due=substr($0,6)
+      if (due == "true") printf "D: %s\norigin: %s\ncondition: %s\n\n", d, o, c
+      next
+    }
+  '
+
+  # The branch-local trigger pool: Reconciles/Revises/Derives-From
+  # valueonly over trunk..HEAD, no token-stripping (unlike the verdict
+  # reads above, these trailers carry only a path).
+  local trigger_pool
+  trigger_pool="$(
+    git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+    git log --format='%(trailers:key=Revises,valueonly)'      "$trunk..HEAD" | sed '/^$/d'
+    git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+  )"
+  # The same three trailer kinds, scanned over the whole of trunk's own
+  # history (not trunk..HEAD): what a re-defer's new origin must be absent
+  # from to count as currently unmet.
+  local trunk_pool
+  trunk_pool="$(
+    git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk" | sed '/^$/d'
+    git log --format='%(trailers:key=Revises,valueonly)'      "$trunk" | sed '/^$/d'
+    git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk" | sed '/^$/d'
+  )"
+
+  # D/origin/due triples for every outstanding deferral, tab-separated.
+  local records
+  records="$(printf '%s\n' "$outstanding" | awk '
+    BEGIN { d=""; o=""; due="" }
+    /^D: / { if (d != "") print d "\t" o "\t" due; d=substr($0,4); o=""; due=""; next }
+    /^origin: / { o=substr($0,9); next }
+    /^due: / { due=substr($0,6); next }
+    END { if (d != "") print d "\t" o "\t" due }
+  ')"
+
+  local no_verdict="" bad_redefer="" d o due
+  while IFS=$'\t' read -r d o due; do
+    [ -n "$d" ] || continue
+    printf '%s\n' "$trigger_pool" | grep -qxF "$o" || continue   # not this branch's to discharge
+    [ "$due" = false ] || continue                               # already due: visibility only
+    printf '%s\n' "$reconciles_confirms" | grep -qxF "$d" && continue   # Reconciles: D or Confirms: D, presence only
+    # The leading token (D) of a Defers trailer, matched against the
+    # verdict pool's convention, then its full value re-read so O2 — the
+    # second whitespace token — can be parsed.
+    local defer_full=""
+    defer_full="$(
+      git log --format='%(trailers:key=Defers,valueonly)' "$trunk..HEAD" | sed '/^$/d' | awk -v want="$d" '
+        { line=$0; if (match(line, /^[^ \t]+/) && substr(line, RSTART, RLENGTH) == want) { print line; exit } }
+      '
+    )"
+    if [ -n "$defer_full" ]; then
+      local o2=""
+      o2="$(printf '%s\n' "$defer_full" | awk '
+        { line=$0; sub(/^[^ \t]+[ \t]+/, "", line); if (match(line, /^[^ \t]+/)) print substr(line, RSTART, RLENGTH) }
+      ')"
+      if [ -n "$o2" ] && [ "$o2" != "$o" ]; then
+        local met=0
+        printf '%s\n' "$trunk_pool"   | grep -qxF "$o2" && met=1
+        printf '%s\n' "$trigger_pool" | grep -qxF "$o2" && met=1
+        [ "$met" -eq 0 ] && continue   # a fresh, differing, currently-unmet re-defer: valid
+      fi
+      bad_redefer="$bad_redefer$d
+"
+    else
+      no_verdict="$no_verdict$d
+"
+    fi
+  done <<< "$records"
+
+  if [ -n "$no_verdict" ] || [ -n "$bad_redefer" ]; then
+    local msg=""
+    [ -n "$no_verdict" ] && msg="${msg}this branch triggers a due deferral with no discharge verdict for:
+$(printf '%s' "$no_verdict" | sort -u)
+"
+    [ -n "$bad_redefer" ] && msg="${msg}this branch triggers a due deferral with an invalid re-defer (condition unchanged or already met) for:
+$(printf '%s' "$bad_redefer" | sort -u)
+"
+    die 2 "$msg"
   fi
 
   local primary here inplace=0 wt=""
