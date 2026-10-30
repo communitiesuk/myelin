@@ -550,6 +550,58 @@ cmd_land() {
   )"
 
   if [ -n "$revises" ]; then
+    # The blast-radius auto-defer (ADR 0011, land doc-comment 2a), run
+    # strictly before the verdict-completeness gate below (2b). Reuses
+    # the same sort -u Revises set and the same git cat-file -e in-tree
+    # filter 2b uses below, so it walks the identical blast radius, not a
+    # second computation of it.
+    local autodefer_pool outstanding_autodefer value d slated="" defer_trailers=""
+    autodefer_pool="$(
+      git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Revises,valueonly)'      "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+    )"
+    # D<TAB>origin pairs for every outstanding deferral, due or not: 2a's
+    # exclusion cares only whether the origin is in this branch's pool.
+    outstanding_autodefer="$(bash "$hist" outstanding-deferrals | awk '
+      /^D: / { d=substr($0,4); next }
+      /^origin: / { print d "\t" substr($0,9) }
+    ')"
+    while IFS= read -r value; do
+      [ -n "$value" ] || continue
+      while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        git cat-file -e "HEAD:$d" 2>/dev/null || continue           # keep durable in-tree downstreams only
+        printf '%s\n' "$verdicts" | grep -qxF "$d" && continue      # an explicit verdict: never overwritten
+        printf '%s\n' "$slated"   | grep -qxF "$d" && continue      # already slated against an earlier value this pass
+        local od_origin=""
+        od_origin="$(printf '%s\n' "$outstanding_autodefer" | awk -F'\t' -v want="$d" '$1 == want { print $2; exit }')"
+        if [ -n "$od_origin" ] && printf '%s\n' "$autodefer_pool" | grep -qxF "$od_origin"; then
+          continue   # already owed a discharge by this branch's own trigger pool: 2c and the reviser own it
+        fi
+        slated="$slated$d
+"
+        defer_trailers="${defer_trailers}Defers: $d $value until a plan derives from it
+"
+      done < <(bash "$hist" downstream "$value" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f{print}')
+    done < <(printf '%s\n' "$revises" | sort -u)
+    if [ -n "$defer_trailers" ]; then
+      local covers
+      covers="$(printf '%s\n' "$revises" | sort -u | paste -sd, - | sed 's/,/, /g')"
+      git commit -q --allow-empty --cleanup=whitespace -m "$(printf 'Auto-defer the untouched blast radius\n\nCovers the untouched remainder of: %s\n\n%s' "$covers" "$defer_trailers")" \
+        || die 1 "could not make the auto-defer commit"
+      # Re-read exactly as the hoisted computation above does, so both 2b
+      # and 2c see the new trailers through the one existing code path.
+      reconciles_confirms="$(
+        git log --format='%(trailers:key=Reconciles,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+        git log --format='%(trailers:key=Confirms,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+      )"
+      verdicts="$(
+        printf '%s\n' "$reconciles_confirms"
+        git log --format='%(trailers:key=Defers,valueonly)' "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
+      )"
+    fi
+
     local missing="" value d
     while IFS= read -r value; do
       [ -n "$value" ] || continue

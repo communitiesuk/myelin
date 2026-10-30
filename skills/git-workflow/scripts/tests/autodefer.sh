@@ -124,12 +124,18 @@ t "6. the gate passes on auto-defer alone: zero explicit verdicts still exits 3,
   case "$out" in *exit=2*) fail "the verdict-completeness gate still refused with auto-defer having run: $out" ;; esac
 
 t "7. the remainder excludes a downstream this branch already owes a discharge for"
+  # plans/9002-other.md is excluded from auto-defer (its outstanding
+  # deferral's origin, docs/adr/0001-one.md, is in this branch's own
+  # trigger pool via Revises), so it reaches 2b with no verdict at all
+  # and 2b's own backstop refusal is what names it — 2c, which would
+  # reject a fresh Defers: there as an invalid re-defer, never runs.
   base_defer "$R/t7" docs/adr/0001-one.md
   wd="$(two_downstream_revision "$R/t7")"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=2"
   assert_contains "$out" "plans/9002-other.md"
-  assert_contains "$out" "no discharge verdict"
+  assert_contains "$out" "does not account for every durable downstream"
+  case "$out" in *plans/9001-downstream.md*) fail "9001 was auto-deferred and must not be named by the gate: $out" ;; esac
   auto_subjects="$(cd "$R/t7" && git log --format=%s dev..adr-0001-one | grep -F 'Auto-defer the untouched blast radius' || true)"
   if [ -n "$auto_subjects" ]; then
     defers="$(trailer_values "$R/t7" dev..adr-0001-one Defers | awk '{print $1}')"
