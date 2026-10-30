@@ -48,8 +48,10 @@ firing and are updated, not left unchanged — Step 3 names them.
   revised ADRs' downstream sets is cited against the first `value` in
   sort order once, never duplicated), or when `d` is the target of an
   outstanding deferral (`history outstanding-deferrals`) whose origin is
-  this `value` or any other value in this branch's `Revises` set. That
-  `d` is already owed a discharge by this branch's own `Revises` — the
+  in this branch's full trigger pool — the same `Reconciles`/`Revises`/
+  `Derives-From` values over `trunk..HEAD` that `2c`'s discharge-due
+  check computes, not only this branch's `Revises` values. That `d` is
+  already owed a discharge by this branch's own trigger pool — the
   discharge-due check (`2c`) and the reviser own it, not a fresh
   auto-defer: an auto-defer `Defers:` there would re-cite the same
   origin, which `2c` rejects as an invalid re-defer (condition
@@ -76,9 +78,11 @@ firing and are updated, not left unchanged — Step 3 names them.
   commit carries only `Defers:` trailers, never
   `Reconciles`/`Revises`/`Derives-From`, so `2c`'s branch-local trigger
   pool is unaffected by the commit itself. The Remainder exclusion above
-  is the one place the two checks touch: a `d` this branch's own
-  `Revises` makes due for discharge is excluded from auto-defer rather
-  than handed to `2c` as a re-defer it would reject. Every other
+  is the one place the two checks touch, and it covers this branch's
+  full trigger pool — `Reconciles`/`Revises`/`Derives-From`, not only
+  `Revises` — so the two checks never collide: a `d` this branch's own
+  trigger pool makes due for discharge is excluded from auto-defer
+  rather than handed to `2c` as a re-defer it would reject. Every other
   auto-deferred item becomes a new outstanding deferral, picked up
   later, unmodified, by `history outstanding-deferrals` and `2c` when
   something eventually reconciles its origin.
@@ -106,10 +110,12 @@ firing and are updated, not left unchanged — Step 3 names them.
    exclusion, recording, condition text, re-read, limited interaction
    with `2c`); renumber the existing `2a` (verdict-completeness gate) to
    `2b` and the existing `2b` (discharge-due check) to `2c`; and update
-   the block's three in-prose cross-references to the verdict gate by
-   its old number — "run immediately after 2a" and "computed in 2a"
-   (~line 300/303) and "unlike 2a's `git cat-file -e`" (~line 323) — to
-   "2b". Reword the renumbered `2b` entry so its exit-2 refusal reads as
+   every in-prose "2a" cross-reference to the verdict gate within the
+   discharge-due entry (now `2c`) — e.g. "run immediately after 2a",
+   "computed in 2a", "unlike 2a's `git cat-file -e`", and "same
+   convention as 2a" — to "2b", so none is missed; in particular "same
+   convention as 2a" must become "2b", or it would wrongly point at the
+   new auto-defer `2a`. Reword the renumbered `2b` entry so its exit-2 refusal reads as
    a backstop that rarely fires, since `2a` now fills every untouched
    in-tree downstream's verdict first, rather than as the primary
    action. Prose only, no logic change. Flip this plan's frontmatter
@@ -177,7 +183,11 @@ firing and are updated, not left unchanged — Step 3 names them.
       made at all, names only `plans/9001-downstream.md`); discharging
       `plans/9002-other.md` is left to the discharge-due check and the
       reviser, who must supply `Reconciles:`/`Confirms:`/a valid
-      re-`Defers:` or `land` refuses;
+      re-`Defers:` or `land` refuses. This exercises the `Revises`-origin
+      case of the exclusion; the same exclusion applies identically when
+      the outstanding deferral's origin is instead a `Reconciles:` or
+      `Derives-From:` value in the branch's trigger pool, since the
+      exclusion is keyed on the whole pool, not just `Revises`;
    8. idempotency: running `land` a second time on the same `Revises`
       branch (test 1's or test 5's fixture, already stopped at exit 3)
       makes no second commit titled `Auto-defer the untouched blast
@@ -208,7 +218,9 @@ firing and are updated, not left unchanged — Step 3 names them.
    `history downstream` call and `git cat-file -e` filter the gate already
    uses below it), skip anything already in `$verdicts`, already slated
    this pass, or already the target of an outstanding deferral (consume
-   `history outstanding-deferrals`) whose origin is one of this branch's
+   `history outstanding-deferrals`) whose origin is in this branch's full
+   trigger pool — the same `Reconciles`/`Revises`/`Derives-From` values
+   over `trunk..HEAD` that `2c` computes, not only this branch's
    `Revises` values — that `d` is owed a discharge the discharge-due
    check (`2c`) and the reviser own, not a fresh auto-`Defers:`; collect
    one `Defers:` trailer per remaining `d`, and when any were collected
