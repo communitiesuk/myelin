@@ -279,28 +279,75 @@ cmd_begin() {
 #      upstream (ADR 0004). Any Derives-From or Clarifies that is present
 #      must be repository-relative (not starting with / or ./), or landing
 #      refuses (exit 2).
-#   2a. The verdict-completeness gate (ADR 0011), run before anything is
-#      pushed so an incomplete revision never reaches the host. When a
-#      Revises trailer is present on trunk..HEAD (a revision; new-ADR
-#      decisions do not trigger it), consume history downstream
-#      <revised-ADR> for each distinct Revises value, filter its
-#      downstream: section to paths still in HEAD's tree (git cat-file -e),
-#      and read the Reconciles/Confirms/Defers verdict trailers on
-#      trunk..HEAD (for Defers, the leading path token only). Refuse
-#      (exit 2) naming each in-tree downstream carrying no verdict. The
-#      gate consumes the sibling history skill's script
-#      (../../history/scripts/history from script_dir) and refuses (exit 2)
-#      naming the resolved path when it is not an executable file — a hard
-#      stop, so an incomplete revision cannot slip through on a missing
-#      dependency. Presence is checked, never the truth of the claim.
-#      A decision is then pushed and proposed through the host
-#      module, then exit 3 with a report naming the pull request: a human
-#      merges it. With no remote a decision cannot be proposed: exit 3,
-#      branch left in place.
-#   2b. The discharge-due check (ADR 0012), run immediately after 2a and
+#   2a. The blast-radius auto-defer (ADR 0011), run inside the same
+#      Revises guard as 2b and strictly before it, immediately after the
+#      hoisted verdict-pool computation (reconciles_confirms, verdicts).
+#      Iterates the same sort -u set of distinct Revises values 2b
+#      computes, calling history downstream <value> and filtering to
+#      in-tree with the same git cat-file -e "HEAD:$d" test 2b uses — the
+#      identical blast radius, not a second computation of it. For each
+#      in-tree downstream d of a given value, skip it (no auto-defer)
+#      when d is already in the verdict pool (an explicit
+#      Reconciles:/Confirms:/Defers: the reviser recorded, which this
+#      step never overwrites), when it is already slated for auto-defer
+#      against an earlier value in this same pass (a d named by two
+#      revised ADRs' downstream sets is cited against the first value in
+#      sort order once, never duplicated), or when d is the target of an
+#      outstanding deferral (history outstanding-deferrals) whose origin
+#      is in this branch's full trigger pool — the same
+#      Reconciles/Revises/Derives-From values over trunk..HEAD that 2c
+#      computes, not only this branch's Revises values. That d is
+#      already owed a discharge by this branch's own trigger pool — the
+#      discharge-due check (2c) and the reviser own it, not a fresh
+#      auto-defer: an auto-defer Defers: there would re-cite the same
+#      origin, which 2c rejects as an invalid re-defer (condition
+#      unchanged). Collect one Defers: d value until a plan derives from
+#      it trailer per remaining d — the fixed condition text, echoing
+#      ADR 0011's own wording ("marks the untouched remainder Deferred
+#      until a plan derives from this ADR"); satisfied, per ADR
+#      0010/0012, by a later Derives-From: value on trunk. When any were
+#      collected, make one git commit -q --allow-empty
+#      --cleanup=whitespace titled "Auto-defer the untouched blast
+#      radius", body naming each revised ADR covered, carrying one
+#      Defers: trailer per auto-deferred d, then recompute
+#      reconciles_confirms and verdicts with the same two git log reads
+#      the hoisted computation already runs, so both 2b and 2c see the
+#      new trailers through the one existing code path, with no second
+#      one added. The auto-defer commit carries only Defers: trailers,
+#      never Reconciles/Revises/Derives-From, so 2c's branch-local
+#      trigger pool is unaffected by the commit itself; every other
+#      auto-deferred item becomes a new outstanding deferral, picked up
+#      later, unmodified, by history outstanding-deferrals and 2c when
+#      something eventually reconciles its origin. Skipped outright when
+#      $revises is empty — non-Revises branches are unaffected.
+#   2b. The verdict-completeness gate (ADR 0011) — a backstop that
+#      rarely fires, since 2a now fills every untouched in-tree
+#      downstream's verdict first, rather than the primary action. Still
+#      run before anything is pushed so an incomplete revision never
+#      reaches the host. When a Revises trailer is present on
+#      trunk..HEAD (a revision; new-ADR decisions do not trigger it),
+#      consume history downstream <revised-ADR> for each distinct
+#      Revises value, filter its downstream: section to paths still in
+#      HEAD's tree (git cat-file -e), and read the
+#      Reconciles/Confirms/Defers verdict trailers on trunk..HEAD
+#      (for Defers, the leading path token only — this pool now includes
+#      2a's own auto Defers: trailers). Refuse (exit 2) naming each
+#      in-tree downstream carrying no verdict — in practice, only the one
+#      case 2a's Remainder exclusion leaves standing: a downstream
+#      already owed a discharge by this branch's own Revises (2a excludes
+#      it rather than auto-deferring it). The gate consumes the sibling
+#      history skill's script (../../history/scripts/history from
+#      script_dir) and refuses (exit 2) naming the resolved path when it
+#      is not an executable file — a hard stop, so an incomplete revision
+#      cannot slip through on a missing dependency. Presence is checked,
+#      never the truth of the claim. A decision is then pushed and
+#      proposed through the host module, then exit 3 with a report naming
+#      the pull request: a human merges it. With no remote a decision
+#      cannot be proposed: exit 3, branch left in place.
+#   2c. The discharge-due check (ADR 0012), run immediately after 2b and
 #      still before anything is pushed. The history-script-executable
 #      hard stop and the Reconciles/Confirms/Defers verdict pool computed
-#      in 2a are hoisted out of the Revises guard and run unconditionally
+#      in 2b are hoisted out of the Revises guard and run unconditionally
 #      on every land, since this check needs them whether or not the
 #      branch revises an ADR; the 0011 downstream-walk itself stays
 #      guarded by Revises, now reading the hoisted pool rather than
@@ -315,12 +362,12 @@ cmd_begin() {
 #      pool AND the query reports it due: false — a pool match already
 #      due: true (satisfied by something other than this branch) gets
 #      visibility only, never the hard-stop: ADR 0012 rejects a global
-#      hard-stop. No in-tree filter runs here (unlike 2a's
+#      hard-stop. No in-tree filter runs here (unlike 2b's
 #      git cat-file -e): outstanding-ness already scopes the set, a
 #      deferred artefact is not a completed one, and an escape verdict
 #      needs no file to exist. For each triggered record (D, origin O1),
 #      discharge needs one of: Reconciles: D or Confirms: D present in
-#      the hoisted verdict pool (presence only, same convention as 2a);
+#      the hoisted verdict pool (presence only, same convention as 2b);
 #      or a fresh Defers: D O2 <condition> whose O2 differs from O1
 #      (string compare) and is currently unmet — no commit anywhere on
 #      trunk (a full scan, not trunk..HEAD) carries a
@@ -503,6 +550,58 @@ cmd_land() {
   )"
 
   if [ -n "$revises" ]; then
+    # The blast-radius auto-defer (ADR 0011, land doc-comment 2a), run
+    # strictly before the verdict-completeness gate below (2b). Reuses
+    # the same sort -u Revises set and the same git cat-file -e in-tree
+    # filter 2b uses below, so it walks the identical blast radius, not a
+    # second computation of it.
+    local autodefer_pool outstanding_autodefer value d slated="" defer_trailers=""
+    autodefer_pool="$(
+      git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Revises,valueonly)'      "$trunk..HEAD" | sed '/^$/d'
+      git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+    )"
+    # D<TAB>origin pairs for every outstanding deferral, due or not: 2a's
+    # exclusion cares only whether the origin is in this branch's pool.
+    outstanding_autodefer="$(bash "$hist" outstanding-deferrals | awk '
+      /^D: / { d=substr($0,4); next }
+      /^origin: / { print d "\t" substr($0,9) }
+    ')"
+    while IFS= read -r value; do
+      [ -n "$value" ] || continue
+      while IFS= read -r d; do
+        [ -n "$d" ] || continue
+        git cat-file -e "HEAD:$d" 2>/dev/null || continue           # keep durable in-tree downstreams only
+        printf '%s\n' "$verdicts" | grep -qxF "$d" && continue      # an explicit verdict: never overwritten
+        printf '%s\n' "$slated"   | grep -qxF "$d" && continue      # already slated against an earlier value this pass
+        local od_origin=""
+        od_origin="$(printf '%s\n' "$outstanding_autodefer" | awk -F'\t' -v want="$d" '$1 == want { print $2; exit }')"
+        if [ -n "$od_origin" ] && printf '%s\n' "$autodefer_pool" | grep -qxF "$od_origin"; then
+          continue   # already owed a discharge by this branch's own trigger pool: 2c and the reviser own it
+        fi
+        slated="$slated$d
+"
+        defer_trailers="${defer_trailers}Defers: $d $value until a plan derives from it
+"
+      done < <(bash "$hist" downstream "$value" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f{print}')
+    done < <(printf '%s\n' "$revises" | sort -u)
+    if [ -n "$defer_trailers" ]; then
+      local covers
+      covers="$(printf '%s\n' "$revises" | sort -u | paste -sd, - | sed 's/,/, /g')"
+      git commit -q --allow-empty --cleanup=whitespace -m "$(printf 'Auto-defer the untouched blast radius\n\nCovers the untouched remainder of: %s\n\n%s' "$covers" "$defer_trailers")" \
+        || die 1 "could not make the auto-defer commit"
+      # Re-read exactly as the hoisted computation above does, so both 2b
+      # and 2c see the new trailers through the one existing code path.
+      reconciles_confirms="$(
+        git log --format='%(trailers:key=Reconciles,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+        git log --format='%(trailers:key=Confirms,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
+      )"
+      verdicts="$(
+        printf '%s\n' "$reconciles_confirms"
+        git log --format='%(trailers:key=Defers,valueonly)' "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
+      )"
+    fi
+
     local missing="" value d
     while IFS= read -r value; do
       [ -n "$value" ] || continue

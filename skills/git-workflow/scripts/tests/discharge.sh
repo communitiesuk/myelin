@@ -161,11 +161,12 @@ t "10. invalid re-defer (b) via branch pool: O2 also triggered by this same bran
   assert_contains "$out" "$D_PATH"
   assert_contains "$out" "invalid re-defer"
 
-t "11. no regression: the 0011 gate still refuses on its own when the branch triggers no 0012 deferral"
+t "11. no regression: the 0011 gate is satisfied by the auto-defer alone when the branch triggers no 0012 deferral (plan 0021)"
   wd="$(revision_no_verdict "$R/t11")"
   out="$(land "$wd"; echo "exit=$?")"
-  assert_contains "$out" "exit=2"
-  assert_contains "$out" "plans/9001-downstream.md"
+  assert_contains "$out" "exit=3"
+  defers="$(cd "$R/t11" && git log --format='%(trailers:key=Defers,valueonly)' dev..adr-0001-one | sed '/^$/d')"
+  assert_contains "$defers" "plans/9001-downstream.md docs/adr/0001-one.md until a plan derives from it"
 
 t "12. not outstanding: a trigger for an already-discharged deferral is not blocked and not listed, while another due deferral still is"
   base "$R/t12"

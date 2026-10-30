@@ -357,15 +357,16 @@ revision() {
   echo "$wd"
 }
 
-t "gate: a revision missing a verdict refuses, naming the downstream, and nothing reaches the host"
+t "gate: a revision whose only downstream goes unverdicted is auto-deferred, reaching the decision path (plan 0021)"
   wd="$(revision "$R/rev1" --remote origin)"; githubify "$R/rev1"
   out="$(land "$wd"; echo "exit=$?")"
-  assert_contains "$out" "exit=2"
-  assert_contains "$out" "plans/9001-downstream.md"
-  # show-ref, not bare_tip: `git rev-parse <missing-ref>` echoes the name back (cf. wc3)
-  git --git-dir="$R/rev1/.origin/repo.git" show-ref --verify --quiet refs/heads/adr-0001-one && fail "the branch was pushed: an incomplete revision reached the host"
-  assert_eq "adr-0001-one" "$(cd "$R/rev1" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
-  [ -n "$(cd "$R/rev1" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on a refusal"
+  assert_contains "$out" "exit=3"
+  assert_contains "$out" "pull/7"; assert_contains "$out" "human"
+  assert_eq "$(cd "$R/rev1" && git rev-parse adr-0001-one)" "$(bare_tip "$R/rev1" adr-0001-one)" "branch must be pushed at the same SHA"
+  assert_eq "adr-0001-one" "$(cd "$R/rev1" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the branch"
+  [ -n "$(cd "$R/rev1" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on a decision"
+  defers="$(cd "$R/rev1" && git log --format='%(trailers:key=Defers,valueonly)' dev..adr-0001-one | sed '/^$/d')"
+  assert_contains "$defers" "plans/9001-downstream.md docs/adr/0001-one.md until a plan derives from it"
 
 t "gate: a Confirms verdict for the downstream passes the gate (reaches the decision path, not exit 2)"
   wd="$(VERDICT="Confirms: plans/9001-downstream.md" revision "$R/rev2")"
@@ -403,7 +404,7 @@ t "gate: a new-ADR decision with no Revises does not fire the gate"
   assert_contains "$out" "exit=3"
   case "$out" in *exit=2*) fail "the gate fired on a new-ADR decision: $out" ;; esac
 
-t "gate: two revised ADRs refuse until both in-tree downstreams carry a verdict"
+t "gate: two revised ADRs: the unverdicted downstream is auto-deferred against its own revised ADR, reaching the decision path (plan 0021)"
   fixture "$R/rev8" --trunk dev >/dev/null
   (cd "$R/rev8" && printf -- '---\ntitle: three\n---\n' > docs/adr/0003-three.md && g add docs/adr/0003-three.md && g commit -q -m "fixture: a second ADR")
   out="$(cd "$R/rev8" && bash "$SCRIPT" begin docs/adr/0001-one.md 2>&1)"; wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
@@ -413,9 +414,11 @@ t "gate: two revised ADRs refuse until both in-tree downstreams carry a verdict"
     && printf 'c1\n' >> docs/adr/0001-one.md && printf 'c3\n' >> docs/adr/0003-three.md && g add -A \
     && g commit -q -m "$(printf 'Revise both\n\nConfirms: plans/9001-downstream.md\nRevises: docs/adr/0001-one.md\nRevises: docs/adr/0003-three.md\n')" )
   out="$(land "$wd"; echo "exit=$?")"
-  assert_contains "$out" "exit=2"
-  assert_contains "$out" "plans/9002-two.md"
-  case "$out" in *plans/9001-downstream.md*) fail "9001 carries a verdict and must not be named: $out" ;; esac
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate refused once 9002 was auto-deferred against its own revised ADR: $out" ;; esac
+  defers="$(cd "$R/rev8" && git log --format='%(trailers:key=Defers,valueonly)' dev..adr-0001-one | sed '/^$/d')"
+  assert_contains "$defers" "plans/9002-two.md docs/adr/0003-three.md until a plan derives from it"
+  case "$defers" in *"plans/9001-downstream.md "*) fail "9001 already carries a Confirms and must not be auto-deferred too: $defers" ;; esac
   # with both verdicts recorded, the gate passes
   (cd "$wd" && g commit -q --allow-empty -m "$(printf 'Confirm the second downstream\n\nConfirms: plans/9002-two.md\n')")
   out="$(land "$wd"; echo "exit=$?")"
