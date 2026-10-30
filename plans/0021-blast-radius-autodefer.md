@@ -1,6 +1,6 @@
 ---
 title: Blast-radius auto-defer at land
-status: draft
+status: in-progress
 adr: 0011
 date: 2026-10-30
 deferred_reason: null
