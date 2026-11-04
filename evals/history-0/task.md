@@ -20,3 +20,7 @@ reason comes from an ADR's own `Alternatives considered` section or
 from the history of a revision. Do not report paths that are not about
 rate limiting, and do not report a non-revising clarification as a
 closed path.
+
+Write your report to a file named `report.md` at the root of the
+working directory. Leave it uncommitted; it is the report, not a change
+to the repository.

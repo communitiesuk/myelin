@@ -20,6 +20,7 @@ git diff --quiet -- tessl.json 2>/dev/null && clean=1
 tessl install github:communitiesuk/myelin \
   --skill adr --skill plans --skill git-workflow \
   --skill facilitated-discovery --skill test-first-workflow --skill skill-forge \
+  --skill history --skill setup \
   --yes >/dev/null 2>&1
 [ "${clean:-0}" = 1 ] && git checkout -q -- tessl.json 2>/dev/null
 exit 0
