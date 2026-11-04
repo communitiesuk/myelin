@@ -18,22 +18,34 @@ Until myelin distributes as a namespaced plugin, keep yourself out of this trap:
 
 ## Requirements
 
+<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements at release; do not hand-edit. -->
 Before you run myelin in a repository, it needs:
 
-- **`git` and Bash.** The workflow's mechanics are a shell script.
-- **A host CLI wherever the repository has a remote** — `gh` for GitHub. `git-workflow` lands work by opening and merging a pull request; without the host CLI it pushes the branch and stops.
-- **A resolvable trunk.** `git-workflow` derives the branch it forks from — a local `dev`, a local `develop`, or whatever `refs/remotes/origin/HEAD` names — and never reads it from configuration. A repository where none of these resolves is treated as not set up, and the workflow stops rather than guess. One command fixes it: `git remote set-head origin -a`.
+- **git present.** git must be on PATH. The workflow's mechanics are a shell script that drives git directly. To set it up: install git, e.g. https://git-scm.com/downloads.
+- **Bash present.** Bash must be available. The workflow's mechanics are a shell script. To set it up: install Bash via your system package manager.
+- **host CLI present (where a remote exists).** A host CLI is needed wherever the repository has a remote (gh for GitHub). git-workflow lands work by opening and merging a pull request; without the host CLI the PR path is unavailable — the workflow pushes the branch and stops. To set it up: install the host CLI, e.g. https://cli.github.com.
+- **resolvable trunk (where a remote exists).** git-workflow derives the branch it forks from — a local dev, a local develop, or whatever refs/remotes/origin/HEAD names — and never reads it from configuration. A repository where none of these resolves is treated as not set up, and the workflow stops rather than guess. Fix: `git remote set-head origin -a`.
+<!-- End generated section. -->
+
+One more requirement isn't in the manifest, because no script can check it:
+
 - **A capable enough model, where a skill declares a floor.** A *model floor* is the least-capable model a skill is known to run reliably on; below it the skill's behaviour degrades and it can look broken when it is not. myelin's skills state any floor in their frontmatter. As of this writing `git-workflow` declares none — it was measured to hold up on a small model — so there is no floor to meet today, but check a skill's frontmatter rather than assume.
+
+You don't have to check the four manifest requirements yourself. Whenever a session starts, myelin checks the repository against them and reports anything missing. The `setup` skill runs the same check when you ask for it, and offers to fix what it can.
 
 ### Letting the agent land its own work
 
-`git-workflow` lands most artefacts itself by merging their pull request, and that merge needs a harness permission for the merge command. Without it the agent does the right thing — it opens the pull request, stops, and leaves the artefact waiting as an open PR. **This is deliberate, not a failure.** To let the agent land unattended, allow the merge command in your Claude Code settings:
+<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements at release; do not hand-edit. -->
+git-workflow lands most artefacts by merging their pull request, which needs a harness permission for the merge command. Without it the agent opens the pull request and stops, leaving the artefact waiting as an open PR — deliberate, not a failure. To let the agent land unattended, allow the merge command. This is a user decision: reported, never checked pass/fail and never set.
 
 ```
 Bash(gh pr merge *)
 ```
 
-in `.claude/settings.json` (checked in, for a repository that wants it) or `.claude/settings.local.json` (per clone). Decision artefacts are exempt by design: an ADR, or any branch that revises one, is always left for a human to merge regardless of this permission.
+Add the opt-in line to .claude/settings.json (checked in, for a repository that wants it) or .claude/settings.local.json (per clone).
+<!-- End generated section. -->
+
+Decision artefacts are exempt by design: an ADR, or any branch that revises one, is always left for a human to merge regardless of this permission.
 
 ## Skills
 
@@ -44,10 +56,12 @@ The workflow stages, left to right:
 3. **`plans`** — turns an accepted ADR into an ordered execution list. Plans always derive from an ADR.
 4. **`test-first-workflow`** — the mandatory workflow for writing or modifying executable code. Docstrings first, then failing tests, then code.
 
-And two that cut across them:
+And four that cut across them:
 
 5. **`skill-forge`** — the mandatory workflow for authoring a new skill, for when a plan needs a capability myelin doesn't have. Frontmatter first, then a failing eval scenario, then the body. The eval scenario is the contract.
 6. **`git-workflow`** — where work happens and how it lands: a branch per artefact, isolated into a worktree on contention, landed through a pull request as a two-parent merge so that commit structure and trailers survive. The trunk, the branch name and the integration path are derived from the repository, never read from its configuration or prose.
+7. **`history`** — answers questions from git history, since completed and superseded artefacts leave the working tree: which paths on a topic are already closed and why, what derives from or revises a given artefact, and which deferrals are outstanding or due a recheck.
+8. **`setup`** — checks a repository against myelin's requirements and, with your consent, fixes what it flags. The same check runs automatically whenever a session starts.
 
 Skills are exercised by eval scenarios under `evals/`, run with `tessl eval run`.
 
@@ -64,7 +78,9 @@ myelin is opinionated about how work is done, so that the later, cheaper stages 
 - **Branch before any edit** — including markdown decision artefacts. Nothing is written on the trunk.
 - **One branch per artefact**, where an artefact is what one skill produces in one invocation.
 - **The fork point is derived, never configured** — `dev`, then `develop`, then `origin/HEAD`.
-- **Merge commits only** — no squash, no rebase, no fast-forward — so an artefact's commits and their trailers survive on the trunk. Disable the squash and rebase merge buttons at the repository level where the host allows it.
+<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements at release; do not hand-edit. -->
+- **host configured for merge commits only.** The host should be configured for merge commits only — no squash, no rebase, no fast-forward — so landed work preserves its commit structure. Fix: `gh api -X PATCH repos/{owner}/{repo} -F allow_squash_merge=false -F allow_rebase_merge=false`.
+<!-- End generated section. -->
 - **Pull request by default where a remote exists.** The agent lands its own work; an ADR, and any branch that revises a decision, is left for a human to merge.
 - **Isolation on contention.** A single strand of work branches in place; a second strand in flight branches into a gitignored `.worktrees/` worktree instead of fighting for the checkout.
 - **Seeds live in a store you own** — an org file, a `seeds.md`, issues tagged on your host, or several at once — found through an optional one-line pointer in `AGENTS.md`/`CLAUDE.md`. Agents read that store to start a conversation; they never write into your private one.
@@ -83,7 +99,7 @@ myelin is developed using myelin, so the artefacts above are also how this repo 
 
 **Developing myelin's own skills — avoid loading a stale copy of yourself.** A tessl install is a snapshot of the *published* version, not a view of this tree, and personal scope outranks project scope — so an agent working in this repo will load a stale global install instead of your edits, with no error. (This repo has no in-repo install by default, so resolution falls straight back to the personal scope.) Before developing a skill here: ensure **no global myelin install exists** (so nothing shadows the repo), then install from the local checkout with `tessl install --watch-local`, which reinstalls as you edit. With no personal copy to outrank it, the local one is what the agent loads. See `docs/discovery/0004-skill-freshness-and-distribution.md`.
 
-**The working tree holds the current intention and nothing else.** There are no superseded ADRs, no archive folder and no completed plans: an ADR is revised in place, and a plan is deleted when its work is done. Git history is the record, and commits carry trailers (`Derives-From`, `Revises`, `Clarifies`, `Completes`, `Abandons`, `Consumed-By`) so the relationships between artefacts stay recoverable. So an empty `plans/` means no work is in flight, not that nothing has happened — `git log --follow -p` and `git log --grep` are the retrieval path. See `docs/adr/0004-where-does-history-live.md`.
+**The working tree holds the current intention and nothing else.** There are no superseded ADRs, no archive folder and no completed plans: an ADR is revised in place, and a plan is deleted when its work is done. Git history is the record, and commits carry trailers (`Derives-From`, `Revises`, `Clarifies`, `Completes`, `Abandons`, `Consumed-By`, and the verdicts a revision records against each downstream: `Reconciles`, `Confirms`, `Defers`) so the relationships between artefacts stay recoverable. So an empty `plans/` means no work is in flight, not that nothing has happened — the `history` skill, `git log --follow -p` and `git log --grep` are the retrieval path. See `docs/adr/0004-where-does-history-live.md`.
 
 ### Working on myelin itself
 
@@ -105,15 +121,11 @@ myelin use what has been merged, not the last release:
 
 ## Roadmap
 
-The first section below has a decision behind it. The rest are directions, not commitments, and the questions they raise are open.
-
-**Committed but not yet designed**
-
-- **A history skill** — `docs/adr/0004-where-does-history-live.md` commits to a skill that answers questions from git history, chiefly "which paths are closed on this topic, and why" for an ADR author. Open questions are in `docs/discovery/0001-history-skill.md`.
+These are directions, not commitments, and the questions they raise are open.
 
 **Being explored**
 
-- **Reviewers, and a landing gate** — agent reviewers that produce structured findings to assure the human, the way tests do. The gate is the rule over those findings that decides whether an agent may land its own work or must escalate to a human. Likely a combination of independent review, linting and evals, with a deterministic decision on top.
+- **A landing gate** — ADRs and plans already pass an independent agent review before they land (`docs/adr/0008-stage-reviews.md`). The gate would be the rule over those findings that decides whether an agent may land its own work or must escalate to a human. Likely a combination of independent review, linting and evals, with a deterministic decision on top.
 - **Tests as a separate artefact** — today `test-first-workflow` has one agent write the tests and the code, so the coder marks their own homework. Splitting them means acceptance tests derive from the ADR and the interface rather than from the implementation plan, which is what makes them a check rather than a restatement.
 - **Dependencies in plans** — plans are currently a strictly ordered list. Per-step dependencies would allow parallel implementation where the work genuinely permits it.
 - **A ticket skill** — reading work from and writing it back to an external tracker, and deciding whether an incoming ticket is ready to implement or needs a conversation first.
