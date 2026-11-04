@@ -211,7 +211,7 @@ begin_worklist() {
   case "$path" in docs/adr/*.md) ;; *) return 0 ;; esac
   git cat-file -e "$trunk:$path" 2>/dev/null || return 0
   local hist; hist="$(script_dir)/../../history/scripts/history"
-  [ -x "$hist" ] || return 0
+  [ -f "$hist" ] || return 0
   printf 'worklist:\n'
   bash "$hist" downstream "$path" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f && $0!=""{print "  " $0}'
   return 0
@@ -535,7 +535,7 @@ cmd_land() {
   # here, outside the revises guard. The ADR 0011 downstream-walk itself
   # stays guarded below, reading this same pool rather than recomputing it.
   local hist; hist="$(script_dir)/../../history/scripts/history"
-  [ -x "$hist" ] || die 2 "the revision gate needs the history skill's script; it is not an executable file at $hist"
+  [ -f "$hist" ] || die 2 "the revision gate needs the history skill's script; it is not a regular file at $hist"
   # The verdict set: Reconciles/Confirms/Defers values on trunk..HEAD. For
   # Defers, the leading whitespace-delimited token (the downstream path)
   # only; the remainder is the opaque blocking condition. reconciles_confirms
