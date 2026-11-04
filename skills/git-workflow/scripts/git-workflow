@@ -165,8 +165,9 @@ cmd_check() {
 # worklist under a worklist: header, one indented path per line, after the
 # trunk=/branch=/dir=/include= lines, so the reviser sees the scope up
 # front (ADR 0011). It is advisory: it blocks nothing, is skipped silently
-# when the history skill's script is absent, and never changes begin's exit
-# code.
+# when the history skill's script is absent (not a regular file; its mode
+# is never consulted, since it is run with bash and an installed plugin
+# does not keep the executable bit), and never changes begin's exit code.
 # Exits 2 when the branch already exists, when the path is ungoverned and
 # --slug is missing, or when check would; exits 1 when the local trunk
 # cannot be brought current.
@@ -338,9 +339,11 @@ cmd_begin() {
 #      it rather than auto-deferring it). The gate consumes the sibling
 #      history skill's script (../../history/scripts/history from
 #      script_dir) and refuses (exit 2) naming the resolved path when it
-#      is not an executable file — a hard stop, so an incomplete revision
-#      cannot slip through on a missing dependency. Presence is checked,
-#      never the truth of the claim. A decision is then pushed and
+#      is not a regular file — a hard stop, so an incomplete revision
+#      cannot slip through on a missing dependency. Its mode is never
+#      consulted: the script is run with bash, and an installed plugin
+#      (tessl plugin pack) does not keep the executable bit. Presence is
+#      checked, never the truth of the claim. A decision is then pushed and
 #      proposed through the host module, then exit 3 with a report naming
 #      the pull request: a human merges it. With no remote a decision
 #      cannot be proposed: exit 3, branch left in place.
