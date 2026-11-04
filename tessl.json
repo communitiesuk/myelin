@@ -12,7 +12,9 @@
           "git-workflow",
           "facilitated-discovery",
           "test-first-workflow",
-          "skill-forge"
+          "skill-forge",
+          "history",
+          "setup"
         ]
       }
     }
