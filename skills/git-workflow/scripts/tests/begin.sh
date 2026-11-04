@@ -247,3 +247,17 @@ t "worklist: the advisory block prints on the worktree path too, and never block
   assert_contains "$out" "worklist:"
   assert_contains "$out" "plans/9001-downstream.md"
   [ -d "$R/wl3/.worktrees/adr-0001-one" ] || fail "worktree not created"
+
+t "worklist: an installed history script without the executable bit still surfaces the worklist"
+  fixture "$R/wl4" --trunk dev >/dev/null
+  (cd "$R/wl4" && mkdir -p plans && printf -- '---\ntitle: d\n---\n' > plans/9001-downstream.md && g add plans/9001-downstream.md \
+    && g commit -q -m "$(printf 'Add downstream\n\nDerives-From: docs/adr/0001-one.md\n')")
+  src="$(cd "$(dirname "$SCRIPT")" && pwd)"
+  mkdir -p "$R/wl4-plugin/skills/git-workflow/scripts" "$R/wl4-plugin/skills/history/scripts"
+  cp "$SCRIPT" "$R/wl4-plugin/skills/git-workflow/scripts/git-workflow"
+  cp "$src/../../history/scripts/history" "$R/wl4-plugin/skills/history/scripts/history"
+  chmod 0644 "$R/wl4-plugin/skills/git-workflow/scripts/git-workflow" "$R/wl4-plugin/skills/history/scripts/history"
+  out="$( (cd "$R/wl4" && bash "$R/wl4-plugin/skills/git-workflow/scripts/git-workflow" begin docs/adr/0001-one.md 2>&1); echo "exit=$?" )"
+  assert_contains "$out" "exit=0"
+  assert_contains "$out" "worklist:"
+  assert_contains "$out" "plans/9001-downstream.md"
