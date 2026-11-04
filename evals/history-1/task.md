@@ -19,3 +19,7 @@ Report every artefact that derives from `docs/adr/0001-event-bus.md`,
 following the derivation edges transitively (an ADR's plans, and the
 code those plans produced). Report the derived artefacts only, not the
 ADR itself.
+
+Write your report to a file named `report.md` at the root of the
+working directory. Leave it uncommitted; it is the report, not a change
+to the repository.

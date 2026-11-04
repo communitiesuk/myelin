@@ -23,3 +23,7 @@ what you find. If anything is wrong and can be put right, sort it out.
 
 Report what you checked, what passed, what failed, and what — if
 anything — you changed.
+
+Write your report to a file named `report.md` at the root of the
+working directory. Leave it uncommitted; it is the report, not a change
+to the repository.
