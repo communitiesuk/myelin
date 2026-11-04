@@ -434,3 +434,30 @@ t "gate: the history script absent is a hard stop, before the verdict logic"
   assert_contains "$out" "nohist"
   assert_eq "adr-0001-one" "$(cd "$R/rev9" && git rev-parse --abbrev-ref HEAD)" "the hard stop must change nothing"
   [ -n "$(cd "$R/rev9" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on the hard stop"
+
+# installed DIR — copy git-workflow and the sibling history script into
+# DIR/skills/<skill>/scripts/ with mode 0644, as `tessl plugin pack` and an
+# install leave them (the pack drops the executable bit). Echoes the path
+# of the installed git-workflow script.
+installed() {
+  local d="$1" src; src="$(cd "$(dirname "$SCRIPT")" && pwd)"
+  mkdir -p "$d/skills/git-workflow/scripts" "$d/skills/history/scripts"
+  cp "$SCRIPT" "$d/skills/git-workflow/scripts/git-workflow"
+  cp "$src/../../history/scripts/history" "$d/skills/history/scripts/history"
+  chmod 0644 "$d/skills/git-workflow/scripts/git-workflow" "$d/skills/history/scripts/history"
+  echo "$d/skills/git-workflow/scripts/git-workflow"
+}
+
+t "installed copy: a history script without the executable bit still lets a new-ADR decision land to the decision path"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/inst1" --where worktree)"
+  gw="$(installed "$R/inst1-plugin")"
+  out="$( (cd "$wd" && bash "$gw" land 2>&1); echo "exit=$?" )"
+  assert_contains "$out" "exit=3"
+  case "$out" in *"not an executable"*|*"not a regular file"*) fail "land refused an installed (0644) history script: $out" ;; esac
+
+t "installed copy: a history script without the executable bit still runs the revision gate"
+  wd="$(VERDICT="Confirms: plans/9001-downstream.md" revision "$R/inst2")"
+  gw="$(installed "$R/inst2-plugin")"
+  out="$( (cd "$wd" && bash "$gw" land 2>&1); echo "exit=$?" )"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate refused an installed (0644) history script: $out" ;; esac
