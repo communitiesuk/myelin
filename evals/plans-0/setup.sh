@@ -47,6 +47,11 @@
 #   - README.md says ADRs live under `docs/adr/` and plans under
 #     `plans/`, so the conventions come from the repository, not the
 #     task, and a misplaced artefact is the agent's failure.
+#   - The ADR gives `--ticks N` to run N ticks and exit, so a plan that
+#     fixes D2 can verify from stdout without inventing a way to bound
+#     the run. Without it, every fix of D2 raises a fresh High (either
+#     an unobservable assertion or an addition against the ADR) and the
+#     loop often fails to converge within 3 rounds (#168).
 #   - A fixed local identity (`Meadow Maintainers`), so the agent's
 #     commits succeed with no global git identity and every
 #     commit-based criterion can be scored.
@@ -101,6 +106,7 @@ down, irrigation runs without a forecast.
 - On every tick it writes one JSON line to stdout naming the provider
   it used: `{"tick": "<ISO time>", "source": "primary"}` or
   `"fallback"`.
+- `python -m meadow.scheduler --ticks N` runs N ticks and exits.
 
 ## Alternatives considered
 
