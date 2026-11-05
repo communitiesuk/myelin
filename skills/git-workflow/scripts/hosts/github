@@ -18,6 +18,15 @@
 #                                                and worktree) is the caller's,
 #                                                so gh never trips over the
 #                                                artefact's worktree.
+#   bash hosts/github link <pr-url> <branch> <path>
+#                                                print the URL that shows
+#                                                <path> as it stands at the
+#                                                tip of <branch>, in the
+#                                                repository the pull request
+#                                                <pr-url> belongs to; prints
+#                                                nothing and exits 1 when
+#                                                <pr-url> is not a pull
+#                                                request URL
 #   bash hosts/github settings                   print squash=<true|false>
 #                                                rebase=<true|false> as the
 #                                                repository allows them

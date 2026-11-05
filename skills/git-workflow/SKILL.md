@@ -34,7 +34,7 @@ bash "$SKILL_DIR/scripts/git-workflow" land
 ```
 
 - **0**: it merged with two parents, cleaned up, and left the primary checkout where it was, or on the trunk where the work was in place, and the local trunk is current or a note says why not. Report the merge it printed.
-- **3**: the branch adds an ADR or carries `Revises`, so it is a decision: it is pushed and proposed, and a human merges it. Say so, give the pull request, and stop.
+- **3**: the branch adds an ADR or carries `Revises`, so it is a decision: it is pushed and proposed, and a human merges it. Say so, give the pull request and each `artefact:` link it printed (the ADR as it stands on the branch, for the human to read before merging), and stop.
 - **1**: a host command was missing, failed or refused. Relay the report it printed in full: the pull request if one was opened, the command, the state left behind, and the permission hint. Do not merge locally, do not clean up, and do not describe the artefact as landed.
 - **2**: a precondition failed, usually the trailer on the first commit or a dirty tree. Fix it and run `land` again.
 
