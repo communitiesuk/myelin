@@ -145,6 +145,39 @@ t "decision: with no remote it cannot be proposed, exit 3, branch kept"
   assert_eq "1" "$(cd "$R/d3" && git for-each-ref refs/heads/adr-0002-x | wc -l | tr -d ' ')"
   assert_eq "0" "$(cd "$R/d3" && git log --merges --format=%H dev | wc -l | tr -d ' ')"
 
+t "decision: the report links the new ADR as it stands on its branch, after the pull request (#96)"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/l1" --remote origin --where worktree)"; githubify "$R/l1"; : > "$GH_STUB_LOG"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  assert_contains "$out" "  artefact: https://github.com/example/repo/blob/adr-0002-x/docs/adr/0002-x.md"
+  assert_eq "1" "$(printf '%s\n' "$out" | grep -c '^  artefact: ')" "exactly one artefact link: $out"
+  assert_eq "artefact" "$(printf '%s\n' "$out" | grep -E '^  (pull request|artefact): ' | sed -n '2s/^  \([a-z]*\).*/\1/p')" "the link must follow the pull request: $out"
+
+t "decision: a Revises branch links the revised ADR once, though it is also the file it edits (#96)"
+  wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/l2" --remote origin --where in-place)"
+  (cd "$wd" && printf 'changed\n' >> docs/adr/0001-one.md && g add -A && g commit -q -m "$(printf 'Revise\n\nRevises: docs/adr/0001-one.md\n')")
+  githubify "$R/l2"; : > "$GH_STUB_LOG"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  assert_contains "$out" "  artefact: https://github.com/example/repo/blob/adr-0001-one/docs/adr/0001-one.md"
+  assert_eq "1" "$(printf '%s\n' "$out" | grep -c '^  artefact: ')" "the revised ADR must be linked once: $out"
+
+t "decision: with no remote there is no pull request, so no artefact link (#96)"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/l3" --where worktree)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=3"
+  case "$out" in *"artefact:"*) fail "an artefact link was invented with no host: $out" ;; esac
+
+t "not a decision: a merged artefact prints no artefact link (#96)"
+  wd="$(artefact "$R/l4" --remote origin --where worktree)"; githubify "$R/l4"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
+  case "$out" in *"artefact:"*) fail "a non-decision printed an artefact link: $out" ;; esac
+
+t "host module: link builds the blob URL from the pull request URL, and refuses anything else (#96)"
+  gh_mod="$(dirname "$SCRIPT")/hosts/github"
+  assert_eq "https://github.com/o/r/blob/adr-0003-y/docs/adr/0003-y.md" "$(bash "$gh_mod" link https://github.com/o/r/pull/12 adr-0003-y docs/adr/0003-y.md)"
+  out="$(bash "$gh_mod" link https://github.com/o/r adr-0003-y docs/adr/0003-y.md; echo "exit=$?")"
+  assert_eq "exit=1" "$out" "a non-pull-request URL must print nothing and exit 1"
+
 t "not a decision: editing an existing ADR without Revises merges normally"
   wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d4" --where in-place)"
   assert_eq "0" "$(land_rc "$wd")"; assert_eq "2" "$(parents "$R/d4" dev)"
