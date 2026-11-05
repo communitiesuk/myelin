@@ -345,7 +345,10 @@ cmd_begin() {
 #      (tessl plugin pack) does not keep the executable bit. Presence is
 #      checked, never the truth of the claim. A decision is then pushed and
 #      proposed through the host module, then exit 3 with a report naming
-#      the pull request: a human merges it. With no remote a decision
+#      the pull request and, one "  artefact: <url>" line each, a link to
+#      every ADR the decision adds or revises as it stands on the branch
+#      (the host module's link verb), so the human can read it before
+#      merging: a human merges it. With no remote a decision
 #      cannot be proposed: exit 3, branch left in place.
 #   2c. The discharge-due check (ADR 0012), run immediately after 2b and
 #      still before anything is pushed. The history-script-executable
@@ -454,11 +457,14 @@ primary_checkout() { physical "$(git worktree list --porcelain | awk 'NR==1 && $
 script_dir() { cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P; }
 physical() { (cd "$1" 2>/dev/null && pwd -P); }
 
-# stop CODE SUMMARY URL COMMAND BRANCH REMOTE PRIMARY WT — report and exit
+# stop CODE SUMMARY URL COMMAND BRANCH REMOTE PRIMARY WT [LINKS] — report and
+# exit. LINKS, optional, is newline-separated URLs, each printed after the
+# pull request as "  artefact: <url>".
 stop() {
-  local code="$1" summary="$2" url="$3" command="$4" branch="$5" remote="$6" primary="$7" wt="$8"
+  local code="$1" summary="$2" url="$3" command="$4" branch="$5" remote="$6" primary="$7" wt="$8" links="${9:-}"
   printf 'git-workflow: stopped: %s\n' "$summary"
   [ -n "$url" ] && printf '  pull request: %s\n' "$url"
+  [ -n "$links" ] && printf '%s\n' "$links" | sed '/^$/d; s/^/  artefact: /'
   [ -n "$command" ] && printf '  command: %s\n' "$command"
   local pushed="not pushed"
   if [ "$remote" != none ] && git ls-remote --exit-code --heads "$remote" "$branch" >/dev/null 2>&1; then pushed="pushed to $remote at $(git rev-parse --short "$branch")"; fi
@@ -734,7 +740,13 @@ $(printf '%s' "$bad_redefer" | sort -u)
     url="$(bash "$module" propose "$branch" "$trunk")" || {
       rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request could not be opened" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"
       stop 1 "the host refused to open the pull request" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"; }
-    stop 3 "decision proposed; a human merges it" "$url" "" "$branch" "$remote" "$primary" "$wt"
+    # Link every ADR the decision adds or revises, as it stands on the branch.
+    local adr links=""
+    for adr in $( { git diff --name-status "$trunk...HEAD" | awk '$1=="A" && $2 ~ /^docs\/adr\// {print $2}'
+                    git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD"; } | sed '/^$/d' | sort -u); do
+      links="$links$(bash "$module" link "$url" "$branch" "$adr" 2>/dev/null)"$'\n'
+    done
+    stop 3 "decision proposed; a human merges it" "$url" "" "$branch" "$remote" "$primary" "$wt" "$links"
   fi
 
   if [ "$host" = none ]; then
