@@ -19,7 +19,7 @@
 
 set -u
 
-SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/claude-code-dialogue}"
+SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/claude-code-dialogue.sh}"
 FIXTURES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fixtures"
 CFG="$TMP_ROOT/cfg"
 TESTS_RUN=0
@@ -46,7 +46,7 @@ encode() { printf '%s' "$1" | sed 's/[^A-Za-z0-9]/-/g'; }
 place() {
   local fx="$1" proj="$2" id="${3:-sess-1}"
   mkdir -p "$CFG/projects/$(encode "$proj")"
-  cp "$FIXTURES/$fx.jsonl" "$CFG/projects/$(encode "$proj")/$id.jsonl"
+  cp "$FIXTURES/$fx.jsonl.txt" "$CFG/projects/$(encode "$proj")/$id.jsonl"
 }
 
 dialogue() {

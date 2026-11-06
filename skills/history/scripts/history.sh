@@ -7,10 +7,10 @@
 # line as an edge.
 #
 # Usage:
-#   bash history downstream <path>
-#   bash history closed-paths <topic>
-#   bash history outstanding-deferrals
-#   bash history --help
+#   bash history.sh downstream <path>
+#   bash history.sh closed-paths <topic>
+#   bash history.sh outstanding-deferrals
+#   bash history.sh --help
 #
 # Subcommands
 #   closed-paths <topic>
@@ -275,7 +275,7 @@ $bullets" || continue
 
 # Resolve this repository's trunk (Mechanism 4): local dev, then local
 # develop, then the branch named by refs/remotes/origin/HEAD. Reimplements
-# skills/git-workflow/scripts/git-workflow's derive_trunk ladder rather
+# skills/git-workflow/scripts/git-workflow.sh's derive_trunk ladder rather
 # than sourcing that script, so this script keeps its header claim to
 # depend on git and nothing else. Prints the trunk's branch name and
 # returns 0, or returns 1 with nothing printed when none resolves.

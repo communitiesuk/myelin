@@ -12,7 +12,7 @@
 # scenario 4 has by then moved scenario 1's trunk).
 
 R="$TMP_ROOT/autodefer"
-HIST="$(cd "$(dirname "$SCRIPT")/../../history/scripts" && pwd)/history"
+HIST="$(cd "$(dirname "$SCRIPT")/../../history/scripts" && pwd)/history.sh"
 land() { local d="$1"; shift; (cd "$d" && bash "$SCRIPT" land "$@" 2>&1); }
 
 # trailer_values DIR RANGE KEY — every value of trailer KEY over RANGE in

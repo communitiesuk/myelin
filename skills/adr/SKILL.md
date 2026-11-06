@@ -55,7 +55,7 @@ the task text.
 
 1. Write the dialogue to a file in the session's temporary directory,
    outside the repository, with the adapter:
-   `bash "$SKILL_DIR/scripts/claude-code-dialogue" "$CLAUDE_CODE_SESSION_ID" "<the directory the session started in>" "<file>"`.
+   `bash "$SKILL_DIR/scripts/claude-code-dialogue.sh" "$CLAUDE_CODE_SESSION_ID" "<the directory the session started in>" "<file>"`.
    Where the adapter cannot produce the dialogue (it exits 1, it
    writes a dialogue with no `### Human` block,
    `$CLAUDE_CODE_SESSION_ID` is unset, or the harness is not Claude

@@ -18,7 +18,7 @@
 #   git-workflow-1 #5 worktree removed, HEAD moved, without a merge    -> stop tests
 
 R="$TMP_ROOT/land"
-mkdir -p "$R/bin" && cp "$(dirname "$SCRIPT")/tests/stub-gh" "$R/bin/gh" && chmod +x "$R/bin/gh"
+mkdir -p "$R/bin" && cp "$(dirname "$SCRIPT")/tests/stub-gh.sh" "$R/bin/gh" && chmod +x "$R/bin/gh"
 export GH_STUB_LOG="$R/gh.log"; export PATH="$R/bin:$PATH"
 land() { local d="$1"; shift; (cd "$d" && bash "$SCRIPT" land "$@" 2>&1); }
 land_rc() { local d="$1"; shift; (cd "$d" && bash "$SCRIPT" land "$@" >/dev/null 2>&1); echo $?; }
@@ -173,7 +173,7 @@ t "not a decision: a merged artefact prints no artefact link (#96)"
   case "$out" in *"artefact:"*) fail "a non-decision printed an artefact link: $out" ;; esac
 
 t "host module: link builds the blob URL from the pull request URL, and refuses anything else (#96)"
-  gh_mod="$(dirname "$SCRIPT")/hosts/github"
+  gh_mod="$(dirname "$SCRIPT")/hosts/github.sh"
   assert_eq "https://github.com/o/r/blob/adr-0003-y/docs/adr/0003-y.md" "$(bash "$gh_mod" link https://github.com/o/r/pull/12 adr-0003-y docs/adr/0003-y.md)"
   out="$(bash "$gh_mod" link https://github.com/o/r adr-0003-y docs/adr/0003-y.md; echo "exit=$?")"
   assert_eq "exit=1" "$out" "a non-pull-request URL must print nothing and exit 1"
@@ -463,7 +463,7 @@ t "gate: the history script absent is a hard stop, before the verdict logic"
   mkdir -p "$R/nohist" && cp "$SCRIPT" "$R/nohist/git-workflow" && chmod +x "$R/nohist/git-workflow"
   out="$( (cd "$wd" && bash "$R/nohist/git-workflow" land 2>&1); echo "exit=$?" )"
   assert_contains "$out" "exit=2"
-  assert_contains "$out" "history/scripts/history"
+  assert_contains "$out" "history/scripts/history.sh"
   assert_contains "$out" "nohist"
   assert_eq "adr-0001-one" "$(cd "$R/rev9" && git rev-parse --abbrev-ref HEAD)" "the hard stop must change nothing"
   [ -n "$(cd "$R/rev9" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on the hard stop"
@@ -475,10 +475,10 @@ t "gate: the history script absent is a hard stop, before the verdict logic"
 installed() {
   local d="$1" src; src="$(cd "$(dirname "$SCRIPT")" && pwd)"
   mkdir -p "$d/skills/git-workflow/scripts" "$d/skills/history/scripts"
-  cp "$SCRIPT" "$d/skills/git-workflow/scripts/git-workflow"
-  cp "$src/../../history/scripts/history" "$d/skills/history/scripts/history"
-  chmod 0644 "$d/skills/git-workflow/scripts/git-workflow" "$d/skills/history/scripts/history"
-  echo "$d/skills/git-workflow/scripts/git-workflow"
+  cp "$SCRIPT" "$d/skills/git-workflow/scripts/git-workflow.sh"
+  cp "$src/../../history/scripts/history.sh" "$d/skills/history/scripts/history.sh"
+  chmod 0644 "$d/skills/git-workflow/scripts/git-workflow.sh" "$d/skills/history/scripts/history.sh"
+  echo "$d/skills/git-workflow/scripts/git-workflow.sh"
 }
 
 t "installed copy: a history script without the executable bit still lets a new-ADR decision land to the decision path"

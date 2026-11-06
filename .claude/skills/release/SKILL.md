@@ -36,9 +36,10 @@ Set `"version"` in `.tessl-plugin/plugin.json` to `<version>`. Commit it. The fi
 ```sh
 tessl plugin publish --dry-run                     # must exit 0: structure valid, workspace aaai exists, publish permission held, version free
 tessl plugin pack --output <scratch>/myelin.tgz && tar tzf <scratch>/myelin.tgz
+tar tzf <scratch>/myelin.tgz | grep -v '/$' | grep -vE '\.(md|txt|json|yml|yaml|toml|sh|py|js|ts|tsx|jsx)$'   # must print nothing
 ```
 
-The archive must contain nothing under `.claude/`, `docs/` or `plans/`, and must contain a `SKILL.md` for every directory under `skills/`. The dry run prints its own file list only once permission is held; the pack archive is the list either way.
+The archive must contain nothing under `.claude/`, `docs/` or `plans/`, and must contain a `SKILL.md` for every directory under `skills/`. Every file in it must end in one of the listed extensions: the registry silently drops any other file on install, including extensionless scripts and a bare `LICENSE`, and does not keep the executable bit, so scripts are always run as `bash <path>`. The pack and the dry run both still list a file the registry will drop; only the install in step 11 shows what consumers receive. The dry run prints its own file list only once permission is held; the pack archive is the list either way.
 
 ## 5. Gate 2 — scenarios
 
@@ -68,7 +69,7 @@ diff <(grep -oE '^[0-9]+\. \*\*`[^`]+`' README.md | sed 's/.*`\(.*\)`/\1/' | sor
 
 Must print nothing.
 
-Then regenerate the README's manifest-owned sections from the single source of truth rather than only reading them. Run `skills/setup/scripts/render-requirements` and update each manifest-backed piece of the README to match its output, wherever that piece sits:
+Then regenerate the README's manifest-owned sections from the single source of truth rather than only reading them. Run `skills/setup/scripts/render-requirements.sh` and update each manifest-backed piece of the README to match its output, wherever that piece sits:
 
 - the REQUIRED requirement bullets, under `## Requirements`;
 - the merge-settings DESIRABLE opinion — the merge-commits-only bullet — under `## Opinions`;
@@ -134,6 +135,18 @@ tessl plugin info mhclg-aaai/myelin@<version>          # the release is complete
 ```
 
 Publish may run its own scenario check and take time; record what it did in the reply. If it fails, the tag and the host release stand, because they name the commit; fix the cause and retry publish. Do not move the tag.
+
+Then confirm what consumers receive. Wait until `tessl plugin info mhclg-aaai/myelin@<version>` reports `Moderation ✔ Passed` (about two minutes), install the version into a throwaway repository, and compare its files with the Gate 1 archive:
+
+```sh
+mkdir <scratch>/installed && cd <scratch>/installed && git init -q
+tessl install mhclg-aaai/myelin@<version> --agent claude-code --yes --accept-warnings
+tar tzf <scratch>/myelin.tgz | grep -v '/$' | sort > <scratch>/packed.txt
+(cd .tessl/plugins/mhclg-aaai/myelin && find . -type f | sed 's|^\./||' | sort) > <scratch>/installed.txt
+comm -23 <scratch>/packed.txt <scratch>/installed.txt          # must print nothing
+```
+
+A file printed here was published but never reaches a consumer. Report it as a failed release: fix the name, and publish a patch version, since a published version cannot be replaced.
 
 ## 12. Clean up
 
