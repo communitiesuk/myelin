@@ -287,6 +287,55 @@ harness ADR** — the skills built *just good enough* to unblock and
 iterate the harness, as the on-ramp that earns the right to bet, not a
 deferral of it.
 
+### [2026-11-06] The runtime leaves myelin: eshr
+
+Taken through facilitated-discovery with the maintainer (#79). The
+constrained harness is not myelin's orchestrator. It is a **general,
+spec-interpreting runtime**, with myelin as one possible workflow to run on
+it, and it is now a separate project: `communitiesuk/eshr` (Extensible
+Scoped Harness Runtime). Its design notes refine the [2026-10-27] shape: a
+prepare → call → check primitive that makes **exactly one call**, with the
+loop owned by the primitive, not the model. Its assurance mechanisms are
+options to draw on, not upfront requirements.
+
+**Independent projects, not two tracks.** If one stops, it must not impede
+the other. eshr took **copies, not links**: this note in full, `0005`, the
+draft design notes, the assurance case (#156) and the SDK parts of the
+harness inventory (#78) now live in eshr's own `docs/discovery/`. eshr uses
+myelin's released plugin from the tessl registry, pinned, as a tool. myelin
+depends on nothing in eshr.
+
+**myelin keeps going as a plugin and keeps adopting orchestration.** It
+adopts the orchestration features of the harness it runs in (agent
+definitions, hooks, the Workflow tool), starting with rolling the review
+loops out further. It is not held back as a baseline: the runtime may never
+compete with an open-loop harness plus the plugin, and any later
+comparison is only fair against the plugin at its best.
+
+**What this changes in this note:**
+
+- The [2026-10-27] entry (single-turn primitive, persist the state not the
+  process, a mostly deterministic orchestrator) is now **eshr's line of
+  thinking** and no longer constrains myelin. The sequence it set out,
+  history → revision → harness ADR, ends at revision for myelin. The
+  harness work moved to eshr.
+- What stays here is the **plugin's escalation question**: the four
+  "needs a human" triggers, the landing gate and merge-verdict hook, ADR
+  0006's deferred ticket half, and the harness permission observations.
+  These are now to be answered with the host harness's own primitives, as
+  mapped in #78 (a parent observes and stops workers; `PreToolUse` hooks
+  enforce; agent definitions preload skills).
+- `0004`'s gate, "sequencing against containers/orchestration", pointed
+  at this note's containers. Those now belong to eshr, so myelin cannot
+  wait on them, and the gate needs re-pointing at the host's own isolation.
+  Not decided here.
+- Not an ADR: the split does nothing to keep myelin's artefacts consistent
+  with one another. What a roadmap is (#131) stays open for both projects.
+
+The plugin-side decisions (which orchestration features first, per-role
+briefs, small single-purpose subagent tasks) were deliberately left for a
+later session.
+
 ## Open questions
 
 Two are decisive and directly **probeable** on the current harness;

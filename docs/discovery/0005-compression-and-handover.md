@@ -292,6 +292,29 @@ workers define their input/output contracts *internally* and validate
 incoming context at their own door, so the schemas the CA matches on are
 owned by the workers, not declared separately.
 
+## [2026-11-06] The context assembler moves to eshr
+
+The constrained runtime is now a separate project, `communitiesuk/eshr`
+(see `0003` [2026-11-06]), which took a copy of this note. The context
+assembler **as a component** is eshr's: the codebook it owns, the
+decoding test, recompression over a retained corpus, the [2026-10-27]
+single-turn collapse, and the "Candidate seeds" below. They no longer
+wait on a myelin "how" ADR.
+
+What stays relevant to myelin is the **handover discipline**, applied to
+the plugin's own subagent handovers (drafter → reviewer → parent), where
+every Phase 2 breach on record occurred:
+
+- the handover checklist, especially the protected deviations field and
+  pointers to raw sources rather than copies;
+- computing the residual rather than trusting the upstream agent to say
+  what it changed;
+- a fresh worker gets a freshly assembled brief, never a resumed context.
+
+These can be applied with the host harness's primitives (agent
+definitions with preloaded skills, a spawn prompt built by the parent)
+without building an assembler.
+
 ## Relationship to D0003 and open threads
 
 - **Codebook ≈ skills (probe 1).** If the codebook *is* the skill set and the assembler hands it over deterministically, D0003's probe 1 ("does delegating to a worker make skill-use reliable?") partly reframes: the question becomes whether deterministic selection + a protected residual make skill-loading reliable where a bare "use git-workflow" prompt does not. Still unmeasured.
