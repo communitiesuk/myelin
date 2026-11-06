@@ -3,14 +3,14 @@
 #
 # Read-only. It reads skills/setup/manifest.json (resolved relative to
 # this script's own directory, so it runs correctly when invoked as
-# ${TESSL_PLUGIN_DIR}/skills/setup/scripts/check) and reports each
+# ${TESSL_PLUGIN_DIR}/skills/setup/scripts/check.sh) and reports each
 # REQUIRED and DESIRABLE requirement as pass or fail. It never changes
 # anything in the repository or on the host.
 #
 # Usage:
-#   bash check            full per-item report (the doctor path)
-#   bash check --hook     quiet unless something fails (the SessionStart path)
-#   bash check --help
+#   bash check.sh            full per-item report (the doctor path)
+#   bash check.sh --hook     quiet unless something fails (the SessionStart path)
+#   bash check.sh --help
 #
 # Behaviour
 #   For every REQUIRED and DESIRABLE manifest item it emits one line:

@@ -11,7 +11,7 @@
           {
             "type": "command",
             "command": "bash",
-            "args": ["${TESSL_PLUGIN_DIR}/skills/setup/scripts/check", "--hook"]
+            "args": ["${TESSL_PLUGIN_DIR}/skills/setup/scripts/check.sh", "--hook"]
           }
         ]
       }

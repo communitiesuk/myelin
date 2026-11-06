@@ -30,7 +30,7 @@ Call that `$SKILL_DIR`; the script is run with Bash, never by path
 alone:
 
 ```sh
-bash "$SKILL_DIR/scripts/history" --help
+bash "$SKILL_DIR/scripts/history.sh" --help
 ```
 
 ## The downstream / graph question
@@ -38,7 +38,7 @@ bash "$SKILL_DIR/scripts/history" --help
 Run the query and report its output. There is no model step.
 
 ```sh
-bash "$SKILL_DIR/scripts/history" downstream <path>
+bash "$SKILL_DIR/scripts/history.sh" downstream <path>
 ```
 
 `<path>` is the full repository-relative path of the artefact (for an
@@ -62,7 +62,7 @@ Run the query, then make the one bounded relevance-and-dedupe judgement
 on its output.
 
 ```sh
-bash "$SKILL_DIR/scripts/history" closed-paths <topic>
+bash "$SKILL_DIR/scripts/history.sh" closed-paths <topic>
 ```
 
 `<topic>` is an artefact path, a keyword, or a candidate ADR title. The
@@ -102,7 +102,7 @@ or `git log` by hand.
 Run the query and report its output. There is no model step.
 
 ```sh
-bash "$SKILL_DIR/scripts/history" outstanding-deferrals
+bash "$SKILL_DIR/scripts/history.sh" outstanding-deferrals
 ```
 
 No argument: the query always runs against the resolved trunk (never

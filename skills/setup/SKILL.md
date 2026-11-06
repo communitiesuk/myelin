@@ -28,7 +28,7 @@ prints — every REQUIRED and DESIRABLE item as a pass or a fail, each
 failure with its fix, and the reported opt-in line:
 
 ```sh
-bash "$SKILL_DIR/scripts/check"
+bash "$SKILL_DIR/scripts/check.sh"
 ```
 
 The script is read-only: it inspects, it never changes anything. Report

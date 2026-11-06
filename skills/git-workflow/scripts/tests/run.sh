@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs every test file beside this script and reports the totals.
+# Runs every test file beside this script and reports the totals. A test
+# file is any *.sh here except run.sh, lib.sh and stub-gh.sh (the fake gh).
 #
 # Usage: bash run.sh [FILE...]
 # Exit 0 when every test passed, 1 otherwise. Each test file is sourced
@@ -12,7 +13,7 @@ files=("$@")
 if [ ${#files[@]} -eq 0 ]; then
   files=()
   for f in "$here"/*.sh; do
-    case "$(basename "$f")" in run.sh|lib.sh) ;; *) files+=("$f") ;; esac
+    case "$(basename "$f")" in run.sh|lib.sh|stub-gh.sh) ;; *) files+=("$f") ;; esac
   done
 fi
 total=0; failed=0

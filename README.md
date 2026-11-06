@@ -18,7 +18,7 @@ Until myelin distributes as a namespaced plugin, keep yourself out of this trap:
 
 ## Requirements
 
-<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements at release; do not hand-edit. -->
+<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements.sh at release; do not hand-edit. -->
 Before you run myelin in a repository, it needs:
 
 - **git present.** git must be on PATH. The workflow's mechanics are a shell script that drives git directly. To set it up: install git, e.g. https://git-scm.com/downloads.
@@ -35,7 +35,7 @@ You don't have to check the four manifest requirements yourself. Whenever a sess
 
 ### Letting the agent land its own work
 
-<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements at release; do not hand-edit. -->
+<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements.sh at release; do not hand-edit. -->
 git-workflow lands most artefacts by merging their pull request, which needs a harness permission for the merge command. Without it the agent opens the pull request and stops, leaving the artefact waiting as an open PR — deliberate, not a failure. To let the agent land unattended, allow the merge command. This is a user decision: reported, never checked pass/fail and never set.
 
 ```
@@ -78,7 +78,7 @@ myelin is opinionated about how work is done, so that the later, cheaper stages 
 - **Branch before any edit** — including markdown decision artefacts. Nothing is written on the trunk.
 - **One branch per artefact**, where an artefact is what one skill produces in one invocation.
 - **The fork point is derived, never configured** — `dev`, then `develop`, then `origin/HEAD`.
-<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements at release; do not hand-edit. -->
+<!-- Generated from skills/setup/manifest.json by skills/setup/scripts/render-requirements.sh at release; do not hand-edit. -->
 - **host configured for merge commits only.** The host should be configured for merge commits only — no squash, no rebase, no fast-forward — so landed work preserves its commit structure. Fix: `gh api -X PATCH repos/{owner}/{repo} -F allow_squash_merge=false -F allow_rebase_merge=false`.
 <!-- End generated section. -->
 - **Pull request by default where a remote exists.** The agent lands its own work; an ADR, and any branch that revises a decision, is left for a human to merge.

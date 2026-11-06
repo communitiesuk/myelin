@@ -5,7 +5,7 @@
     {
       "name": "Re-runs the shipped check and reports its result",
       "max_score": 30,
-      "description": "The agent runs the setup skill's own check script (shipped in the plugin, invoked as the skill's `scripts/check`) against this repository and reports its per-item outcome: the required items (git, Bash, host CLI where a remote exists, resolvable trunk) and the desirable merge-settings opinion each appear in the report as a pass or a fail. FAILS IF: the agent answers from the README or from memory without running the check; or the report shows no per-item check output; or it only describes what the skill would do without actually running the check."
+      "description": "The agent runs the setup skill's own check script (shipped in the plugin, invoked as the skill's `scripts/check.sh`) against this repository and reports its per-item outcome: the required items (git, Bash, host CLI where a remote exists, resolvable trunk) and the desirable merge-settings opinion each appear in the report as a pass or a fail. FAILS IF: the agent answers from the README or from memory without running the check; or the report shows no per-item check output; or it only describes what the skill would do without actually running the check."
     },
     {
       "name": "Applies no fix without explicit consent",

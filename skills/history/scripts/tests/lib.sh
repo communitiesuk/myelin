@@ -21,7 +21,7 @@
 
 set -u
 
-SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/history}"
+SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/history.sh}"
 TESTS_RUN=0
 TESTS_FAILED=0
 _CURRENT=""

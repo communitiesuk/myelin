@@ -11,7 +11,7 @@
 # file's directory. render needs no git repo or sandbox — it only reads
 # the manifest — so each test just runs it and inspects stdout.
 _dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RENDER="$_dir/render-requirements"
+RENDER="$_dir/render-requirements.sh"
 RMANIFEST="$_dir/../manifest.json"
 
 render() {

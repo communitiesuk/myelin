@@ -27,7 +27,7 @@
 
 set -u
 
-SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/check}"
+SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/check.sh}"
 TESTS_RUN=0
 TESTS_FAILED=0
 _CURRENT=""

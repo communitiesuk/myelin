@@ -2,10 +2,10 @@
 # git-workflow — the mechanical half of the git-workflow skill.
 #
 # Usage:
-#   bash git-workflow check
-#   bash git-workflow begin <artefact-path> [--slug <slug>]
-#   bash git-workflow land
-#   bash git-workflow --help
+#   bash git-workflow.sh check
+#   bash git-workflow.sh begin <artefact-path> [--slug <slug>]
+#   bash git-workflow.sh land
+#   bash git-workflow.sh --help
 #
 # Subcommands
 #   check   Derive and print the facts the workflow acts on, changing
@@ -27,12 +27,12 @@
 #           print every outstanding deferral now due, and refuse when this
 #           branch's own trigger is what makes one due unless it also
 #           carries a discharge verdict; otherwise merge with two parents,
-#           locally where there is no remote and through hosts/<name>
+#           locally where there is no remote and through hosts/<name>.sh
 #           otherwise, bringing the local trunk current after a host merge
 #           or noting why not; then clean up, leaving the primary checkout
 #           where it was, or on the trunk where the work was in place.
 #
-# Host modules live in hosts/<name> beside this script. Each is an
+# Host modules live in hosts/<name>.sh beside this script. Each is an
 # executable taking one of:
 #   propose <branch> <trunk>
 #                       open a pull request for the pushed branch onto the
@@ -210,7 +210,7 @@ begin_worklist() {
   local path="$1" trunk="$2"
   case "$path" in docs/adr/*.md) ;; *) return 0 ;; esac
   git cat-file -e "$trunk:$path" 2>/dev/null || return 0
-  local hist; hist="$(script_dir)/../../history/scripts/history"
+  local hist; hist="$(script_dir)/../../history/scripts/history.sh"
   [ -f "$hist" ] || return 0
   printf 'worklist:\n'
   bash "$hist" downstream "$path" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f && $0!=""{print "  " $0}'
@@ -337,7 +337,7 @@ cmd_begin() {
 #      case 2a's Remainder exclusion leaves standing: a downstream
 #      already owed a discharge by this branch's own Revises (2a excludes
 #      it rather than auto-deferring it). The gate consumes the sibling
-#      history skill's script (../../history/scripts/history from
+#      history skill's script (../../history/scripts/history.sh from
 #      script_dir) and refuses (exit 2) naming the resolved path when it
 #      is not a regular file — a hard stop, so an incomplete revision
 #      cannot slip through on a missing dependency. Its mode is never
@@ -540,7 +540,7 @@ cmd_land() {
   # verdict pool whether or not this branch revises an ADR, so they run
   # here, outside the revises guard. The ADR 0011 downstream-walk itself
   # stays guarded below, reading this same pool rather than recomputing it.
-  local hist; hist="$(script_dir)/../../history/scripts/history"
+  local hist; hist="$(script_dir)/../../history/scripts/history.sh"
   [ -f "$hist" ] || die 2 "the revision gate needs the history skill's script; it is not a regular file at $hist"
   # The verdict set: Reconciles/Confirms/Defers values on trunk..HEAD. For
   # Defers, the leading whitespace-delimited token (the downstream path)
@@ -727,7 +727,7 @@ $(printf '%s' "$bad_redefer" | sort -u)
   if [ "$here" = "$primary" ]; then inplace=1; else wt="$here"; fi
 
   local module="" url=""
-  case "$host" in github) module="$(script_dir)/hosts/$host" ;; esac
+  case "$host" in github) module="$(script_dir)/hosts/$host.sh" ;; esac
 
   # A remote means the pull-request path: push first, whatever follows.
   if [ "$remote" != none ]; then

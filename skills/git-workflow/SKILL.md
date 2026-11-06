@@ -12,7 +12,7 @@ Use this whenever you are about to create or modify a file in a git repository. 
 The harness states this skill's base directory when it loads the skill. Call that `$SKILL_DIR`. The script is invoked with Bash, never by path alone:
 
 ```sh
-bash "$SKILL_DIR/scripts/git-workflow" --help
+bash "$SKILL_DIR/scripts/git-workflow.sh" --help
 ```
 
 It needs git, and the host's command-line tool (`gh` for GitHub) where the repository has a remote. Its exit codes: 0 done; 1 stopped with a report; 2 usage or precondition failure, nothing changed; 3 stopped by design, a decision that a human merges.
@@ -22,7 +22,7 @@ It needs git, and the host's command-line tool (`gh` for GitHub) where the repos
 **Before the first edit**, decide what the artefact is (Rule 2) and what its path will be, then:
 
 ```sh
-bash "$SKILL_DIR/scripts/git-workflow" begin <artefact-path>          # or --slug <slug> for work no skill governs
+bash "$SKILL_DIR/scripts/git-workflow.sh" begin <artefact-path>          # or --slug <slug> for work no skill governs
 ```
 
 It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It derives the trunk, isolates into a worktree when the checkout is not on the trunk or is dirty, names the branch from the path, copies the small configuration files, and ignores `.worktrees/`. `begin` also brings the local trunk current, or stops with a report; when it exits 1, relay the report in full and do not create the branch by hand. When it prints `include=<file>`, it has left that file changed and uncommitted: include it in the artefact's first commit. You have not begun the deliverable until it has run; if you are editing and cannot name the branch you are on, stop and run it.
@@ -30,7 +30,7 @@ It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It de
 **When the governing skill says the artefact is complete**, from inside `dir=`, with everything committed:
 
 ```sh
-bash "$SKILL_DIR/scripts/git-workflow" land
+bash "$SKILL_DIR/scripts/git-workflow.sh" land
 ```
 
 - **0**: it merged with two parents, cleaned up, and left the primary checkout where it was, or on the trunk where the work was in place, and the local trunk is current or a note says why not. Report the merge it printed.

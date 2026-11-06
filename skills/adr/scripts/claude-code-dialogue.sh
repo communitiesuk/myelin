@@ -3,8 +3,8 @@
 # dialogue for the summariser subagent (ADR 0008).
 #
 # Usage:
-#   bash claude-code-dialogue <session-id> <project-path> <out-file>
-#   bash claude-code-dialogue --help
+#   bash claude-code-dialogue.sh <session-id> <project-path> <out-file>
+#   bash claude-code-dialogue.sh --help
 #
 # Locates the session transcript at
 #   ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/<encoded>/<session-id>.jsonl

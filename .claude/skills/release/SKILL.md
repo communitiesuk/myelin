@@ -69,7 +69,7 @@ diff <(grep -oE '^[0-9]+\. \*\*`[^`]+`' README.md | sed 's/.*`\(.*\)`/\1/' | sor
 
 Must print nothing.
 
-Then regenerate the README's manifest-owned sections from the single source of truth rather than only reading them. Run `skills/setup/scripts/render-requirements` and update each manifest-backed piece of the README to match its output, wherever that piece sits:
+Then regenerate the README's manifest-owned sections from the single source of truth rather than only reading them. Run `skills/setup/scripts/render-requirements.sh` and update each manifest-backed piece of the README to match its output, wherever that piece sits:
 
 - the REQUIRED requirement bullets, under `## Requirements`;
 - the merge-settings DESIRABLE opinion — the merge-commits-only bullet — under `## Opinions`;

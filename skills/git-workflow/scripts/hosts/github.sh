@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# hosts/github — the GitHub module for the git-workflow script.
+# hosts/github.sh — the GitHub module for the git-workflow script.
 #
 # Usage:
-#   bash hosts/github propose <branch> <trunk>   open a pull request from the
+#   bash hosts/github.sh propose <branch> <trunk>   open a pull request from the
 #                                                pushed branch onto the trunk,
 #                                                its title the first commit's
 #                                                subject and its description
@@ -11,14 +11,14 @@
 #                                                is already open, rewrite its
 #                                                title and description from
 #                                                those instead; prints its URL
-#   bash hosts/github merge <branch> <trunk>     merge that pull request with a
+#   bash hosts/github.sh merge <branch> <trunk>     merge that pull request with a
 #                                                merge commit, never a squash
 #                                                or a rebase. It merges only:
 #                                                branch teardown (local, remote
 #                                                and worktree) is the caller's,
 #                                                so gh never trips over the
 #                                                artefact's worktree.
-#   bash hosts/github link <pr-url> <branch> <path>
+#   bash hosts/github.sh link <pr-url> <branch> <path>
 #                                                print the URL that shows
 #                                                <path> as it stands at the
 #                                                tip of <branch>, in the
@@ -27,7 +27,7 @@
 #                                                nothing and exits 1 when
 #                                                <pr-url> is not a pull
 #                                                request URL
-#   bash hosts/github settings                   print squash=<true|false>
+#   bash hosts/github.sh settings                   print squash=<true|false>
 #                                                rebase=<true|false> as the
 #                                                repository allows them
 #
@@ -60,5 +60,5 @@ case "${1:-}" in
     printf '%s' "$out" | grep -qE '"squashMergeAllowed":[[:space:]]*true' && sq=true
     printf '%s' "$out" | grep -qE '"rebaseMergeAllowed":[[:space:]]*true' && rb=true
     printf 'squash=%s rebase=%s\n' "$sq" "$rb" ;;
-  *) echo "usage: hosts/github propose|merge|link|settings" >&2; exit 2 ;;
+  *) echo "usage: hosts/github.sh propose|merge|link|settings" >&2; exit 2 ;;
 esac

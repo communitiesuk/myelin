@@ -1,6 +1,6 @@
 # Rules the git-workflow script enforces, and why
 
-The skill body says when to run `scripts/git-workflow` and what only a
+The skill body says when to run `scripts/git-workflow.sh` and what only a
 model can decide. These are the rules the script carries out. They are
 kept here for the reasoning, not for execution: do not run these
 commands by hand where the script runs them for you. Rationale in

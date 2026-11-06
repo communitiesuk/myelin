@@ -4,14 +4,14 @@
 #
 # Read-only. It reads skills/setup/manifest.json (resolved relative to
 # this script's own directory, so it runs correctly when invoked as
-# ${TESSL_PLUGIN_DIR}/skills/setup/scripts/render-requirements) and prints
+# ${TESSL_PLUGIN_DIR}/skills/setup/scripts/render-requirements.sh) and prints
 # the Markdown the manifest owns: one bullet per REQUIRED and DESIRABLE
 # item, plus the reported `gh pr merge` opt-in subsection. It writes
 # nothing and changes nothing.
 #
 # Usage:
-#   bash render-requirements      print the Markdown to stdout
-#   bash render-requirements --help
+#   bash render-requirements.sh      print the Markdown to stdout
+#   bash render-requirements.sh --help
 #
 # Behaviour
 #   Each REQUIRED and DESIRABLE manifest item becomes one Markdown bullet:
