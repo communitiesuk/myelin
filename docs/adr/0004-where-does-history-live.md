@@ -76,13 +76,13 @@ notes, ADRs, plans, skills and code.
 
 An artefact in the tree that is revisited is edited, not replaced. The
 superseded text is in the history of the file, reachable with
-`git log --follow -p`. The `adr` skill's rules against editing a merged ADR and
-against deleting superseded ADRs are withdrawn, and the `supersedes`,
-`superseded_by` and `superseded` status vocabulary is withdrawn with
-them. An ADR carries no status: one not yet on the trunk is proposed,
-on its own branch (the branch that adds it); on the trunk it is
-accepted, and stays accepted while a revision of it is in flight (ADR
-0009).
+`git log --follow -p`. The `adr` skill's rules against editing a
+merged ADR and against deleting superseded ADRs are withdrawn, and the
+`supersedes`, `superseded_by` and `superseded` status vocabulary is
+withdrawn with them. An ADR carries no status: one not yet on the
+trunk is proposed, on its own branch (the branch that adds it); on the
+trunk it is accepted, and stays accepted while a revision of it is in
+flight (ADR 0009).
 
 The test for whether a revision is an edit or a new ADR: **the title
 of an ADR is the question it answers.** If the revision still answers
@@ -119,15 +119,16 @@ tree when that purpose is served.
   pending reconciliation — for a plan it keeps the plan in the tree, as
   above; for a skill or code it is a staleness marker, those never
   leaving the tree on completion.
-- A **discovery note** leaves when what it informed has landed: the
-  ADR or ADRs it informed are accepted. A note that informs none is
-  abandoned, by a deleting commit that says why.
+- A **discovery note** leaves when the ADR or ADRs it informed are
+  accepted. A note that informs none is abandoned, by a deleting
+  commit that says why.
 - **Source material** — any file brought in from outside the
   repository's workflow as input to discovery, imported or not — lives
   in `docs/discovery/sources/`, whose path marks it as consumable
   input and keeps it out of note numbering. A discovery note records
-  what is drawn from it. It leaves on the branch of the note drawing
-  on it, by a later commit carrying `Consumed-By` naming that note.
+  what is drawn from it. It leaves on the branch of the last note
+  drawing on it, by a later commit carrying `Consumed-By` naming each
+  note it informed.
 - An **ADR** stays for as long as its decision stands. ADRs are the
   current intention; they are consumed continuously, not once.
 
@@ -147,12 +148,14 @@ commit message: git parses them natively (`git interpret-trailers`,
 **The graph is append-only.** An edge between two artefacts is added
 by exactly one commit, and that commit carries the trailer for it.
 Edges are never modified; a relationship that changes is a new edge,
-added by the commit that changes it. An edge may be circular — from
-an artefact back to itself — as both `Revises` and `Clarifies` are.
-The table below is therefore exhaustive: it lists every kind of edge
-and the event that adds it. An event not in the table adds no edge,
-and nor does a change that genuinely leaves an artefact's edges as
-they were, such as drafting on an ADR's own branch before it merges.
+added by the commit that changes it. An edge may be circular — from an
+artefact back to itself — as both `Revises` and `Clarifies` are. The
+table below is therefore exhaustive: it lists every kind of edge and
+the event that adds it, and `Origin`, the one trailer recording a
+root's provenance rather than an edge. An event not in the table adds
+no edge, and nor does a change that genuinely leaves an artefact's
+edges as they were, such as drafting on an ADR's own branch before it
+merges.
 
 The vocabulary:
 
@@ -160,7 +163,7 @@ The vocabulary:
 | --- | --- | --- |
 | `Derives-From:` | establishes that an artefact derives from another: the first commit on the artefact's branch, or a later commit that re-points it | path of the upstream artefact; one trailer per direct upstream |
 | `Revises:` | changes what an accepted ADR decides | path of the ADR |
-| `Origin:` | adds a root: the first commit on any branch, other than a decision's, whose artefact has no upstream in the repository | its provenance: in words, such as the conversation or seed a note came from, or as a pinned `<owner>/<repo>@<rev>[:<path>]` |
+| `Origin:` | adds a root: the first commit, other than a decision's, that adds an artefact with no upstream in the repository | its provenance: in words, such as the conversation or seed a note came from, or as a pinned `<owner>/<repo>@<rev>[:<path>]` |
 | `Clarifies:` | edits in place an artefact already in the tree: for a discovery note or source material any edit; for any other artefact an edit changing no decision and no behaviour (typo, citation, metadata, or an uncaught cross-reference); a self-edge, as `Revises` is on an in-place revision | path of the artefact edited |
 | `Consumed-By:` | removes a consumed artefact: a discovery note, or source material | path of what it informed; one trailer per artefact informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
@@ -183,21 +186,22 @@ self-edge, the same shape `Revises` takes on an in-place revision.
 That is a typo fix, a citation repair, a metadata change, or a
 cross-reference update not caught when the referencing artefact was
 created; for a discovery note or source material, which decide
-nothing, it is any edit. A substantive change to a plan, skill or
-code still derives from a plan or carries a verdict. The two differ
+nothing, it is any edit. A substantive change to a skill or code
+derives from a plan, and to a plan carries a verdict. The two differ
 only in what they record — `Revises` for a change to the decision,
 `Clarifies` for a change to its expression. A revising edit
 carries `Revises`; only a non-revising edit carries `Clarifies`, and
 `land` sends it direct to trunk, with no human pull request.
 
 `Origin` marks a commit, not a kind of file. It records where a root
-came from; the file itself is still copied in. It is a leaf: the
-graph lists it and never follows it. Source material enters on its
-own branch, whose first commit carries `Origin:` and adds only that
-material; a note drawing on it derives from it on the note's own
-branch. Of what a root commit adds, only source material leaves the
-tree; bootstrap files such as `tessl.json`, `.claude/` and `AGENTS.md`
-never do.
+came from; the file itself is still copied in. A root is where
+traversal stops. It is not the origin of a `Defers` condition (ADRs
+0010, 0011), the artefact in the repository a deferral is blocked on.
+Source material enters on its own branch, whose first commit carries
+`Origin:` and adds only that material; a note drawing on it derives
+from it on the note's own branch. Of what a root commit adds, only
+source material leaves the tree; bootstrap files such as `tessl.json`,
+`.claude/` and `AGENTS.md` never do.
 
 The three verdict trailers are the cross-edge counterpart to those
 self-edges: `Revises` and `Clarifies` link an artefact to itself,
@@ -207,10 +211,11 @@ exhaustive vocabulary, which is why their keys are defined here;
 reading those keys and enforcing the verdicts — the gate's parsing —
 belong to ADR 0011's plan.
 
-Trailers record edges between artefacts. Structure inside an
-artefact, such as the order of docstring, test and code commits under
-`test-first-workflow`, belongs to the governing skill under ADR
-0003's delegation of commit cadence, and carries no trailer.
+Trailers record edges between artefacts, and `Origin` a root's
+provenance. Structure inside an artefact, such as the order of
+docstring, test and code commits under `test-first-workflow`, belongs
+to the governing skill under ADR 0003's delegation of commit cadence,
+and carries no trailer.
 
 The prose body of a `Revises`, `Clarifies`, `Abandons` or deleting commit
 must say what changed and why, in sentences. Trailers carry the edge;
@@ -324,8 +329,8 @@ question and is deferred to a separate ADR. Until it exists,
   Rejected: a second self-edge key, where widening one row serves.
 - **Let `land` infer the case, with no trailer** — exempting a diff
   that only edits existing files under `docs/discovery/`, or a first
-  commit that only adds new ones. Rejected: the edge would go
-  unrecorded, and every edge has a trailer.
+  commit that only adds new ones. Rejected: the edge, or the root's
+  provenance, would go unrecorded.
 - **An external `Derives-From` for a root.** Rejected: a loose local
   file has no `<owner>/<repo>@<rev>` to name. An external reference
   survives as one form of `Origin:` value.
@@ -350,8 +355,8 @@ question and is deferred to a separate ADR. Until it exists,
 - The git-workflow skill that plan 0003 specifies must carry the
   trailer vocabulary and route a `Clarifies` branch to trunk without
   requiring `Derives-From`, since it is the skill that lands commits.
-  It also lands a root carrying `Origin:`, and the history skill lists
-  `Origin:` as a leaf. Plan 0003 is revised accordingly under ADR
+  It also lands a root carrying `Origin:`, where the history skill
+  stops traversal. Plan 0003 is revised accordingly under ADR
   0011.
 - An artefact imported from now on records its provenance in
   `Origin:`, not in a prose header such as "Imported from myelin…".
@@ -382,7 +387,8 @@ question and is deferred to a separate ADR. Until it exists,
   artefacts, for example, would add an edge for verification.
 - An in-place edit that changes no decision and no behaviour carries
   `Clarifies`, a self-edge needing no `Derives-From`, on any artefact
-  in the tree. Ride-along on the causing artefact's branch stays and
+  in the tree, as does any edit to a discovery note or source
+  material. Ride-along on the causing artefact's branch stays and
   is preferred when a cross-reference is caught at creation time;
   `Clarifies` is for edits made standalone, after the fact.
 - The vocabulary allows several direct upstreams, but the plan
