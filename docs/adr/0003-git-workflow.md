@@ -54,8 +54,9 @@ it and what only a model can decide.
 
 ### The unit of work is an artefact
 
-An **artefact is a unit of work with its own branch**. Where a skill
-governs it, it is what that skill produces in one invocation:
+An **artefact is a unit of work with an independent truth
+condition**. Where a skill governs it, it is what that skill produces
+in one invocation:
 
 | Governing skill | Artefact |
 | --- | --- |
@@ -70,7 +71,7 @@ governing skill, which already defines its own boundaries and exit
 criteria. Work not governed by any skill is still an artefact and
 still gets its own branch. A discovery note in particular may record
 a conversation, a developed capture, an experiment, probe or survey,
-or material written outside the workflow and brought in.
+or what is drawn from source material (ADR 0004).
 
 ### Branch before edit
 
@@ -279,9 +280,9 @@ refuses to land a branch whose first commit carries no `Derives-From`
 trailer, except where ADR 0004 needs none — a decision, a `Clarifies`
 edit to an artefact already in the tree, or a root carrying `Origin:`.
 For `Clarifies` it checks that the named path existed at the fork
-point; for `Origin:`, only the format. The trailer is written by
-whoever commits, under the governing skill; the script checks that it
-is there.
+point; for `Origin:`, that its value is not empty. The trailer is
+written by whoever commits, under the governing skill; the script
+checks that it is there.
 
 The script is invoked by the model at the moments the skill body
 names. Running it without the model, by a hook or an orchestrator, is
@@ -383,9 +384,9 @@ artefact rather than from trunk.
   the change must pass.
 
 - **A discovery note is `facilitated-discovery`'s output alone.** The
-  original form of the artefact table, loosened above: notes also
-  record developed captures, experiments and material from outside
-  the workflow, which no session produced.
+  original form of the artefact table. Reversed: notes also record
+  developed captures, experiments and what is drawn from source
+  material, which no session produced.
 - **One branch per decision, spanning ADR to implementation.** Tidier
   — one identifier for a whole chain of work, and what was in fact
   done for ADR 0002. Rejected because the ADR would only ever be
