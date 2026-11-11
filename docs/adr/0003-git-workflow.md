@@ -54,9 +54,7 @@ it and what only a model can decide.
 
 ### The unit of work is an artefact
 
-An **artefact is a unit of work with an independent truth
-condition**. Where a skill governs it, it is what that skill produces
-in one invocation:
+An **artefact is what one skill produces in one invocation**:
 
 | Governing skill | Artefact |
 | --- | --- |
@@ -69,9 +67,9 @@ in one invocation:
 The git workflow never defines "artefact" itself; it defers to the
 governing skill, which already defines its own boundaries and exit
 criteria. Work not governed by any skill is still an artefact and
-still gets its own branch. A discovery note in particular may record
-a conversation, a developed capture, an experiment, probe or survey,
-or what is drawn from source material (ADR 0004).
+still gets its own branch. `facilitated-discovery` governs a
+discovery note whatever its input: a conversation, a seed, an
+experiment, or source material (ADR 0004).
 
 ### Branch before edit
 
@@ -383,10 +381,6 @@ artefact rather than from trunk.
   code. Discovery note 0002 records the measurements and the tests
   the change must pass.
 
-- **A discovery note is `facilitated-discovery`'s output alone.** The
-  original form of the artefact table. Reversed: notes also record
-  developed captures, experiments and what is drawn from source
-  material, which no session produced.
 - **One branch per decision, spanning ADR to implementation.** Tidier
   — one identifier for a whole chain of work, and what was in fact
   done for ADR 0002. Rejected because the ADR would only ever be

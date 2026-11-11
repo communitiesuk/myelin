@@ -187,21 +187,27 @@ That is a typo fix, a citation repair, a metadata change, or a
 cross-reference update not caught when the referencing artefact was
 created; for a discovery note or source material, which decide
 nothing, it is any edit. A substantive change to a skill or code
-derives from a plan, and to a plan carries a verdict. The two differ
-only in what they record — `Revises` for a change to the decision,
-`Clarifies` for a change to its expression. A revising edit
-carries `Revises`; only a non-revising edit carries `Clarifies`, and
-`land` sends it direct to trunk, with no human pull request.
+derives from a plan; a substantive change to a plan carries
+`Reconciles:`, the verdict on a downstream of a revised ADR found
+through the `Derives-From` graph the history skill retrieves (ADR
+0011). The two differ only in what they record — `Revises` for a
+change to the decision, `Clarifies` for a change to its expression.
+A revising edit carries `Revises`; only a non-revising edit carries
+`Clarifies`, and `land` sends it direct to trunk, with no human pull
+request.
 
-`Origin` marks a commit, not a kind of file. It records where a root
-came from; the file itself is still copied in. A root is where
-traversal stops. It is not the origin of a `Defers` condition (ADRs
-0010, 0011), the artefact in the repository a deferral is blocked on.
-Source material enters on its own branch, whose first commit carries
-`Origin:` and adds only that material; a note drawing on it derives
-from it on the note's own branch. Of what a root commit adds, only
-source material leaves the tree; bootstrap files such as `tessl.json`,
-`.claude/` and `AGENTS.md` never do.
+`Origin` exists because, without it, `land` refuses a first commit
+with no upstream in the repository, and such a root's provenance
+lives only in a prose header (#182). It marks a commit, not a kind of
+file. It records where a root came from; the file itself is still
+copied in. A root is where traversal stops. It is not the origin of
+a `Defers` condition (ADRs 0010, 0011), the artefact in the
+repository a deferral is blocked on. Source material enters on its
+own branch, whose first commit carries `Origin:` and adds only that
+material; a note drawing on it derives from it on the note's own
+branch. Of what a root commit adds, only source material leaves the
+tree; bootstrap files such as `tessl.json`, `.claude/` and
+`AGENTS.md` never do.
 
 The three verdict trailers are the cross-edge counterpart to those
 self-edges: `Revises` and `Clarifies` link an artefact to itself,
@@ -322,6 +328,10 @@ question and is deferred to a separate ADR. Until it exists,
   discovery note could not be revised, because `land` demanded a
   `Derives-From` whose every value was a duplicate, cyclic or false
   edge (#184).
+- **Every artefact has an upstream in the repository.** This ADR's
+  previous form. Reversed: a bootstrap, an artefact imported from
+  another repository, or a file written outside any project has none,
+  so `land` refused it and its provenance lived only in prose (#182).
 - **A discovery note informs one ADR.** This ADR's previous form, with
   `Consumed-By` naming that ADR. Reversed: material may inform several
   ADRs or none.
@@ -365,9 +375,7 @@ question and is deferred to a separate ADR. Until it exists,
   exception is folded in, and its claim that the `adr` skill's
   prohibition on editing a merged ADR "becomes meaningful" is
   removed, since that prohibition is withdrawn. Its land rule carries
-  the exceptions: a decision, `Clarifies`, or `Origin:`. Its artefact
-  table no longer ties a discovery note to `facilitated-discovery`
-  alone.
+  the exceptions: a decision, `Clarifies`, or `Origin:`.
 - ADRs 0001 to 0003 lose the `supersedes` and `superseded_by`
   fields. Plans 0001 and 0002, both done, leave the tree.
 - The human trajectory is now only as good as commit discipline.

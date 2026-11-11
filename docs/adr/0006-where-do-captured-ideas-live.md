@@ -89,11 +89,11 @@ captured as a **discovery note** — the existing artefact from
 `facilitated-discovery`. Discovery notes are already the shared,
 one-per-topic, git-tracked store this needs: they separate each
 suggestion, they are readable and writable by human and agent alike, and
-they already *graduate* — a note is consumed into its ADR (`Consumed-By`)
-or leaves by abandonment. This is the boundary between a "ticket" and the
-rest of the workflow: the ticket concept owns only the *undeveloped* end
-of the spectrum, and anything defined enough to act on graduates into the
-discovery → ADR → plan chain that already exists.
+they already *graduate* — a note is consumed into the ADRs it informed
+(`Consumed-By`) or leaves by abandonment. This is the boundary between a
+"ticket" and the rest of the workflow: the ticket concept owns only the
+*undeveloped* end of the spectrum, and anything defined enough to act on
+graduates into the discovery → ADR → plan chain that already exists.
 
 Nothing new is built for this. The rule is that a developed project
 capture is a discovery note, not a new kind of object.
@@ -154,6 +154,11 @@ wholly `docs/discovery/0003-escalation-and-orchestration.md`'s.
   reproduces the exact friction this decision removes — interleaved
   audiences, context poisoning, and lost reminders. Agents read that
   store; they do not write it.
+- **A developed capture written outside `facilitated-discovery`.** This
+  ADR's previous form: a second entry path to a discovery note, written
+  more directly. Narrowed: the skill governs a discovery note whatever
+  its input, so a developed capture is a second input, not a second
+  path.
 
 ## Consequences
 
@@ -164,10 +169,9 @@ wholly `docs/discovery/0003-escalation-and-orchestration.md`'s.
 - The only buildable piece is documentation and convention: the
   seed-pointer line in a project's agent instructions and the
   read-not-write rule. There is no new skill and no new store.
-- The discovery-note artefact acquires a second entry path. It was the
-  output of a `facilitated-discovery` session; it may now also be a
-  developed capture written more directly, gated by the present human.
-  Whether `facilitated-discovery` should say so is a plan-level question.
+- The discovery note acquires a second input: beside a conversation,
+  a developed capture. `facilitated-discovery` governs the note
+  whichever the input (ADR 0003).
 - The graveyard risk is managed by human gating and periodic pruning,
   not by machinery. If parked notes accumulate faster than they are
   pruned, that is the signal that the deferred capture/triage capability
@@ -187,8 +191,9 @@ wholly `docs/discovery/0003-escalation-and-orchestration.md`'s.
   it names as "the same object as the escalation queue" is the concern
   this ADR bounds a v1 answer for.
 - `docs/adr/0003-git-workflow.md` — the derive-don't-configure principle
-  this decision reuses for the seed store, and the host-module shape a
-  future platform module would take.
+  this decision reuses for the seed store, the host-module shape a
+  future platform module would take, and `facilitated-discovery`
+  governing a discovery note whatever its input.
 - `docs/adr/0004-where-does-history-live.md` — the discovery-note
   lifecycle (`Consumed-By`, abandonment) that makes a note the right home
   for a developed capture.
