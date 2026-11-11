@@ -31,7 +31,10 @@ bare_tip() { git --git-dir="$1/.origin/repo.git" rev-parse "$2" 2>/dev/null; }
 #   (a note, so that landing it is not a decision)
 #   unless ADRPATH is set; extra commits via EXTRA=1. With CLARIFIES=1 the
 #   first commit carries a Clarifies trailer (value CLARIFIESVAL, default
-#   ADRPATH) instead of Derives-From.
+#   ADRPATH) instead of Derives-From. When ORIGIN is set, even to empty
+#   (tested with ${ORIGIN+x}), the first commit carries "Origin: $ORIGIN"
+#   instead, winning over CLARIFIES and NOTRAILER. ALSO, when set, is
+#   appended to the first commit as a further trailer line.
 artefact() {
   local dir="$1"; shift
   local where=worktree opts=()
@@ -42,9 +45,11 @@ artefact() {
   local out; out="$(cd "$dir" && bash "$SCRIPT" begin "${ADRPATH:-docs/discovery/0002-x.md}" 2>&1)" || { echo "$out"; return 2; }
   local wd; wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
   ( cd "$wd" && mkdir -p "$(dirname "${ADRPATH:-docs/discovery/0002-x.md}")" && printf -- '---\ntitle: x\n---\n' > "${ADRPATH:-docs/discovery/0002-x.md}" && g add -A \
-    && if [ "${NOTRAILER:-0}" = 1 ]; then g commit -q -m "Add ADR"; \
-       elif [ "${CLARIFIES:-0}" = 1 ]; then g commit -q -m "$(printf 'Add ADR\n\nClarifies: %s\n' "${CLARIFIESVAL:-${ADRPATH:-docs/discovery/0002-x.md}}")"; \
-       else g commit -q -m "$(printf 'Add ADR\n\nDerives-From: %s\n' "${TRAILER:-docs/discovery/0001-note.md}")"; fi )
+    && also="${ALSO:+$(printf '\n%s' "$ALSO")}" \
+    && if [ -n "${ORIGIN+x}" ]; then g commit -q -m "$(printf 'Add ADR\n\nOrigin: %s%s\n' "$ORIGIN" "$also")"; \
+       elif [ "${NOTRAILER:-0}" = 1 ]; then g commit -q -m "Add ADR"; \
+       elif [ "${CLARIFIES:-0}" = 1 ]; then g commit -q -m "$(printf 'Add ADR\n\nClarifies: %s%s\n' "${CLARIFIESVAL:-${ADRPATH:-docs/discovery/0002-x.md}}" "$also")"; \
+       else g commit -q -m "$(printf 'Add ADR\n\nDerives-From: %s%s\n' "${TRAILER:-docs/discovery/0001-note.md}" "$also")"; fi )
   if [ "${EXTRA:-0}" = 1 ]; then ( cd "$wd" && printf 'more\n' >> "${ADRPATH:-docs/discovery/0002-x.md}" && g add -A && g commit -q -m "Extend ADR" ); fi
   echo "$wd"
 }
@@ -198,6 +203,37 @@ t "refusal: editing an existing ADR with no trailer at all is still refused, exi
 t "refusal: Clarifies value not repository-relative"
   wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md CLARIFIESVAL=./docs/adr/0001-one.md artefact "$R/c3" --where in-place)"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "relative"
+
+t "Origin: a root carrying Origin in words and no Derives-From lands, exit 0"
+  wd="$(ORIGIN='bootstrap of this repository' artefact "$R/o1" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "2" "$(parents "$R/o1" dev)" "dev must end in a two-parent merge: $out"
+  assert_eq "0" "$(cd "$R/o1" && git for-each-ref refs/heads/discovery-0002-x | wc -l | tr -d ' ')" "branch must be gone"
+
+t "Origin: a pinned reference to another repository lands, not path-checked, exit 0"
+  wd="$(ORIGIN='communitiesuk/myelin@abc1234:docs/discovery/0001-x.md' artefact "$R/o2" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"; assert_eq "2" "$(parents "$R/o2" dev)" "dev must end in a two-parent merge: $out"
+
+t "refusal: an empty Origin is refused, exit 2"
+  wd="$(ORIGIN='' artefact "$R/o3" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Origin must not be empty"
+  assert_eq "1" "$(cd "$R/o3" && git rev-list --count dev..discovery-0002-x)" "refusal must change nothing"
+
+t "Clarifies: an in-place edit to a landed discovery note lands, exit 0 (#184)"
+  wd="$(CLARIFIES=1 ADRPATH=docs/discovery/0001-note.md artefact "$R/c4" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"; assert_eq "2" "$(parents "$R/c4" dev)" "dev must end in a two-parent merge: $out"
+
+t "refusal: Clarifies naming a path absent at the fork point, exit 2"
+  wd="$(CLARIFIES=1 artefact "$R/c5" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "does not exist at the fork point"
+  assert_eq "1" "$(cd "$R/c5" && git rev-list --count dev..discovery-0002-x)" "refusal must change nothing"
+
+t "refusal: Derives-From with an empty Origin is still refused, exit 2"
+  wd="$(ALSO='Origin:' artefact "$R/o4" --where in-place)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Origin must not be empty"
 
 t "decision: a new docs/adr file with no Derives-From is proposed, not refused, exit 3"
   wd="$(ADRPATH=docs/adr/0002-x.md NOTRAILER=1 artefact "$R/d5" --remote origin --where worktree)"; githubify "$R/d5"; : > "$GH_STUB_LOG"
