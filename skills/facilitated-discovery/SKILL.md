@@ -105,7 +105,7 @@ Once confirmed ready:
 
 ### 6B. Discovery note
 
-Write a discovery note to capture thinking in progress. Save it to `docs/discovery/NNNN-kebab-slug.md` (create the directory if it doesn't exist). Take `NNNN` from history, not from the tree: a discovery note leaves `docs/discovery/` when the ADR it informed is accepted, so counting the directory repeats numbers. The next `NNNN` is one greater than the highest ever added under `docs/discovery/`:
+Write a discovery note to capture thinking in progress. Save it to `docs/discovery/NNNN-kebab-slug.md` (create the directory if it doesn't exist). Take `NNNN` from history, not from the tree: a discovery note leaves `docs/discovery/` when the ADR or ADRs it informed are accepted, so counting the directory repeats numbers. The next `NNNN` is one greater than the highest ever added under `docs/discovery/`:
 
 ```sh
 git log --all --diff-filter=A --name-only --format= -- docs/discovery/ \
@@ -116,7 +116,18 @@ git log --all --diff-filter=A --name-only --format= -- docs/discovery/ \
 
 The note is not a decision — it is a record of thinking so far, so the human can return to it and continue without starting over.
 
-**A discovery note has two entry points.** The usual one is the end of a Path B conversation, above. The other is a *developed capture* made mid-work: while doing something else, you or the human spot a direction worth keeping that is more than a one-line seed but is not the output of a full session. Write it as a discovery note too, in the same shape. In this version such a capture is made only with the human present and gating it — not written unattended — so that parked notes do not accumulate faster than anyone reviews them. See `docs/adr/0006-where-do-captured-ideas-live.md`.
+**A discovery note's inputs.** This skill governs the note whichever its input (ADR 0003):
+
+- **A conversation**: the end of a Path B session, above.
+- **A seed**: a *developed capture* made mid-work. While doing something else, you or the human spot a direction worth keeping that is more than a one-line seed but is not the output of a full session. Write it as a discovery note too, in the same shape. Such a capture is made only with the human present and gating it — not written unattended — so that parked notes do not accumulate faster than anyone reviews them (`docs/adr/0006-where-do-captured-ideas-live.md`).
+- **Source material**: a file brought in from outside the workflow (see below). The note records what it draws from it.
+- **An experiment**: a probe or survey, recorded as a note.
+
+The note's first commit carries `Derives-From` naming its upstream in the repository: source material, or an earlier note. With none, it is a root and carries `Origin:` giving its provenance — in words (`Origin: seed #<n>`, or the conversation and its date), or as a pinned `<owner>/<repo>@<rev>:<path>` for a note copied from another repository.
+
+**Source material.** Any file brought in from outside the workflow as input to discovery, imported or not, lives in `docs/discovery/sources/`. It enters on its own branch (`begin docs/discovery/sources/<file> --slug <slug>`), whose first commit adds only that material and carries `Origin:`. A note drawing on it derives from it on the note's own branch. It leaves on the branch of the last note drawing on it, by a later commit carrying one `Consumed-By` naming each note it informed.
+
+**Editing in place.** A landed note or source material is edited in place, for any edit, on its own branch (`begin <path>`, with `--slug` for source material), whose first commit carries `Clarifies: <path>`. `land` sends it to trunk.
 
 **Frontmatter:**
 
@@ -137,13 +148,13 @@ date: YYYY-MM-DD
 
 When the human is ready to continue, they can return to this note and invoke `/facilitated-discovery` again — pick up from where the note leaves off rather than starting over.
 
-The note leaves the tree when the ADR it informed is accepted. It is deleted on that ADR's branch, and the deleting commit carries this trailer, copied exactly:
+The note leaves the tree when the ADR or ADRs it informed are accepted. It is deleted on the branch of the last ADR it informs, and the deleting commit carries one trailer per ADR informed, copied exactly:
 
 ```
 Consumed-By: docs/adr/NNNN-<slug>.md
 ```
 
-The value is the repository-relative path of the ADR. The note's text stays in git history; the tree holds only current intention.
+The value is the repository-relative path of the ADR. A note that informs none is abandoned by a deleting commit that says why. The note's text stays in git history; the tree holds only current intention.
 
 ## What to avoid
 

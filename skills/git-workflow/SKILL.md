@@ -54,7 +54,7 @@ An **artefact is what one skill produces in one invocation**:
 | `test-first-workflow` | one working code change |
 | `skill-forge` | one skill |
 
-**This skill never defines "artefact" itself.** The governing skill already defines its own boundaries and exit criteria. Do not invent a boundary here, and do not split or merge an artefact because it would make the branching tidier. Work governed by no skill is still an artefact and still gets its own branch, named with `--slug`.
+**This skill never defines "artefact" itself.** The governing skill already defines its own boundaries and exit criteria. Do not invent a boundary here, and do not split or merge an artefact because it would make the branching tidier. Work governed by no skill is still an artefact and still gets its own branch, named with `--slug`. `facilitated-discovery` governs a discovery note whatever its input: a conversation, a seed, source material, or an experiment.
 
 ### Rule 3 — Commit cadence is delegated
 
@@ -84,15 +84,16 @@ Artefacts form a graph — a plan derives from an ADR, an ADR from a discovery n
 | --- | --- | --- |
 | `Derives-From:` | establishes that an artefact derives from another: the first commit on the artefact's branch, or a later commit that re-points it | path of the upstream artefact; one trailer per direct upstream |
 | `Revises:` | changes what an accepted ADR decides | path of the ADR |
-| `Clarifies:` | makes a non-revising edit to an existing ADR (typo, citation, metadata, or an uncaught cross-reference): a self-edge, as `Revises` is on an in-place revision | path of the ADR edited |
-| `Consumed-By:` | removes a discovery note | path of the ADR it informed |
+| `Origin:` | adds a root: the first commit, other than a decision's, that adds an artefact with no upstream in the repository | its provenance: in words, such as the conversation or seed a note came from, or as a pinned `<owner>/<repo>@<rev>[:<path>]` |
+| `Clarifies:` | edits in place an artefact already in the tree: for a discovery note or source material any edit; for any other artefact an edit changing no decision and no behaviour (typo, citation, metadata, or an uncaught cross-reference): a self-edge, as `Revises` is on an in-place revision | path of the artefact edited |
+| `Consumed-By:` | removes a consumed artefact: a discovery note, or source material | path of what it informed; one trailer per artefact informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a plan whose work will not be done | path of the plan |
 | `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
 | `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
 | `Defers:` | defers reconciling a durable downstream artefact, blocked on named other work | path of that downstream artefact; carries its named blocking condition |
 
-Values are repository-relative paths, in the trailer block at the end of the message, one per line in `Key: value` form — never in prose, which `git interpret-trailers` cannot see. **`Derives-From` sits on the first commit of the artefact's branch, whatever that commit contains**, and names direct upstreams only: a skill produced by a plan step names the plan, not the ADR behind it. Before the first commit, ask what this artefact was produced from and write the path down; `land` refuses a branch whose first commit lacks it, unless the branch is a decision or its first commit carries `Clarifies`, which `land` sends direct to trunk with no human pull request. **The body carries the reason**: a `Revises`, `Clarifies`, `Abandons` or deleting commit says what changed and why, in sentences.
+Values are repository-relative paths, except `Origin`'s and the condition `Defers` carries, in the trailer block at the end of the message, one per line in `Key: value` form — never in prose, which `git interpret-trailers` cannot see. **`Derives-From` sits on the first commit of the artefact's branch, whatever that commit contains**, and names direct upstreams only: a skill produced by a plan step names the plan, not the ADR behind it. Before the first commit, ask what this artefact was produced from and write the path down; `land` refuses a branch whose first commit lacks it, unless the branch is a decision, its first commit carries `Clarifies` naming a path that existed at the fork point, which `land` sends direct to trunk with no human pull request, or it carries a non-empty `Origin`. A **root** is the first commit adding an artefact with no upstream in the repository — a bootstrap, source material, or a note from a conversation or seed — and an imported artefact records its provenance as `Origin: <owner>/<repo>@<rev>[:<path>]`, not in a prose header. **The body carries the reason**: a `Revises`, `Clarifies`, `Abandons` or deleting commit says what changed and why, in sentences.
 
 The last three are **verdict** trailers (ADR 0011), recorded by the reviser on a `Revises` branch — one per durable in-tree downstream of the revised ADR, naming that downstream from the revision's side. `land` refuses such a branch while any durable, in-tree downstream (from `history downstream`, filtered to the tree) carries none; see Rule 15. `begin` surfaces the same list as an advisory worklist that blocks nothing.
 
