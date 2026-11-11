@@ -136,12 +136,12 @@ Steps 1 to 6 run on one implementation branch:
    value. For each `Clarifies` value, keep the repository-relative check
    and add `git cat-file -e "$(git merge-base "$trunk" HEAD):$value"`,
    refusing (exit 2, `Clarifies: <value> does not exist at the fork
-   point <sha>`). Accept
-   a missing `Derives-From` when the branch is a decision, carries a
-   valid `Clarifies`, or a valid `Origin`; otherwise refuse with a
-   message naming `Derives-From`, `Clarifies` and `Origin`, keeping
-   `Derives-From` and `first commit`, which existing assertions match. `Origin` joins neither the
-   discharge-due trigger pool nor the verdict pool.
+   point <sha>`). Accept a missing `Derives-From` when the branch is a
+   decision, carries a valid `Clarifies`, or a valid `Origin`; otherwise
+   refuse with a message naming `Derives-From`, `Clarifies` and
+   `Origin`, keeping `Derives-From` and `first commit`, which existing
+   assertions match. `Origin` joins neither the discharge-due trigger
+   pool nor the verdict pool.
 
    Run `bash skills/git-workflow/scripts/tests/run.sh` and
    `bash skills/history/scripts/tests/run.sh`: all green.
@@ -154,8 +154,7 @@ Steps 1 to 6 run on one implementation branch:
    - Replace "A discovery note has two entry points" with its inputs: a
      conversation (Path B), a seed (the developed capture), source
      material, or an experiment; the skill governs the note whichever.
-     Widening its trigger to these inputs is seed #188; the `description`
-     is unchanged.
+     (Note to the implementer: the trigger stays as is; see seed #188.)
      Keep the developed capture's human gating (ADR 0006). The note's
      first commit carries `Derives-From` naming its upstream in the repository
      (source material, or an earlier note); with none, `Origin:` giving
