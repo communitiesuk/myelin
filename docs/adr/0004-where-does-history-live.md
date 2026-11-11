@@ -394,8 +394,8 @@ question and is deferred to a separate ADR. Until it exists,
   exception is folded in, and its claim that the `adr` skill's
   prohibition on editing a merged ADR "becomes meaningful" is
   removed, since that prohibition is withdrawn. Its land rule carries
-  the exceptions: a decision, `Clarifies`, `Abandons` (each naming a path
-  that existed at the fork point), or `Origin:`.
+  the exceptions: a decision, `Clarifies` or `Abandons` naming a path
+  that existed at the fork point, or `Origin:`.
 - ADRs 0001 to 0003 lose the `supersedes` and `superseded_by`
   fields. Plans 0001 and 0002, both done, leave the tree.
 - The human trajectory is now only as good as commit discipline.
