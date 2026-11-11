@@ -186,19 +186,19 @@ self-edge, the same shape `Revises` takes on an in-place revision.
 That is a typo fix, a citation repair, a metadata change, or a
 cross-reference update not caught when the referencing artefact was
 created; for a discovery note or source material, which decide
-nothing, it is any edit. A substantive change to a skill or code
-derives from a plan; a substantive change to a plan carries
-`Reconciles:`, the verdict on a downstream of a revised ADR found
-through the `Derives-From` graph the history skill retrieves (ADR
-0011). The two differ only in what they record — `Revises` for a
-change to the decision, `Clarifies` for a change to its expression.
+nothing, it is any edit. The two differ only in what they record —
+`Revises` for a change to the decision, `Clarifies` for a change to
+its expression. A substantive change to a skill or code derives from
+a plan; a substantive change to a plan carries `Reconciles:`, the
+verdict on a revised ADR's downstream, found through the
+`Derives-From` graph the history skill retrieves (ADR 0011).
 A revising edit carries `Revises`; only a non-revising edit carries
 `Clarifies`, and `land` sends it direct to trunk, with no human pull
 request.
 
 `Origin` exists because, without it, `land` refuses a first commit
 with no upstream in the repository, and such a root's provenance
-lives only in a prose header (#182). It marks a commit, not a kind of
+lives at best in a prose header (#182). It marks a commit, not a kind of
 file. It records where a root came from; the file itself is still
 copied in. A root is where traversal stops. It is not the origin of
 a `Defers` condition (ADRs 0010, 0011), the artefact in the
@@ -331,7 +331,7 @@ question and is deferred to a separate ADR. Until it exists,
 - **Every artefact has an upstream in the repository.** This ADR's
   previous form. Reversed: a bootstrap, an artefact imported from
   another repository, or a file written outside any project has none,
-  so `land` refused it and its provenance lived only in prose (#182).
+  so `land` refused it and its provenance lived at best in prose (#182).
 - **A discovery note informs one ADR.** This ADR's previous form, with
   `Consumed-By` naming that ADR. Reversed: material may inform several
   ADRs or none.
@@ -431,6 +431,10 @@ question and is deferred to a separate ADR. Until it exists,
   history skill.
 - `docs/adr/0006-where-do-captured-ideas-live.md` — the developed
   capture as a discovery note.
+- `docs/adr/0010-history-retrieval.md` — the `Defers` condition,
+  whose origin a root is not.
+- `docs/adr/0011-revision-process.md` — the reconciliation of a
+  revised ADR's downstreams, and the verdicts that discharge it.
 - Issues #182 and #184 — the root and the revision of a landed
   discovery note.
 - `git-interpret-trailers(1)` — the trailer format and tooling.

@@ -68,8 +68,8 @@ The git workflow never defines "artefact" itself; it defers to the
 governing skill, which already defines its own boundaries and exit
 criteria. Work not governed by any skill is still an artefact and
 still gets its own branch. `facilitated-discovery` governs a
-discovery note whatever its input: a conversation, a seed, an
-experiment, or source material (ADR 0004).
+discovery note whatever its input: a conversation, a seed, source
+material (ADR 0004), or an experiment.
 
 ### Branch before edit
 

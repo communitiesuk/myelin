@@ -157,8 +157,7 @@ wholly `docs/discovery/0003-escalation-and-orchestration.md`'s.
 - **A developed capture written outside `facilitated-discovery`.** This
   ADR's previous form: a second entry path to a discovery note, written
   more directly. Narrowed: the skill governs a discovery note whatever
-  its input, so a developed capture is a second input, not a second
-  path.
+  its input, so a seed is a second input, not a second path.
 
 ## Consequences
 
@@ -170,8 +169,8 @@ wholly `docs/discovery/0003-escalation-and-orchestration.md`'s.
   seed-pointer line in a project's agent instructions and the
   read-not-write rule. There is no new skill and no new store.
 - The discovery note acquires a second input: beside a conversation,
-  a developed capture. `facilitated-discovery` governs the note
-  whichever the input (ADR 0003).
+  a seed. `facilitated-discovery` governs the note whichever the
+  input (ADR 0003).
 - The graveyard risk is managed by human gating and periodic pruning,
   not by machinery. If parked notes accumulate faster than they are
   pruned, that is the signal that the deferred capture/triage capability
