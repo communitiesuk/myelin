@@ -341,9 +341,10 @@ question and is deferred to a separate ADR. Until it exists,
 - **An `Amends:` trailer for in-place edits to non-ADR artefacts.**
   Rejected: a second self-edge key, where widening one row serves.
 - **Let `land` infer the case, with no trailer** — exempting a diff
-  that only edits existing files under `docs/discovery/`, or a first
-  commit that only adds new ones. Rejected: the edge, or the root's
-  provenance, would go unrecorded.
+  that only edits existing files under `docs/discovery/`, a diff that
+  only deletes them, or a first commit that only adds new ones.
+  Rejected: the edge, or the root's provenance, would go unrecorded,
+  and the exemption is a special case.
 - **An external `Derives-From` for a root.** Rejected: a loose local
   file has no `<owner>/<repo>@<rev>` to name. An external reference
   survives as one form of `Origin:` value.
@@ -354,10 +355,8 @@ question and is deferred to a separate ADR. Until it exists,
   the note, so the deletion had to ride on another branch (#191); and
   with no edge, history could not tell a decision from a mistaken
   deletion.
-- **Widen `Clarifies` to cover deletions, or let `land` exempt branches
-  that only delete under `docs/discovery/`.** Rejected: either would
-  land, but neither leaves an edge saying "decided against", and the
-  exemption is a special case.
+- **Widen `Clarifies` to cover deletions.** Rejected: it would land,
+  but leave no edge saying "decided against".
 - **Infer abandonment from a deletion with no `Consumed-By`.**
   Rejected: a mistaken deletion would read as a decision, and `land`
   would still refuse the standalone branch.
@@ -382,8 +381,9 @@ question and is deferred to a separate ADR. Until it exists,
   points, which assume a conversation with a human present, are left
   to the implementing plan.
 - The git-workflow skill that plan 0003 specifies must carry the
-  trailer vocabulary and route a `Clarifies` or `Abandons` branch to trunk
-  without requiring `Derives-From`, since it is the skill that lands commits.
+  trailer vocabulary, route a `Clarifies` branch to trunk, and accept an
+  `Abandons` first commit, neither requiring `Derives-From`, since it is
+  the skill that lands commits.
   It also lands a root carrying `Origin:`, where the history skill
   stops traversal. Plan 0003 is revised accordingly under ADR
   0011.
@@ -394,7 +394,8 @@ question and is deferred to a separate ADR. Until it exists,
   exception is folded in, and its claim that the `adr` skill's
   prohibition on editing a merged ADR "becomes meaningful" is
   removed, since that prohibition is withdrawn. Its land rule carries
-  the exceptions: a decision, `Clarifies`, or `Origin:`.
+  the exceptions: a decision, `Clarifies`, `Abandons` (each naming a path
+  that existed at the fork point), or `Origin:`.
 - ADRs 0001 to 0003 lose the `supersedes` and `superseded_by`
   fields. Plans 0001 and 0002, both done, leave the tree.
 - The human trajectory is now only as good as commit discipline.
@@ -454,8 +455,8 @@ question and is deferred to a separate ADR. Until it exists,
   whose origin a root is not.
 - `docs/adr/0011-revision-process.md` — the reconciliation of a
   revised ADR's downstreams, and the verdicts that discharge it.
-- Issues #182 and #184 — the root and the revision of a landed
-  discovery note.
+- Issues #182, #184 and #191 — the root, the revision of a landed
+  discovery note, and its abandonment.
 - `git-interpret-trailers(1)` — the trailer format and tooling.
 - Nygard, "Documenting Architecture Decisions" (2011) — the source of
   the immutability convention this ADR withdraws, written for a
