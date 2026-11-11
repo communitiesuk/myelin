@@ -276,9 +276,10 @@ script, and supporting a host is adding a module.
 Landing enforces one rule of ADR 0004 mechanically: the script
 refuses to land a branch whose first commit carries no `Derives-From`
 trailer, except where ADR 0004 needs none — a decision, a `Clarifies`
-edit to an artefact already in the tree, or a root carrying `Origin:`.
-For `Clarifies` it checks that the named path existed at the fork
-point; for `Origin:`, that its value is not empty. The trailer is
+edit or an `Abandons` to an artefact already in the tree, or a root
+carrying `Origin:`. For `Clarifies` and `Abandons` it checks that the
+named path existed at the fork point; for `Origin:`, that its value is
+not empty. The trailer is
 written by whoever commits, under the governing skill; the script
 checks that it is there.
 
