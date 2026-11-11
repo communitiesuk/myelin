@@ -120,15 +120,16 @@ tree when that purpose is served.
   above; for a skill or code it is a staleness marker, those never
   leaving the tree on completion.
 - A **discovery note** leaves when the ADR or ADRs it informed are
-  accepted. A note that informs none is abandoned, by a deleting
-  commit that says why.
+  accepted. A note that informs none is decided against, and leaves by
+  a deleting commit carrying `Abandons`, whose body says why.
 - **Source material** — any file brought in from outside the
   repository's workflow as input to discovery, imported or not — lives
   in `docs/discovery/sources/`, whose path marks it as consumable
   input and keeps it out of note numbering. A discovery note records
   what is drawn from it. It leaves on the branch of the last note
   drawing on it, by a later commit carrying `Consumed-By` naming each
-  note it informed.
+  note it informed. Source material that informed no note leaves
+  with `Abandons` instead.
 - An **ADR** stays for as long as its decision stands. ADRs are the
   current intention; they are consumed continuously, not once.
 
@@ -167,7 +168,7 @@ The vocabulary:
 | `Clarifies:` | edits in place an artefact already in the tree: for a discovery note or source material any edit; for any other artefact an edit changing no decision and no behaviour (typo, citation, metadata, or an uncaught cross-reference); a self-edge, as `Revises` is on an in-place revision | path of the artefact edited |
 | `Consumed-By:` | removes a consumed artefact: a discovery note, or source material | path of what it informed; one trailer per artefact informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
-| `Abandons:` | removes a plan whose work will not be done | path of the plan |
+| `Abandons:` | removes an artefact decided against: a plan whose work will not be done, a discovery note that informs no ADR, or source material that informed no note | path of the artefact |
 | `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
 | `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
 | `Defers:` | defers reconciling a durable downstream artefact, blocked on named other work | path of that downstream artefact; carries its named blocking condition |
@@ -220,6 +221,10 @@ provenance. Structure inside an artefact, such as the order of
 docstring, test and code commits under `test-first-workflow`, belongs
 to the governing skill under ADR 0003's delegation of commit cadence,
 and carries no trailer.
+
+`land` accepts a first commit carrying `Abandons` naming a path that
+existed at the fork point, as it does `Clarifies`, so a branch that
+only abandons an artefact lands without riding on another.
 
 The prose body of a `Revises`, `Clarifies`, `Abandons` or deleting commit
 must say what changed and why, in sentences. Trailers carry the edge;
@@ -344,6 +349,21 @@ question and is deferred to a separate ADR. Until it exists,
   survives as one form of `Origin:` value.
 - **Source material alongside the notes in `docs/discovery/`.** Not
   chosen; it lives in `docs/discovery/sources/`.
+- **A discovery note abandoned by a trailerless deletion.** This ADR's
+  previous form. Reversed: `land` refused a branch that only deleted
+  the note, so the deletion had to ride on another branch (#191); and
+  with no edge, history could not tell a decision from a mistaken
+  deletion.
+- **Widen `Clarifies` to cover deletions, or let `land` exempt branches
+  that only delete under `docs/discovery/`.** Rejected: either would
+  land, but neither leaves an edge saying "decided against", and the
+  exemption is a special case.
+- **Infer abandonment from a deletion with no `Consumed-By`.**
+  Rejected: a mistaken deletion would read as a decision, and `land`
+  would still refuse the standalone branch.
+- **Mark a note `status: abandoned` by a `Clarifies` edit before
+  deleting it.** Not chosen: it restores a status this ADR removed and
+  splits abandonment into two steps.
 - **Every file an `Origin:` commit adds is consumable.** Rejected:
   bootstrap files must never leave the tree.
 
@@ -357,12 +377,13 @@ question and is deferred to a separate ADR. Until it exists,
   are withdrawn, and the introducing commit carries `Derives-From`.
 - The `facilitated-discovery` skill changes: a discovery note leaves
   the tree when the ADR or ADRs it informed are accepted, with
-  `Consumed-By`, and a landed note is revised in place. Its entry
+  `Consumed-By`, or when abandoned, with `Abandons`; a landed note is
+  revised in place. Its entry
   points, which assume a conversation with a human present, are left
   to the implementing plan.
 - The git-workflow skill that plan 0003 specifies must carry the
-  trailer vocabulary and route a `Clarifies` branch to trunk without
-  requiring `Derives-From`, since it is the skill that lands commits.
+  trailer vocabulary and route a `Clarifies` or `Abandons` branch to trunk
+  without requiring `Derives-From`, since it is the skill that lands commits.
   It also lands a root carrying `Origin:`, where the history skill
   stops traversal. Plan 0003 is revised accordingly under ADR
   0011.
