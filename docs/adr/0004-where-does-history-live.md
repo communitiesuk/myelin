@@ -174,40 +174,38 @@ The vocabulary:
 
 Values are repository-relative paths, except `Origin`'s and the
 blocking condition `Defers` carries. A commit may carry several
-trailers, and a key may repeat. `Derives-From` names direct
-upstreams only: a skill produced by a plan step names the plan, not
-the ADR behind it, which is one hop away through the plan's own
-`adr:` field. It is also the one trailer that cannot self-reference —
-an artefact does not derive from itself. `Revises` is for changes to
-the decision; an edit made on the ADR's own branch before it merges
-is still drafting and carries no trailer. An in-place edit that
-changes no decision and no behaviour carries `Clarifies` instead: a
-self-edge, the same shape `Revises` takes on an in-place revision.
-That is a typo fix, a citation repair, a metadata change, or a
-cross-reference update not caught when the referencing artefact was
-created; for a discovery note or source material, which decide
-nothing, it is any edit. The two differ only in what they record —
-`Revises` for a change to the decision, `Clarifies` for a change to
-its expression. A substantive change to a skill or code derives from
-a plan; a substantive change to a plan carries `Reconciles:`, the
-verdict on a revised ADR's downstream, found through the
-`Derives-From` graph the history skill retrieves (ADR 0011).
-A revising edit carries `Revises`; only a non-revising edit carries
+trailers, and a key may repeat. `Derives-From` names direct upstreams
+only: a skill produced by a plan step names the plan, not the ADR
+behind it, which is one hop away through the plan's own `adr:` field.
+It is also the one trailer that cannot self-reference — an artefact
+does not derive from itself. `Revises` is for changes to the decision;
+an edit made on the ADR's own branch before it merges is still
+drafting and carries no trailer. An in-place edit that changes no
+decision and no behaviour carries `Clarifies` instead: a self-edge,
+the same shape `Revises` takes on an in-place revision. That is a typo
+fix, a citation repair, a metadata change, or a cross-reference update
+not caught when the referencing artefact was created; for a discovery
+note or source material, which decide nothing, it is any edit. For an
+ADR, the two differ only in what they record — `Revises` for a change
+to the decision, `Clarifies` for a change to its expression. A
+revising edit carries `Revises`; only a non-revising edit carries
 `Clarifies`, and `land` sends it direct to trunk, with no human pull
-request.
+request. A substantive change to a skill or code derives from a plan;
+a substantive change to a plan carries `Reconciles:`, the verdict on a
+revised ADR's downstream, found through the `Derives-From` graph the
+history skill retrieves (ADR 0011).
 
 `Origin` exists because, without it, `land` refuses a first commit
-with no upstream in the repository, and such a root's provenance
-lives at best in a prose header (#182). It marks a commit, not a kind of
+with no upstream in the repository, and such a root's provenance lives
+at best in a prose header (#182). It marks a commit, not a kind of
 file. It records where a root came from; the file itself is still
-copied in. A root is where traversal stops. It is not the origin of
-a `Defers` condition (ADRs 0010, 0011), the artefact in the
-repository a deferral is blocked on. Source material enters on its
-own branch, whose first commit carries `Origin:` and adds only that
-material; a note drawing on it derives from it on the note's own
-branch. Of what a root commit adds, only source material leaves the
-tree; bootstrap files such as `tessl.json`, `.claude/` and
-`AGENTS.md` never do.
+copied in. A root is where traversal stops. It is not the origin of a
+`Defers` condition (ADRs 0010, 0011), the artefact in the repository a
+deferral is blocked on. Source material enters on its own branch,
+whose first commit carries `Origin:` and adds only that material; a
+note drawing on it derives from it on the note's own branch. Of what a
+root commit adds, only source material leaves the tree; bootstrap
+files such as `tessl.json`, `.claude/` and `AGENTS.md` never do.
 
 The three verdict trailers are the cross-edge counterpart to those
 self-edges: `Revises` and `Clarifies` link an artefact to itself,
@@ -358,10 +356,10 @@ question and is deferred to a separate ADR. Until it exists,
   with `Completes` and `Abandons`, the no-delete and no-archive rules
   are withdrawn, and the introducing commit carries `Derives-From`.
 - The `facilitated-discovery` skill changes: a discovery note leaves
-  the tree when what it informed has landed, with `Consumed-By`, and a
-  landed note is revised in place. Its entry points, which assume a
-  conversation with a human present, are left to the implementing
-  plan.
+  the tree when the ADR or ADRs it informed are accepted, with
+  `Consumed-By`, and a landed note is revised in place. Its entry
+  points, which assume a conversation with a human present, are left
+  to the implementing plan.
 - The git-workflow skill that plan 0003 specifies must carry the
   trailer vocabulary and route a `Clarifies` branch to trunk without
   requiring `Derives-From`, since it is the skill that lands commits.

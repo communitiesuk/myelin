@@ -157,7 +157,8 @@ wholly `docs/discovery/0003-escalation-and-orchestration.md`'s.
 - **A developed capture written outside `facilitated-discovery`.** This
   ADR's previous form: a second entry path to a discovery note, written
   more directly. Narrowed: the skill governs a discovery note whatever
-  its input, so a seed is a second input, not a second path.
+  its input, so a seed developed directly is a second input to the
+  skill, not a second path.
 
 ## Consequences
 
