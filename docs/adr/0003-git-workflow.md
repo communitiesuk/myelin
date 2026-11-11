@@ -67,7 +67,9 @@ An **artefact is what one skill produces in one invocation**:
 The git workflow never defines "artefact" itself; it defers to the
 governing skill, which already defines its own boundaries and exit
 criteria. Work not governed by any skill is still an artefact and
-still gets its own branch.
+still gets its own branch. `facilitated-discovery` governs a
+discovery note whatever its input: a conversation, a seed, source
+material (ADR 0004), or an experiment.
 
 ### Branch before edit
 
@@ -273,10 +275,12 @@ script, and supporting a host is adding a module.
 
 Landing enforces one rule of ADR 0004 mechanically: the script
 refuses to land a branch whose first commit carries no `Derives-From`
-trailer, except where ADR 0004 needs none — a decision, or a
-`Clarifies` edit to an existing ADR. The trailer is written by whoever
-commits, under the governing skill; the script checks that it is
-there.
+trailer, except where ADR 0004 needs none — a decision, a `Clarifies`
+edit to an artefact already in the tree, or a root carrying `Origin:`.
+For `Clarifies` it checks that the named path existed at the fork
+point; for `Origin:`, that its value is not empty. The trailer is
+written by whoever commits, under the governing skill; the script
+checks that it is there.
 
 The script is invoked by the model at the moments the skill body
 names. Running it without the model, by a hook or an orchestrator, is
