@@ -47,8 +47,8 @@ landing.
 
 The two `Landing` verdicts are a precondition of landing this plan:
 its introducing commit's `Derives-From` makes them due, and `land`
-refuses the branch without them. After the review loop's last commit,
-commit, empty, `Confirm the history skill and ADR 0010 against ADR
+refuses the branch without them. After the closing pass, if any, and
+before `land`, commit, empty, `Confirm the history skill and ADR 0010 against ADR
 0004's revision`, its body giving the reason above, carrying
 `Confirms: skills/history/SKILL.md` and
 `Confirms: docs/adr/0010-history-retrieval.md`.
@@ -56,7 +56,8 @@ commit, empty, `Confirm the history skill and ADR 0010 against ADR
 ## Steps
 
 Steps 1 to 6 run on one implementation branch:
-`begin --slug roots-and-in-place-edits` (`chore-roots-and-in-place-edits`).
+`begin skills/git-workflow/scripts/git-workflow.sh --slug roots-and-in-place-edits`
+(`chore-roots-and-in-place-edits`).
 
 1. **Document the land rule and the trailer vocabulary.**
    - `skills/git-workflow/SKILL.md`, Rule 2: after "Work governed by no
@@ -138,8 +139,8 @@ Steps 1 to 6 run on one implementation branch:
    point <sha>`). Accept
    a missing `Derives-From` when the branch is a decision, carries a
    valid `Clarifies`, or a valid `Origin`; otherwise refuse with a
-   message naming `Derives-From`, `Clarifies` and `Origin` (existing
-   assertions match on `Derives-From`). `Origin` joins neither the
+   message naming `Derives-From`, `Clarifies` and `Origin`, keeping
+   `Derives-From` and `first commit`, which existing assertions match. `Origin` joins neither the
    discharge-due trigger pool nor the verdict pool.
 
    Run `bash skills/git-workflow/scripts/tests/run.sh` and
@@ -148,23 +149,22 @@ Steps 1 to 6 run on one implementation branch:
 
 4. **Reconcile `facilitated-discovery`.** In
    `skills/facilitated-discovery/SKILL.md`:
-   - The `description`: add one clause, that the skill also governs a
-     note from a seed, source material or an experiment, pending seed
-     #188.
    - The numbering paragraph: a note leaves when the ADR or ADRs it
      informed are accepted.
    - Replace "A discovery note has two entry points" with its inputs: a
      conversation (Path B), a seed (the developed capture), source
      material, or an experiment; the skill governs the note whichever.
+     Widening its trigger to these inputs is seed #188; the `description`
+     is unchanged.
      Keep the developed capture's human gating (ADR 0006). The note's
      first commit carries `Derives-From` naming its upstream in the repository
      (source material, or an earlier note); with none, `Origin:` giving
-     its provenance in words (`Origin: seed #188`, or the conversation
+     its provenance in words (`Origin: seed #<n>`, or the conversation
      and date), or a pinned `<owner>/<repo>@<rev>:<path>` for a note
      copied from another repository.
    - Source material: any file brought in from outside the workflow as
      input to discovery lives in `docs/discovery/sources/`. It enters on
-     its own branch (`begin --slug <slug>`), whose first commit adds only
+     its own branch (`begin docs/discovery/sources/<file> --slug <slug>`), whose first commit adds only
      that material and carries `Origin:`; a note drawing on it derives
      from it on the note's own branch, and records what it draws from
      it. It leaves on the branch of the last note drawing on it, by a
@@ -210,5 +210,5 @@ Steps 1 to 6 run on one implementation branch:
 - Smoke, in a scratch repository with the plugin's script: a branch
   whose first commit adds `docs/discovery/sources/x.txt` with
   `Origin: brought in by hand` lands; a branch editing a landed note
-  with `Clarifies:` naming it lands; a branch with neither trailer is
-  refused naming all three keys.
+  with `Clarifies:` naming it lands; a branch with none of the three
+  trailers is refused naming each.
