@@ -248,6 +248,8 @@ Both bodies are mandatory. Trailers carry the edge; the body carries the reason.
 
 Status updates ride with the code changes that reflect the new reality — e.g. flip `draft` → `in-progress` in the same commit as the first implementation change. Completion is the concrete case: the commit that deletes the plan file is the one that makes completion true. There is no status to flip first.
 
+A plan in the tree is edited in place. A substantive change made because its ADR was revised carries `Reconciles: plans/NNNN-<slug>.md` (ADR 0011), on the revising branch or the branch that brings its deferral due. An edit changing no decision and no behaviour (a typo, citation, metadata, or an uncaught cross-reference) carries `Clarifies: plans/NNNN-<slug>.md` and lands direct to trunk.
+
 ## The introducing commit
 
 The first commit on the plan's branch carries this trailer, copied exactly:
