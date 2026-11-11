@@ -21,8 +21,9 @@
 #           commit. Never stages, stashes, reverts or deletes anything in
 #           the primary checkout.
 #   land    From the artefact's checkout: refuse unless the first commit
-#           since the fork point carries Derives-From or a Clarifies edit
-#           to an existing ADR; hand a decision (a new file under docs/adr/,
+#           since the fork point carries Derives-From, a Clarifies naming
+#           a path that existed at the fork point, or a non-empty Origin
+#           (a root's provenance, not checked as a path); hand a decision (a new file under docs/adr/,
 #           or a Revises trailer) to a human via the host's pull request;
 #           print every outstanding deferral now due, and refuse when this
 #           branch's own trigger is what makes one due unless it also
@@ -274,12 +275,14 @@ cmd_begin() {
 #      it needs no Derives-From. Every other artefact derives from an
 #      upstream, so its first commit since the fork point must carry a
 #      Derives-From trailer; landing refuses (exit 2) when a non-decision
-#      does not. A Clarifies edit to an existing ADR is the exception: not
-#      a decision, but needing no Derives-From either, since it adds a
-#      self-edge from the ADR to itself rather than deriving from an
-#      upstream (ADR 0004). Any Derives-From or Clarifies that is present
-#      must be repository-relative (not starting with / or ./), or landing
-#      refuses (exit 2).
+#      does not. Two exceptions need no Derives-From (ADR 0004): a
+#      Clarifies edit to any artefact already in the tree, a self-edge
+#      whose every value must name a path that existed at the fork point;
+#      and a root carrying Origin, whose value is provenance, not a path,
+#      and must not be empty. Any Derives-From or Clarifies that is
+#      present must be repository-relative (not starting with / or ./),
+#      and any Origin present must be non-empty, or landing refuses
+#      (exit 2). Origin joins neither the trigger nor the verdict pool.
 #   2a. The blast-radius auto-defer (ADR 0011), run inside the same
 #      Revises guard as 2b and strictly before it, immediately after the
 #      hoisted verdict-pool computation (reconciles_confirms, verdicts).
@@ -511,10 +514,12 @@ cmd_land() {
   git diff --name-status "$trunk...HEAD" | grep -qE '^A[[:space:]]+docs/adr/' && decision=1
 
   # A decision roots or revises the artefact graph and needs no
-  # Derives-From; a Clarifies edit to an existing ADR adds a self-edge
-  # and needs none either; every other artefact derives from an upstream,
-  # so its first commit must carry one. A Derives-From or Clarifies that
-  # is present is validated as repository-relative either way.
+  # Derives-From; a Clarifies edit to an artefact already in the tree
+  # (each value present at the fork point) adds a self-edge and needs
+  # none; a root carrying a non-empty Origin needs none; every other
+  # artefact derives from an upstream, so its first commit must carry
+  # one. A Derives-From or Clarifies present is validated as
+  # repository-relative, and an Origin present as non-empty, either way.
   local trailer clarifies
   trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
   clarifies="$(git log -1 --format='%(trailers:key=Clarifies,valueonly)' "$first" | sed '/^$/d')"
