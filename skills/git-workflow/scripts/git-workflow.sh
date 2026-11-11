@@ -520,14 +520,24 @@ cmd_land() {
   # artefact derives from an upstream, so its first commit must carry
   # one. A Derives-From or Clarifies present is validated as
   # repository-relative, and an Origin present as non-empty, either way.
-  local trailer clarifies
+  local trailer clarifies origin_keys origin fork value
   trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
   clarifies="$(git log -1 --format='%(trailers:key=Clarifies,valueonly)' "$first" | sed '/^$/d')"
+  # Read Origin with its key, so a present key with an empty value is seen.
+  origin_keys="$(git log -1 --format='%(trailers:key=Origin)' "$first" | sed '/^$/d')"
+  origin="$(git log -1 --format='%(trailers:key=Origin,valueonly)' "$first" | sed '/^[[:space:]]*$/d')"
+  if [ -n "$origin_keys" ] && [ -z "$origin" ]; then
+    die 2 "Origin must not be empty: the first commit since the fork point ($(git rev-parse --short "$first")) carries Origin: with no provenance"
+  fi
   if [ -n "$clarifies" ]; then
     printf '%s\n' "$clarifies" | grep -qE '^(\./|/)' && die 2 "Clarifies must be a repository-relative path, got: $clarifies"
+    fork="$(git merge-base "$trunk" HEAD)"
+    while IFS= read -r value; do
+      git cat-file -e "$fork:$value" 2>/dev/null || die 2 "Clarifies: $value does not exist at the fork point $(git rev-parse --short "$fork")"
+    done <<< "$clarifies"
   fi
   if [ -z "$trailer" ]; then
-    { [ "$decision" -eq 1 ] || [ -n "$clarifies" ]; } || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer"
+    { [ "$decision" -eq 1 ] || [ -n "$clarifies" ] || [ -n "$origin" ]; } || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer, nor a Clarifies or Origin"
   else
     printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
   fi
