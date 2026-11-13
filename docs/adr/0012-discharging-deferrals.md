@@ -39,8 +39,8 @@ plain surface addition to 0010, not an un-deferral of the latter.
 A deferral `Defers: <D> <condition>` is **outstanding** while no later
 verdict (`Reconciles:`/`Confirms:`/`Defers:`) targets the same `D`. An
 outstanding deferral becomes **due** the moment its named condition is
-satisfied — the blocking work has landed on trunk, or its origin is
-abandoned (ADR 0011).
+satisfied — the blocking work, or its origin's abandonment (ADR
+0011), has landed on trunk.
 
 ### Persistent visibility, scoped hard-stop
 
@@ -80,9 +80,9 @@ the blocker's, not the original deferring revision's.
 ### Scope of the check
 
 The check this ADR adds is a lookup by *blocker*, not by *downstream of
-the ADR being revised*: it asks which outstanding deferrals name, as
+the ADR being changed*: it asks which outstanding deferrals name, as
 their blocking condition, the artefact a branch is about to land —
-the reverse of ADR 0011's existing "what is downstream of the revised
+the reverse of ADR 0011's existing "what is downstream of the changed
 ADR" gate. Both checks run at `land`, and both must pass; neither
 subsumes the other.
 
@@ -132,7 +132,7 @@ order, not a cycle.
   then, outstanding deferrals exist but nothing checks whether they
   are due.
 - `land`'s due-deferral check is not scoped to one branch's own
-  revision the way ADR 0011's verdict-completeness gate is: it must
+  change the way ADR 0011's verdict-completeness gate is: it must
   consult outstanding deferrals across the whole graph, every time it
   runs. That is a wider check than `land` has needed before.
 - Because there is no per-path ownership, the obligation to discharge

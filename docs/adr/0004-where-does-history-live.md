@@ -169,7 +169,7 @@ The vocabulary:
 | `Consumed-By:` | removes a consumed artefact: a discovery note, or source material | path of what it informed; one trailer per artefact informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a whole artefact, as if it had never been: an ADR whose decision is reversed outright, a plan whose work will not be done, a discovery note that informs no ADR, or source material that informed no note | path of the artefact |
-| `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
+| `Reconciles:` | revises or deletes a durable downstream to match the changed decision | path of that downstream |
 | `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
 | `Defers:` | defers reconciling a durable downstream artefact, blocked on named other work | path of that downstream artefact; carries its named blocking condition |
 
@@ -192,9 +192,9 @@ to the decision, `Clarifies` for a change to its expression. A
 revising edit carries `Revises`; only a non-revising edit carries
 `Clarifies`, and `land` sends it direct to trunk, with no human pull
 request. A substantive change to a skill or code derives from a plan;
-a substantive change to a plan carries `Reconciles:`, the verdict on a
-revised ADR's downstream, found through the `Derives-From` graph the
-history skill retrieves (ADR 0011).
+a substantive change to a plan carries `Reconciles:`, the verdict on
+an ADR's downstream, found through the `Derives-From` graph the history
+skill retrieves (ADR 0011).
 
 `Origin` exists because, without it, `land` refuses a first commit
 with no upstream in the repository, and such a root's provenance lives
@@ -210,11 +210,11 @@ files such as `tessl.json`, `.claude/` and `AGENTS.md` never do.
 
 The three verdict trailers are the cross-edge counterpart to those
 self-edges: `Revises` and `Clarifies` link an artefact to itself,
-whereas a verdict links the revised ADR to a *different* durable
-downstream named in its value. Introducing them extends this
-exhaustive vocabulary, which is why their keys are defined here;
-reading those keys and enforcing the verdicts — the gate's parsing —
-belong to ADR 0011's plan.
+whereas a verdict links an ADR to a *different* durable downstream
+named in its value. Introducing them extends this exhaustive
+vocabulary, which is why their keys are defined here; reading those
+keys and enforcing the verdicts — the gate's parsing — belong to ADR
+0011's plan.
 
 Trailers record edges between artefacts, and `Origin` a root's
 provenance. Structure inside an artefact, such as the order of

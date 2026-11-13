@@ -9,10 +9,10 @@ date: 2026-10-28
 
 ## Context
 
-When an upstream artefact is revised, nothing enumerates what
-downstream must change with it (seed #92). Each ripple — a plan that
-now targets a changed decision, a skill written from that plan — has
-been found by hand.
+When an upstream artefact is revised or abandoned, nothing enumerates
+what downstream must change with it (seed #92). Each ripple — a plan
+that now targets a changed decision, a skill written from that plan —
+has been found by hand.
 
 The retrieval exists: `history downstream <path>` (ADR 0010) returns
 the transitive `Derives-From` graph of an artefact plus its `Revises`
@@ -43,9 +43,10 @@ code, ADRs, and plans still in the tree (deferred or in progress). For
 each of these on the `downstream:` list, the revision records on the
 same branch exactly one verdict:
 
-- **Reconciled** — edited to match the changed decision; the touching
-  commit corroborates, but the verdict trailer (below) is what the
-  gate reads;
+- **Reconciled** — edited to match the changed decision, or deleted
+  if it existed only for an abandoned ADR; the touching commit
+  corroborates, but the verdict trailer (below) is what the gate
+  reads;
 - **Deferred** — applies to any durable, in-tree downstream (skill,
   code, or plan), and only when reconciliation is blocked
   on some other artefact's own future change — accepted ADR at
@@ -68,9 +69,8 @@ same branch exactly one verdict:
   it, reconcile now or record *Confirmed*.
   Discharging a due deferral is ADR 0012's;
 - **Confirmed** — a downstream found unaffected, recorded explicitly.
-  This is now primarily a **discharge-time re-verdict** (ADR 0012),
-  not judged unaffected up front by the reviser — see the
-  blast-radius default below for when each verdict lands.
+  This is now primarily a **discharge-time re-verdict** (ADR 0012) —
+  see the blast-radius default below for when each verdict lands.
 
 **The blast-radius default.** The revision enumerates its transitive
 downstreams — the blast radius — up front: a readout of how much work
@@ -95,10 +95,8 @@ is the plan's.
 
 This generalises ADR 0004's "Reconciled or Deferred" from ADR → plan to
 the whole in-tree graph, and adds the explicit *Confirmed* verdict: an
-unaffected artefact is **recorded as Confirmed** — typically at
-discharge, when the reconciling plan leaves it untouched, rather than
-judged up front — not silently skipped, the hand-found ripple seed #92
-names.
+unaffected artefact is **recorded as Confirmed**, not silently
+skipped, the hand-found ripple seed #92 names.
 
 Verdicts are recorded as **trailers**, for the reasons ADR 0004
 adopted them: append-only, machine-readable, and timestamped by the
@@ -142,8 +140,6 @@ The gate runs at **`land`**, not at `begin`:
 
 `begin` still has a use: surfacing the `downstream:` worklist so the
 reviser sees the scope up front. That is advisory and blocks nothing.
-Verdicts are recorded on the branch as trailers `land` can check
-without judgement.
 
 ### Out of scope: eval scenarios
 
@@ -255,7 +251,7 @@ scope (discovery 0004 territory).
 - `docs/adr/0010-history-retrieval.md` — the transitive
   `history downstream` query this process consumes, without
   re-traversing git.
-- `docs/adr/0003-git-workflow.md` — `land` stops a `Revises` branch
+- `docs/adr/0003-git-workflow.md` — `land` stops a decision branch
   and parses trailers, the moment this gate attaches to; and
   plan-merge-on-creation, which makes a revised ADR's plans "in the
   tree" so the downstream set is complete.

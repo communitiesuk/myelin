@@ -68,11 +68,11 @@ text to interpret.
   later verdict (`Reconciles:`/`Confirms:`/`Defers:`) on the same `D`
   (ADR 0012's "outstanding"); for each it reads the origin from the
   condition and finds the candidate trigger trailers —
-  `Reconciles:`/`Revises:`/`Derives-From: <origin>` — landed on trunk
-  after the deferral. It returns, per outstanding deferral, the
-  deferred `D`, its origin, the condition, and due/not-due, where
-  **due is a non-empty candidate set**. It does not read the
-  condition's description or match against it: where more than one
+  `Reconciles:`/`Revises:`/`Derives-From:`/`Abandons: <origin>` —
+  landed on trunk after the deferral. It returns, per outstanding
+  deferral, the deferred `D`, its origin, the condition, and
+  due/not-due, where **due is a non-empty candidate set**. It does not
+  read the condition's description or match against it: where more than one
   candidate is returned, that disambiguation is the consuming agent's
   (ADR 0012), not the query's.
 
