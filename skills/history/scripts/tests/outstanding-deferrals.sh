@@ -109,3 +109,31 @@ assert_contains "$OUT" "D: plans/0001-bus.md"
 assert_contains "$OUT" "due: true"
 assert_contains "$OUT" "candidate:"
 assert_contains "$OUT" "Reconcile ADR 0001 itself"
+
+t "8. an Abandons naming the origin: due, with a candidate line"
+newrepo
+commit docs/adr/0001-bus.md "Add ADR 0001"
+commit plans/0001-bus.md "Defer plan 0001 on ADR 0001" \
+  "Defers: plans/0001-bus.md docs/adr/0001-bus.md waiting on a decision"
+git rm -q docs/adr/0001-bus.md
+gc "Abandon ADR 0001" "Abandons: docs/adr/0001-bus.md"
+abandon_hash="$(git rev-parse --short HEAD)"
+history outstanding-deferrals
+assert_eq 0 "$OUT_STATUS"
+assert_contains "$OUT" "D: plans/0001-bus.md"
+assert_contains "$OUT" "due: true"
+assert_contains "$OUT" "candidate: $abandon_hash Abandon ADR 0001"
+
+t "9. an Abandons naming another path: not due"
+newrepo
+commit docs/adr/0001-bus.md "Add ADR 0001"
+commit docs/discovery/0001-note.md "Add note 0001"
+commit plans/0001-bus.md "Defer plan 0001 on ADR 0001" \
+  "Defers: plans/0001-bus.md docs/adr/0001-bus.md waiting on a decision"
+git rm -q docs/discovery/0001-note.md
+gc "Abandon note 0001" "Abandons: docs/discovery/0001-note.md"
+history outstanding-deferrals
+assert_eq 0 "$OUT_STATUS"
+assert_contains "$OUT" "D: plans/0001-bus.md"
+assert_contains "$OUT" "due: false"
+assert_not_contains "$OUT" "candidate:"
