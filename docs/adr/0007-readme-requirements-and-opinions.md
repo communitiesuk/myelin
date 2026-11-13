@@ -86,8 +86,8 @@ meets it before it surprises them:
   configured.
 - Merge commits only: no squash, no rebase, no fast-forward; myelin
   recommends disabling the squash/rebase buttons at the repo level.
-- PR by default where a remote exists; ADRs and `Revises` branches are
-  landed by a human, everything else the agent lands itself.
+- PR by default where a remote exists; decision branches are landed
+  by a human (ADR 0003), everything else the agent lands itself.
 - Worktree isolation on contention; `.worktrees/` is gitignored.
 - Seeds live in a *user-owned* store, located by an optional one-line
   pointer in `AGENTS.md`/`CLAUDE.md`; agents *read* it and never write
