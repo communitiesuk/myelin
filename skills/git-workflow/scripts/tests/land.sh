@@ -34,12 +34,15 @@ bare_tip() { git --git-dir="$1/.origin/repo.git" rev-parse "$2" 2>/dev/null; }
 #   ADRPATH) instead of Derives-From. When ORIGIN is set, even to empty
 #   (tested with ${ORIGIN+x}), the first commit carries "Origin: $ORIGIN"
 #   instead, winning over CLARIFIES and NOTRAILER. ALSO, when set, is
-#   appended to the first commit as a further trailer line.
+#   appended to the first commit as a further trailer line. SETUP, when set,
+#   names a function run in DIR on dev after the fixture is built and before
+#   the branch is begun, to commit more on the trunk.
 artefact() {
   local dir="$1"; shift
   local where=worktree opts=()
   while [ $# -gt 0 ]; do case "$1" in --where) where="$2"; shift 2 ;; *) opts+=("$1"); shift ;; esac; done
   fixture "$dir" --trunk dev "${opts[@]}" >/dev/null || return 2
+  if [ -n "${SETUP:-}" ]; then (cd "$dir" && "$SETUP") || return 2; fi
   (cd "$dir" && printf '.worktrees/\n' >> .gitignore && g add .gitignore && g commit -q -m "ignore worktrees" && { git remote | grep -q . && g push -q origin dev || true; })
   if [ "$where" = worktree ]; then (cd "$dir" && g switch -q -c topic && printf 'x\n' > t.txt && g add t.txt && g commit -q -m topic); fi
   local out; out="$(cd "$dir" && bash "$SCRIPT" begin "${ADRPATH:-docs/discovery/0002-x.md}" 2>&1)" || { echo "$out"; return 2; }
@@ -234,6 +237,63 @@ t "refusal: Clarifies naming a path absent at the fork point, exit 2"
 t "refusal: Derives-From with an empty Origin is still refused, exit 2"
   wd="$(ALSO='Origin:' artefact "$R/o4" --where in-place)"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Origin must not be empty"
+
+# --- Abandonment at land (ADR 0004, plan 0023) ------------------------------
+#
+# abandoning DIR PATH [fixture options...] — a repository on dev and, begun
+# in place for PATH (a file in the fixture's tree), a branch whose only
+# commit deletes PATH with "Abandons: ${ABANDONSVAL:-PATH}" and a body
+# saying why. Echoes wd.
+abandoning() {
+  local dir="$1" path="$2"; shift 2
+  fixture "$dir" --trunk dev "$@" >/dev/null || return 2
+  local out wd
+  out="$(cd "$dir" && bash "$SCRIPT" begin "$path" 2>&1)" || { echo "$out"; return 2; }
+  wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  ( cd "$wd" && g rm -q "$path" \
+    && g commit -q -m "$(printf 'Abandon %s\n\nDecided against.\n\nAbandons: %s\n' "$path" "${ABANDONSVAL:-$path}")" ) || return 2
+  echo "$wd"
+}
+
+# plan_on_dev — commit plans/9001-downstream.md, deriving from
+# docs/adr/0001-one.md, on the current branch (artefact's SETUP hook).
+plan_on_dev() {
+  mkdir -p plans && printf -- '---\ntitle: d\n---\n' > plans/9001-downstream.md && g add plans/9001-downstream.md \
+    && g commit -q -m "$(printf 'Add plan 9001\n\nDerives-From: docs/adr/0001-one.md\n')"
+}
+
+t "Abandons: a branch whose only commit abandons a landed note lands, exit 0 (#191)"
+  wd="$(abandoning "$R/ab1" docs/discovery/0001-note.md)"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "2" "$(parents "$R/ab1" dev)" "dev must end in a two-parent merge: $out"
+  (cd "$R/ab1" && git cat-file -e dev:docs/discovery/0001-note.md 2>/dev/null) && fail "the abandoned note is still on dev: $out"
+  true
+
+t "refusal: Abandons naming a path absent at the fork point, exit 2"
+  wd="$(ABANDONSVAL=docs/discovery/0009-gone.md abandoning "$R/ab2" docs/discovery/0001-note.md)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "does not exist at the fork point"
+  assert_eq "1" "$(cd "$R/ab2" && git rev-list --count dev..discovery-0001-note)" "refusal must change nothing"
+
+t "refusal: Abandons value not repository-relative, exit 2"
+  wd="$(ABANDONSVAL=./docs/discovery/0001-note.md abandoning "$R/ab3" docs/discovery/0001-note.md)"
+  out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Abandons must be a repository-relative path"
+
+t "decision: abandoning an ADR is proposed, never merged, linked as it stands on the trunk, exit 3"
+  wd="$(abandoning "$R/ab4" docs/adr/0001-one.md --remote origin)"; githubify "$R/ab4"; : > "$GH_STUB_LOG"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"; assert_contains "$out" "pull/7"; assert_contains "$out" "human"
+  assert_contains "$(cat "$GH_STUB_LOG")" "pr create"
+  case "$(cat "$GH_STUB_LOG")" in *"pr merge"*) fail "merge was attempted on an abandoned ADR: $out" ;; esac
+  assert_eq "0" "$(cd "$R/ab4" && git log --merges --format=%H dev | wc -l | tr -d ' ')" "trunk gained a merge"
+  assert_eq "1" "$(printf '%s\n' "$out" | grep -c '^  artefact: .*/blob/dev/docs/adr/0001-one\.md$')" "the abandoned ADR must be linked once, on the trunk: $out"
+  assert_eq "1" "$(printf '%s\n' "$out" | grep -c '^  artefact: ')" "exactly one artefact link: $out"
+
+t "not a decision: abandoning a plan on a later commit of an ordinary branch lands, exit 0"
+  wd="$(SETUP=plan_on_dev artefact "$R/ab5" --where in-place)"
+  (cd "$wd" && g rm -q plans/9001-downstream.md && g commit -q -m "$(printf 'Abandon plan 9001\n\nIts work will not be done.\n\nAbandons: plans/9001-downstream.md\n')")
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
 
 t "decision: a new docs/adr file with no Derives-From is proposed, not refused, exit 3"
   wd="$(ADRPATH=docs/adr/0002-x.md NOTRAILER=1 artefact "$R/d5" --remote origin --where worktree)"; githubify "$R/d5"; : > "$GH_STUB_LOG"
@@ -493,6 +553,71 @@ t "gate: two revised ADRs: the unverdicted downstream is auto-deferred against i
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=3"
   case "$out" in *exit=2*) fail "the gate refused with both downstreams verdicted: $out" ;; esac
+
+# abandonment DIR — a repository on dev with plans/9001-downstream.md and
+# skills/x/SKILL.md each committed there with Derives-From:
+# docs/adr/0001-one.md, then, begun in place, a branch whose first commit
+# deletes docs/adr/0001-one.md with "Abandons: docs/adr/0001-one.md" and
+# any trailer lines held in $VERDICT. Echoes wd. history downstream
+# docs/adr/0001-one.md therefore returns both.
+abandonment() {
+  local dir="$1"
+  fixture "$dir" --trunk dev >/dev/null || return 2
+  ( cd "$dir" && plan_on_dev && mkdir -p skills/x && printf -- '---\nname: x\n---\n' > skills/x/SKILL.md && g add skills/x/SKILL.md \
+    && g commit -q -m "$(printf 'Add skill x\n\nDerives-From: docs/adr/0001-one.md\n')" ) || return 2
+  local out wd
+  out="$(cd "$dir" && bash "$SCRIPT" begin docs/adr/0001-one.md 2>&1)" || { echo "$out"; return 2; }
+  wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  ( cd "$wd" && g rm -q docs/adr/0001-one.md \
+    && g commit -q -m "$(printf 'Abandon ADR 0001\n\nReversed outright.\n\nAbandons: docs/adr/0001-one.md\n'; [ -n "${VERDICT:-}" ] && printf '%s\n' "$VERDICT")" ) || return 2
+  echo "$wd"
+}
+
+t "gate: abandoning an ADR with no verdicts refuses naming each downstream, and auto-defers nothing"
+  wd="$(abandonment "$R/abg1")"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=2"
+  assert_contains "$out" "plans/9001-downstream.md"
+  assert_contains "$out" "skills/x/SKILL.md"
+  case "$(cd "$R/abg1" && git log --format=%s dev..adr-0001-one)" in *"Auto-defer the untouched blast radius"*) fail "an abandoned ADR's downstream was auto-deferred: $out" ;; esac
+  true
+
+t "gate: abandoning an ADR with a verdict for each downstream reaches the decision path, exit 3"
+  wd="$(VERDICT="$(printf 'Reconciles: plans/9001-downstream.md\nConfirms: skills/x/SKILL.md')" abandonment "$R/abg2")"
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+
+t "gate: a plan removed with Abandons needs no verdict; a skill deleted with Reconciles has one, exit 3"
+  wd="$(abandonment "$R/abg3")"
+  ( cd "$wd" && g rm -q plans/9001-downstream.md && g commit -q -m "$(printf 'Abandon plan 9001\n\nIts ADR is abandoned.\n\nAbandons: plans/9001-downstream.md\n')" \
+    && g rm -q skills/x/SKILL.md && g commit -q -m "$(printf 'Delete skill x\n\nIt existed only for ADR 0001.\n\nReconciles: skills/x/SKILL.md\n')" )
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=3"
+  case "$out" in *exit=2*) fail "the gate refused a complete abandonment: $out" ;; esac
+
+t "gate: a skill deleted with no verdict is still owed one, exit 2"
+  wd="$(abandonment "$R/abg4")"
+  ( cd "$wd" && g rm -q plans/9001-downstream.md && g commit -q -m "$(printf 'Abandon plan 9001\n\nIts ADR is abandoned.\n\nAbandons: plans/9001-downstream.md\n')" \
+    && g rm -q skills/x/SKILL.md && g commit -q -m "Delete skill x" )
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=2"
+  assert_contains "$out" "skills/x/SKILL.md"
+  case "$out" in *plans/9001-downstream.md*) fail "the gate demanded a verdict for an abandoned plan: $out" ;; esac
+  true
+
+t "gate: a downstream shared by a revised and an abandoned ADR is not auto-deferred, exit 2"
+  fixture "$R/abg5" --trunk dev >/dev/null
+  ( cd "$R/abg5" && printf -- '---\ntitle: three\n---\n' > docs/adr/0003-three.md && g add docs/adr/0003-three.md && g commit -q -m "fixture: a second ADR" \
+    && mkdir -p src && printf 'echo shared\n' > src/shared.sh && g add src/shared.sh \
+    && g commit -q -m "$(printf 'Add shared code\n\nDerives-From: docs/adr/0001-one.md\nDerives-From: docs/adr/0003-three.md\n')" )
+  out="$(cd "$R/abg5" && bash "$SCRIPT" begin docs/adr/0001-one.md 2>&1)"; wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
+  ( cd "$wd" && printf 'changed\n' >> docs/adr/0001-one.md && g add -A && g commit -q -m "$(printf 'Revise\n\nRevises: docs/adr/0001-one.md\n')" \
+    && g rm -q docs/adr/0003-three.md && g commit -q -m "$(printf 'Abandon ADR 0003\n\nReversed outright.\n\nAbandons: docs/adr/0003-three.md\n')" )
+  out="$(land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=2"
+  assert_contains "$out" "src/shared.sh"
+  case "$(cd "$R/abg5" && git log --format='%(trailers:key=Defers,valueonly)' dev..adr-0001-one)" in *src/shared.sh*) fail "a downstream of an abandoned ADR was auto-deferred: $out" ;; esac
+  true
 
 t "gate: the history script absent is a hard stop, before the verdict logic"
   wd="$(VERDICT="Confirms: plans/9001-downstream.md" revision "$R/rev9")"   # verdict-complete: would otherwise pass
