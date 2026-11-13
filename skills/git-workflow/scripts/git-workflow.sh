@@ -384,7 +384,7 @@ cmd_begin() {
 #      in 2b are hoisted out of the Revises guard and run unconditionally
 #      on every land, since this check needs them whether or not the
 #      branch revises an ADR; the 0011 downstream-walk itself stays
-#      guarded by Revises, now reading the hoisted pool rather than
+#      guarded by Revises or an Abandons naming an ADR, now reading the hoisted pool rather than
 #      recomputing it. Then: consume history outstanding-deferrals once,
 #      and echo every record it reports due: true under a due-deferrals:
 #      header (D:/origin:/condition: per record) — advisory, never
@@ -537,6 +537,12 @@ cmd_land() {
   [ -n "$first" ] || die 2 "nothing to land: no commits since the fork point from $trunk"
   local decision=0
   [ -n "$(git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD" | sed '/^$/d')" ] && decision=1
+  # Abandons values on trunk..HEAD, read once; those naming an ADR make
+  # the branch a decision (abandoning an ADR changes a decision, ADR 0003).
+  local abandons abandons_adr
+  abandons="$(git log --format='%(trailers:key=Abandons,valueonly)' "$trunk..HEAD" | sed '/^$/d')"
+  abandons_adr="$(printf '%s\n' "$abandons" | awk '/^docs\/adr\// {print}' | sort -u)"
+  [ -n "$abandons_adr" ] && decision=1
   git diff --name-status "$trunk...HEAD" | grep -qE '^A[[:space:]]+docs/adr/' && decision=1
 
   # A decision roots or revises the artefact graph and needs no
@@ -548,24 +554,33 @@ cmd_land() {
   # upstream, so its first commit must carry one. A Derives-From,
   # Clarifies or first-commit Abandons present is validated as
   # repository-relative, and an Origin present as non-empty, either way.
-  local trailer clarifies origin_keys origin fork value
+  local trailer clarifies first_abandons origin_keys origin fork="" value
   trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
   clarifies="$(git log -1 --format='%(trailers:key=Clarifies,valueonly)' "$first" | sed '/^$/d')"
+  first_abandons="$(git log -1 --format='%(trailers:key=Abandons,valueonly)' "$first" | sed '/^$/d')"
   # Read Origin with its key, so a present key with an empty value is seen.
   origin_keys="$(git log -1 --format='%(trailers:key=Origin)' "$first" | sed '/^$/d')"
   origin="$(git log -1 --format='%(trailers:key=Origin,valueonly)' "$first" | sed '/^[[:space:]]*$/d')"
   if [ -n "$origin_keys" ] && [ -z "$origin" ]; then
     die 2 "Origin must not be empty: the first commit since the fork point ($(git rev-parse --short "$first")) carries Origin: with no provenance"
   fi
+  # The fork point: needed by Clarifies and by any Abandons on the branch
+  # (the first commit's validation below, and 2b's abandoned-ADR walk).
+  if [ -n "$clarifies" ] || [ -n "$abandons" ]; then fork="$(git merge-base "$trunk" HEAD)"; fi
   if [ -n "$clarifies" ]; then
     printf '%s\n' "$clarifies" | grep -qE '^(\./|/)' && die 2 "Clarifies must be a repository-relative path, got: $clarifies"
-    fork="$(git merge-base "$trunk" HEAD)"
     while IFS= read -r value; do
       git cat-file -e "$fork:$value" 2>/dev/null || die 2 "Clarifies: $value does not exist at the fork point $(git rev-parse --short "$fork")"
     done <<< "$clarifies"
   fi
+  if [ -n "$first_abandons" ]; then
+    printf '%s\n' "$first_abandons" | grep -qE '^(\./|/)' && die 2 "Abandons must be a repository-relative path, got: $first_abandons"
+    while IFS= read -r value; do
+      git cat-file -e "$fork:$value" 2>/dev/null || die 2 "Abandons: $value does not exist at the fork point $(git rev-parse --short "$fork")"
+    done <<< "$first_abandons"
+  fi
   if [ -z "$trailer" ]; then
-    { [ "$decision" -eq 1 ] || [ -n "$clarifies" ] || [ -n "$origin" ]; } || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer, nor a Clarifies or Origin"
+    { [ "$decision" -eq 1 ] || [ -n "$clarifies" ] || [ -n "$first_abandons" ] || [ -n "$origin" ]; } || die 2 "the first commit since the fork point ($(git rev-parse --short "$first")) carries no Derives-From trailer, nor a Clarifies, Abandons or Origin"
   else
     printf '%s\n' "$trailer" | grep -qE '^(\./|/)' && die 2 "Derives-From must be a repository-relative path, got: $trailer"
   fi
@@ -603,6 +618,18 @@ cmd_land() {
     git log --format='%(trailers:key=Defers,valueonly)' "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
   )"
 
+  # The whole downstream of every ADR this branch abandons, unfiltered: 2a
+  # never slates one, and 2b walks them against the fork point's tree.
+  local abandoned_downstream=""
+  if [ -n "$abandons_adr" ]; then
+    abandoned_downstream="$(
+      while IFS= read -r value; do
+        [ -n "$value" ] || continue
+        bash "$hist" downstream "$value" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f{print}'
+      done <<< "$abandons_adr"
+    )"
+  fi
+
   if [ -n "$revises" ]; then
     # The blast-radius auto-defer (ADR 0011, land doc-comment 2a), run
     # strictly before the verdict-completeness gate below (2b). Reuses
@@ -616,6 +643,7 @@ cmd_land() {
       git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
       git log --format='%(trailers:key=Revises,valueonly)'      "$trunk..HEAD" | sed '/^$/d'
       git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+      printf '%s\n' "$abandons" | sed '/^$/d'
     )"
     # D<TAB>origin pairs for every outstanding deferral, due or not: 2a's
     # exclusion cares only whether the origin is in this branch's pool.
@@ -630,6 +658,7 @@ cmd_land() {
         git cat-file -e "HEAD:$d" 2>/dev/null || continue           # keep durable in-tree downstreams only
         printf '%s\n' "$verdicts" | grep -qxF "$d" && continue      # an explicit verdict: never overwritten
         printf '%s\n' "$slated"   | grep -qxF "$d" && continue      # already slated against an earlier value this pass
+        printf '%s\n' "$abandoned_downstream" | grep -qxF "$d" && continue   # an abandoned ADR's: its branch judges it
         local od_origin=""
         od_origin="$(printf '%s\n' "$outstanding_autodefer" | awk -F'\t' -v want="$d" '$1 == want { print $2; exit }')"
         if [ -n "$od_origin" ] && printf '%s\n' "$autodefer_pool" | grep -qxF "$od_origin"; then
@@ -657,7 +686,9 @@ cmd_land() {
         git log --format='%(trailers:key=Defers,valueonly)' "$trunk..HEAD" | sed '/^$/d' | awk '{print $1}'
       )"
     fi
+  fi
 
+  if [ -n "$revises" ] || [ -n "$abandons_adr" ]; then
     local missing="" value d
     while IFS= read -r value; do
       [ -n "$value" ] || continue
@@ -671,6 +702,17 @@ cmd_land() {
 "
       done < <(bash "$hist" downstream "$value" | awk '/^downstream:$/{f=1;next} /^revises:$/{f=0} f{print}')
     done < <(printf '%s\n' "$revises" | sort -u)
+    # An abandoned ADR's downstream, filtered to the fork point's tree (a
+    # skill or code deleted for it still needs Reconciles:), less every
+    # path this branch abandons (a plan removed with Abandons needs none).
+    while IFS= read -r d; do
+      [ -n "$d" ] || continue
+      git cat-file -e "$fork:$d" 2>/dev/null || continue
+      printf '%s\n' "$abandons" | grep -qxF "$d" && continue
+      printf '%s\n' "$verdicts" | grep -qxF "$d" && continue
+      missing="$missing$d
+"
+    done <<< "$abandoned_downstream"
     if [ -n "$missing" ]; then
       die 2 "$(printf 'this revision does not account for every durable downstream; no verdict (Reconciles/Confirms/Defers) names:\n%s' "$(printf '%s' "$missing" | sort -u)")"
     fi
@@ -702,6 +744,7 @@ cmd_land() {
     git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
     git log --format='%(trailers:key=Revises,valueonly)'      "$trunk..HEAD" | sed '/^$/d'
     git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk..HEAD" | sed '/^$/d'
+    printf '%s\n' "$abandons" | sed '/^$/d'
   )"
   # The same four trailer kinds, scanned over the whole of trunk's own
   # history (not trunk..HEAD): what a re-defer's new origin must be absent
@@ -711,6 +754,7 @@ cmd_land() {
     git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk" | sed '/^$/d'
     git log --format='%(trailers:key=Revises,valueonly)'      "$trunk" | sed '/^$/d'
     git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk" | sed '/^$/d'
+    git log --format='%(trailers:key=Abandons,valueonly)'     "$trunk" | sed '/^$/d'
   )"
 
   # D/origin/due triples for every outstanding deferral, tab-separated.
@@ -793,6 +837,9 @@ $(printf '%s' "$bad_redefer" | sort -u)
     for adr in $( { git diff --name-status "$trunk...HEAD" | awk '$1=="A" && $2 ~ /^docs\/adr\// {print $2}'
                     git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD"; } | sed '/^$/d' | sort -u); do
       links="$links$(bash "$module" link "$url" "$branch" "$adr" 2>/dev/null)"$'\n'
+    done
+    for adr in $abandons_adr; do
+      links="$links$(bash "$module" link "$url" "$trunk" "$adr" 2>/dev/null)"$'\n'
     done
     stop 3 "decision proposed; a human merges it" "$url" "" "$branch" "$remote" "$primary" "$wt" "$links"
   fi
