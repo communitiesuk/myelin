@@ -21,10 +21,13 @@
 #           commit. Never stages, stashes, reverts or deletes anything in
 #           the primary checkout.
 #   land    From the artefact's checkout: refuse unless the first commit
-#           since the fork point carries Derives-From, a Clarifies naming
-#           a path that existed at the fork point, or a non-empty Origin
-#           (a root's provenance, not checked as a path); hand a decision (a new file under docs/adr/,
-#           or a Revises trailer) to a human via the host's pull request;
+#           since the fork point carries Derives-From, a Clarifies or an
+#           Abandons naming a path that existed at the fork point, or a
+#           non-empty Origin (a root's provenance, not checked as a path);
+#           refuse a revised or abandoned ADR's branch until each durable
+#           downstream carries a verdict; hand a decision (a new file under
+#           docs/adr/, a Revises trailer, or an Abandons naming a file under
+#           docs/adr/) to a human via the host's pull request;
 #           print every outstanding deferral now due, and refuse when this
 #           branch's own trigger is what makes one due unless it also
 #           carries a discharge verdict; otherwise merge with two parents,
@@ -270,24 +273,32 @@ cmd_begin() {
 #      be a worktree's installed dependencies), or there is nothing since
 #      the fork point.
 #   2. Decides whether the branch is a decision: a commit since the fork
-#      point carries Revises, or the diff against the trunk adds a file
+#      point carries Revises, a commit since the fork point carries
+#      Abandons naming a file under docs/adr/ (abandoning an ADR changes
+#      a decision, ADR 0003), or the diff against the trunk adds a file
 #      under docs/adr/. A decision roots or revises the artefact graph, so
 #      it needs no Derives-From. Every other artefact derives from an
 #      upstream, so its first commit since the fork point must carry a
 #      Derives-From trailer; landing refuses (exit 2) when a non-decision
-#      does not. Two exceptions need no Derives-From (ADR 0004): a
+#      does not. Three exceptions need no Derives-From (ADR 0004): a
 #      Clarifies edit to any artefact already in the tree, a self-edge
 #      whose every value must name a path that existed at the fork point;
-#      and a root carrying Origin, whose value is provenance, not a path,
-#      and must not be empty. Any Derives-From or Clarifies that is
-#      present must be repository-relative (not starting with / or ./),
-#      and any Origin present must be non-empty, or landing refuses
-#      (exit 2). Origin joins neither the trigger nor the verdict pool.
+#      an Abandons removal of a whole artefact, whose every value on the
+#      first commit must likewise be repository-relative and name a path
+#      that existed at the fork point, or landing refuses (exit 2); and a
+#      root carrying Origin, whose value is provenance, not a path, and
+#      must not be empty. Any Derives-From, Clarifies or first-commit
+#      Abandons that is present must be repository-relative (not starting
+#      with / or ./), and any Origin present must be non-empty, or landing
+#      refuses (exit 2). Origin joins neither the trigger nor the verdict
+#      pool; Abandons joins the trigger pools of 2a and 2c, never the
+#      verdict pool.
 #   2a. The blast-radius auto-defer (ADR 0011), run inside the same
 #      Revises guard as 2b and strictly before it, immediately after the
 #      hoisted verdict-pool computation (reconciles_confirms, verdicts).
 #      Iterates the same sort -u set of distinct Revises values 2b
-#      computes, calling history downstream <value> and filtering to
+#      computes (Revises values only: an abandoned ADR has no plan to come,
+#      so it gets no auto-defer, ADR 0011), calling history downstream <value> and filtering to
 #      in-tree with the same git cat-file -e "HEAD:$d" test 2b uses — the
 #      identical blast radius, not a second computation of it. For each
 #      in-tree downstream d of a given value, skip it (no auto-defer)
@@ -296,11 +307,15 @@ cmd_begin() {
 #      step never overwrites), when it is already slated for auto-defer
 #      against an earlier value in this same pass (a d named by two
 #      revised ADRs' downstream sets is cited against the first value in
-#      sort order once, never duplicated), or when d is the target of an
-#      outstanding deferral (history outstanding-deferrals) whose origin
-#      is in this branch's full trigger pool — the same
-#      Reconciles/Revises/Derives-From values over trunk..HEAD that 2c
-#      computes, not only this branch's Revises values. That d is
+#      sort order once, never duplicated), when d is in the downstream of
+#      an ADR this branch abandons (an Abandons value under docs/adr/),
+#      even one shared with a revised ADR — a choice, reading ADR 0011's
+#      "its abandoning branch judges each downstream" as covering it,
+#      since nothing upstream settles a shared one — or when d is the
+#      target of an outstanding deferral (history outstanding-deferrals)
+#      whose origin is in this branch's full trigger pool — the same
+#      Reconciles/Revises/Derives-From/Abandons values over trunk..HEAD
+#      that 2c computes, not only this branch's Revises values. That d is
 #      already owed a discharge by this branch's own trigger pool — the
 #      discharge-due check (2c) and the reviser own it, not a fresh
 #      auto-defer: an auto-defer Defers: there would re-cite the same
@@ -318,7 +333,7 @@ cmd_begin() {
 #      the hoisted computation already runs, so both 2b and 2c see the
 #      new trailers through the one existing code path, with no second
 #      one added. The auto-defer commit carries only Defers: trailers,
-#      never Reconciles/Revises/Derives-From, so 2c's branch-local
+#      never Reconciles/Revises/Derives-From/Abandons, so 2c's branch-local
 #      trigger pool is unaffected by the commit itself; every other
 #      auto-deferred item becomes a new outstanding deferral, picked up
 #      later, unmodified, by history outstanding-deferrals and 2c when
@@ -339,7 +354,16 @@ cmd_begin() {
 #      in-tree downstream carrying no verdict — in practice, only the one
 #      case 2a's Remainder exclusion leaves standing: a downstream
 #      already owed a discharge by this branch's own Revises (2a excludes
-#      it rather than auto-deferring it). The gate consumes the sibling
+#      it rather than auto-deferring it). It also runs for each distinct
+#      Abandons value under docs/adr/ (an ADR abandoned outright, which
+#      2a never auto-defers, so here the gate is the primary action): the
+#      same history downstream walk, filtered instead to paths in the
+#      fork point's tree (git cat-file -e "$fork:$d"), so a skill or code
+#      deleted for the abandoned ADR still needs Reconciles:, less every
+#      path this branch carries Abandons for, so a plan removed with
+#      Abandons needs none. Both walks' missing paths are named in the one
+#      refusal. The gate is guarded by either set being non-empty. The
+#      gate consumes the sibling
 #      history skill's script (../../history/scripts/history.sh from
 #      script_dir) and refuses (exit 2) naming the resolved path when it
 #      is not a regular file — a hard stop, so an incomplete revision
@@ -349,9 +373,10 @@ cmd_begin() {
 #      checked, never the truth of the claim. A decision is then pushed and
 #      proposed through the host module, then exit 3 with a report naming
 #      the pull request and, one "  artefact: <url>" line each, a link to
-#      every ADR the decision adds or revises as it stands on the branch
-#      (the host module's link verb), so the human can read it before
-#      merging: a human merges it. With no remote a decision
+#      every ADR the decision adds or revises as it stands on the branch,
+#      and every ADR it abandons as it stands on the trunk (the host
+#      module's link verb, given the trunk for the branch), so the human
+#      can read it before merging: a human merges it. With no remote a decision
 #      cannot be proposed: exit 3, branch left in place.
 #   2c. The discharge-due check (ADR 0012), run immediately after 2b and
 #      still before anything is pushed. The history-script-executable
@@ -364,8 +389,9 @@ cmd_begin() {
 #      and echo every record it reports due: true under a due-deferrals:
 #      header (D:/origin:/condition: per record) — advisory, never
 #      changes the exit code. Separately, read this branch's own
-#      trunk..HEAD trigger pool (Reconciles/Revises/Derives-From
-#      valueonly; unlike the verdict reads, no token-stripping, since
+#      trunk..HEAD trigger pool (Reconciles/Revises/Derives-From/Abandons
+#      valueonly — an Abandons naming the origin makes its deferral due,
+#      ADR 0010; unlike the verdict reads, no token-stripping, since
 #      these trailers carry only a path). A record is this branch's to
 #      discharge only when its origin matches (grep -qxF) a value in that
 #      pool AND the query reports it due: false — a pool match already
@@ -380,7 +406,7 @@ cmd_begin() {
 #      or a fresh Defers: D O2 <condition> whose O2 differs from O1
 #      (string compare) and is currently unmet — no commit anywhere on
 #      trunk (a full scan, not trunk..HEAD) carries a
-#      Reconciles/Revises/Derives-From trailer valued O2, and O2 is not
+#      Reconciles/Revises/Derives-From/Abandons trailer valued O2, and O2 is not
 #      itself in this branch's own trigger pool. Refuse (exit 2) naming
 #      every triggered D lacking a valid escape: a D with no verdict at
 #      all under "this branch triggers a due deferral with no discharge
@@ -516,9 +542,11 @@ cmd_land() {
   # A decision roots or revises the artefact graph and needs no
   # Derives-From; a Clarifies edit to an artefact already in the tree
   # (each value present at the fork point) adds a self-edge and needs
-  # none; a root carrying a non-empty Origin needs none; every other
-  # artefact derives from an upstream, so its first commit must carry
-  # one. A Derives-From or Clarifies present is validated as
+  # none; an Abandons removal of a whole artefact (each first-commit
+  # value present at the fork point) needs none; a root carrying a
+  # non-empty Origin needs none; every other artefact derives from an
+  # upstream, so its first commit must carry one. A Derives-From,
+  # Clarifies or first-commit Abandons present is validated as
   # repository-relative, and an Origin present as non-empty, either way.
   local trailer clarifies origin_keys origin fork value
   trailer="$(git log -1 --format='%(trailers:key=Derives-From,valueonly)' "$first" | sed '/^$/d')"
@@ -543,10 +571,12 @@ cmd_land() {
   fi
 
   # The verdict-completeness gate (ADR 0011). A Revises branch revises an
-  # accepted ADR; every durable, in-tree downstream of that ADR must carry
-  # a verdict. Runs here, before the push, so an incomplete revision never
-  # reaches the host. New-ADR decisions have no downstream to reconcile and
-  # must not trigger it, so the gate is guarded by Revises being present.
+  # accepted ADR, and an Abandons naming an ADR abandons one outright;
+  # every durable downstream of that ADR must carry a verdict. Runs here,
+  # before the push, so an incomplete revision never reaches the host.
+  # New-ADR decisions have no downstream to reconcile and must not trigger
+  # it, so the gate is guarded by Revises, or an Abandons naming an ADR,
+  # being present.
   local revises
   revises="$(git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD" | sed '/^$/d')"
 
@@ -578,7 +608,9 @@ cmd_land() {
     # strictly before the verdict-completeness gate below (2b). Reuses
     # the same sort -u Revises set and the same git cat-file -e in-tree
     # filter 2b uses below, so it walks the identical blast radius, not a
-    # second computation of it.
+    # second computation of it. Never slates a downstream of an ADR this
+    # branch abandons, even one shared with a revised ADR: the abandoning
+    # branch judges each one (ADR 0011).
     local autodefer_pool outstanding_autodefer value d slated="" defer_trailers=""
     autodefer_pool="$(
       git log --format='%(trailers:key=Reconciles,valueonly)'   "$trunk..HEAD" | sed '/^$/d'
@@ -662,7 +694,7 @@ cmd_land() {
     }
   '
 
-  # The branch-local trigger pool: Reconciles/Revises/Derives-From
+  # The branch-local trigger pool: Reconciles/Revises/Derives-From/Abandons
   # valueonly over trunk..HEAD, no token-stripping (unlike the verdict
   # reads above, these trailers carry only a path).
   local trigger_pool
@@ -671,7 +703,7 @@ cmd_land() {
     git log --format='%(trailers:key=Revises,valueonly)'      "$trunk..HEAD" | sed '/^$/d'
     git log --format='%(trailers:key=Derives-From,valueonly)' "$trunk..HEAD" | sed '/^$/d'
   )"
-  # The same three trailer kinds, scanned over the whole of trunk's own
+  # The same four trailer kinds, scanned over the whole of trunk's own
   # history (not trunk..HEAD): what a re-defer's new origin must be absent
   # from to count as currently unmet.
   local trunk_pool
@@ -755,7 +787,8 @@ $(printf '%s' "$bad_redefer" | sort -u)
     url="$(bash "$module" propose "$branch" "$trunk")" || {
       rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request could not be opened" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"
       stop 1 "the host refused to open the pull request" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"; }
-    # Link every ADR the decision adds or revises, as it stands on the branch.
+    # Link every ADR the decision adds or revises, as it stands on the
+    # branch, and every ADR it abandons, as it stands on the trunk.
     local adr links=""
     for adr in $( { git diff --name-status "$trunk...HEAD" | awk '$1=="A" && $2 ~ /^docs\/adr\// {print $2}'
                     git log --format='%(trailers:key=Revises,valueonly)' "$trunk..HEAD"; } | sed '/^$/d' | sort -u); do
