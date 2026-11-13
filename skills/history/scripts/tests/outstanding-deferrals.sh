@@ -11,8 +11,10 @@
 # `git log <trunk> --topo-order --reverse` order decides whether D is
 # outstanding at all (Mechanism 5); `due` is decided separately, by
 # whether any later commit in that same ordering carries `Reconciles:`,
-# `Revises:` or `Derives-From:` naming the deferral's own *origin* path
-# (Mechanism 6) — a different trailer target than the D-verdicts above.
+# `Revises:`, `Derives-From:` or `Abandons:` naming the deferral's own
+# *origin* path (Mechanism 6) — a different trailer target than the
+# D-verdicts above. An `Abandons:` naming the origin makes the deferral
+# due (nothing more is awaited); one naming another path does not.
 
 t "1. no trigger anywhere: not due"
 newrepo
