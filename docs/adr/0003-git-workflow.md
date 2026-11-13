@@ -292,8 +292,8 @@ happens at the moment.
 ### A decision lands only when a human merges it
 
 An artefact branch that adds a file under `docs/adr/`, or whose
-commits carry a `Revises` trailer, is landed by a human and never by
-the agent. The agent's job ends where it does for a refused merge:
+commits carry a `Revises` trailer or an `Abandons` naming an ADR, is
+landed by a human and never by the agent. The agent's job ends where it does for a refused merge:
 push the branch, open the pull request, stop, and report. Every other
 artefact — a discovery note, a plan, a skill, code, a release — the
 agent lands itself.

@@ -91,8 +91,8 @@ new ADR, and edit the old one only where the new decision changes it.
 Titles are therefore phrased as questions, so that the test can be
 applied by reading the title.
 
-A decision that is reversed outright is deleted, not marked. The
-commit that deletes it says why.
+A decision that is reversed outright is deleted, not marked, by a
+commit carrying `Abandons`.
 
 The Alternatives section of the current ADR keeps its role. Paths
 rejected at decision time exist nowhere else, because they were never
@@ -168,7 +168,7 @@ The vocabulary:
 | `Clarifies:` | edits in place an artefact already in the tree: for a discovery note or source material any edit; for any other artefact an edit changing no decision and no behaviour (typo, citation, metadata, or an uncaught cross-reference); a self-edge, as `Revises` is on an in-place revision | path of the artefact edited |
 | `Consumed-By:` | removes a consumed artefact: a discovery note, or source material | path of what it informed; one trailer per artefact informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
-| `Abandons:` | removes an artefact decided against: a plan whose work will not be done, a discovery note that informs no ADR, or source material that informed no note | path of the artefact |
+| `Abandons:` | removes a whole artefact, as if it had never been: an ADR whose decision is reversed outright, a plan whose work will not be done, a discovery note that informs no ADR, or source material that informed no note | path of the artefact |
 | `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
 | `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
 | `Defers:` | defers reconciling a durable downstream artefact, blocked on named other work | path of that downstream artefact; carries its named blocking condition |
@@ -224,7 +224,8 @@ and carries no trailer.
 
 `land` accepts a first commit carrying `Abandons` naming a path that
 existed at the fork point, as it does `Clarifies`, so a branch that
-only abandons an artefact lands without riding on another.
+only abandons an artefact lands without riding on another. Abandoning
+an ADR changes a decision, so a human lands it (ADR 0003).
 
 The prose body of a `Revises`, `Clarifies`, `Abandons` or deleting commit
 must say what changed and why, in sentences. Trailers carry the edge;
@@ -242,9 +243,9 @@ one artefact, and its prohibition on squash merging now protects
 this too: a squash discards the individual commits, and their
 trailers with them.
 
-### Revising an ADR accounts for what is downstream of it
+### Revising or abandoning an ADR accounts for what is downstream of it
 
-When an ADR is revised, every durable downstream artefact in the tree
+When an ADR is revised or abandoned, every durable downstream artefact in the tree
 must be accounted for. The full obligation to reconcile what the
 revision changes under it, and the verdicts that discharge it, lives in
 ADR 0011 as that obligation's single owner; the scope is stated here,
@@ -350,11 +351,11 @@ question and is deferred to a separate ADR. Until it exists,
   survives as one form of `Origin:` value.
 - **Source material alongside the notes in `docs/discovery/`.** Not
   chosen; it lives in `docs/discovery/sources/`.
-- **A discovery note abandoned by a trailerless deletion.** This ADR's
-  previous form. Reversed: `land` refused a branch that only deleted
-  the note, so the deletion had to ride on another branch (#191); and
-  with no edge, history could not tell a decision from a mistaken
-  deletion.
+- **A discovery note abandoned, or an ADR reversed outright, by a
+  trailerless deletion.** This ADR's previous form. Reversed: `land`
+  refused a branch that only deleted a note, so the deletion had to
+  ride on another branch (#191); and with no edge, history could not
+  tell a decision from a mistaken deletion.
 - **Widen `Clarifies` to cover deletions.** Rejected: it would land,
   but leave no edge saying "decided against".
 - **Infer abandonment from a deletion with no `Consumed-By`.**
@@ -370,7 +371,8 @@ question and is deferred to a separate ADR. Until it exists,
 
 - The `adr` skill changes: question-shaped titles, the edit-or-new
   test, the withdrawal of the immutability and no-delete rules, a
-  smaller frontmatter schema, and the `Revises` commit rule.
+  smaller frontmatter schema, and the `Revises` and `Abandons` commit
+  rules.
 - The `plans` skill changes: `done` and `abandoned` become removal
   with `Completes` and `Abandons`, the no-delete and no-archive rules
   are withdrawn, and the introducing commit carries `Derives-From`.
@@ -395,7 +397,8 @@ question and is deferred to a separate ADR. Until it exists,
   prohibition on editing a merged ADR "becomes meaningful" is
   removed, since that prohibition is withdrawn. Its land rule carries
   the exceptions: a decision, `Clarifies` or `Abandons` naming a path
-  that existed at the fork point, or `Origin:`.
+  that existed at the fork point, or `Origin:`. Abandoning an ADR is a
+  decision, which a human lands.
 - ADRs 0001 to 0003 lose the `supersedes` and `superseded_by`
   fields. Plans 0001 and 0002, both done, leave the tree.
 - The human trajectory is now only as good as commit discipline.
@@ -404,8 +407,9 @@ question and is deferred to a separate ADR. Until it exists,
   is the job of the git-workflow skill and of the governing skills'
   commit rules, and it is the cost of not writing history twice.
 - Agents may edit ADRs casually where before they could not. The
-  `Revises` trailer with a mandatory reason, the no-fast-forward
-  merge, and human acceptance at merge are what stand in the way.
+  `Revises` and `Abandons` trailers with a mandatory reason, the
+  no-fast-forward merge, and human acceptance at merge are what stand
+  in the way.
 - The artefact graph is recoverable but not yet cheaply queryable.
   The history skill is a separate ADR and its absence is felt until
   it lands.
