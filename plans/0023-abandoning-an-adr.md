@@ -1,6 +1,6 @@
 ---
 title: Abandoning an ADR
-status: draft
+status: in-progress
 adr: 0004
 date: 2026-11-13
 deferred_reason: null
