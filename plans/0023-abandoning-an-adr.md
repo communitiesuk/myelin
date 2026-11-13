@@ -22,7 +22,9 @@ deferral due), `docs/adr/0011-revision-process.md` (an abandoned ADR's
 downstreams each get a verdict on its branch, with no blast-radius
 default; a skill or code existing only for it is deleted under
 `Reconciles`) and `docs/adr/0012-discharging-deferrals.md` (the
-due-deferral check covers an abandoned origin). Fixes #191.
+due-deferral check covers an abandoned origin). `README.md` states
+the human-merge rule as `docs/adr/0007-readme-requirements-and-opinions.md`
+requires. Fixes #191.
 
 ## Deferrals
 
@@ -60,6 +62,8 @@ any, and before `land`, commit, empty,
 - for each of the seven files the table reconciles in a step,
   `Defers: <file> plans/0023-abandoning-an-adr.md until plan 0023's implementation lands`.
   Its body says these are reconciled by the implementation branch.
+  ADR 0011's anchor rule governs a chain's root, here ADR 0004; a
+  re-defer answers to ADR 0012's escape alone.
 
 The implementation branch's first commit carries
 `Derives-From: plans/0023-abandoning-an-adr.md`, so `land` refuses it
@@ -95,7 +99,9 @@ Steps 1 to 8 run on one implementation branch:
      and a plan removed with `Abandons` needs none.
    - `README.md`, the merge-permission paragraph and the
      "Pull request by default" opinion: an ADR, and any branch that
-     revises or abandons one, is left for a human to merge.
+     revises or abandons one, is left for a human to merge. In "The
+     working tree holds the current intention", the verdicts are those
+     a revision or abandonment of an ADR records.
 
    Flip this plan's `status` to `in-progress` in the same commit.
    Commit: `Document abandonment in git-workflow (plan 0023 Step 1)`,
@@ -113,8 +119,8 @@ Steps 1 to 8 run on one implementation branch:
    origin also makes the deferral due. In
    `skills/history/scripts/tests/outstanding-deferrals.sh`, update the
    header comment and add:
-   1. A deferral on ADR 0001, then a later commit deleting
-      `docs/adr/0001-bus.md` with `Abandons: docs/adr/0001-bus.md`:
+   1. A deferral on ADR 0001, then `git rm docs/adr/0001-bus.md` and
+      `gc` with body `Abandons: docs/adr/0001-bus.md`:
       `due: true`, with a `candidate:` line naming that commit.
    2. A deferral on ADR 0001, then a later `Abandons:` naming another
       path: `due: false`.
@@ -141,7 +147,10 @@ Steps 1 to 8 run on one implementation branch:
      repository-relative and exist at the fork point, or `land`
      refuses (exit 2).
    - 2a: skipped for abandoned ADRs; runs over `Revises` values only,
-     and never slates a downstream of an ADR this branch abandons.
+     and never slates a downstream of an ADR this branch abandons, even
+     one shared with a revised ADR: a choice, reading ADR 0011's "its
+     abandoning branch judges each downstream" as covering it, since
+     nothing upstream settles a shared one.
      `Abandons` joins its trigger-pool exclusion.
    - 2b: also runs for each distinct `Abandons` value under
      `docs/adr/`, over that ADR's downstream filtered to paths in the
@@ -168,9 +177,10 @@ Steps 1 to 8 run on one implementation branch:
       with `Abandons: docs/adr/0001-one.md`: exit 3, the pull request
       opened and not merged, and an `artefact:` line ending
       `/blob/dev/docs/adr/0001-one.md`.
-   5. With no remote, a branch carrying `Derives-From` that deletes a
-      plan with `Abandons: plans/…` in a later commit is not a
-      decision: exit 0.
+   5. With no remote and `plans/9001-downstream.md` committed on `dev`,
+      the default `artefact` branch plus a later commit deleting that
+      plan with `Abandons: plans/9001-downstream.md` is not a decision:
+      exit 0.
 
    And, beside the existing gate tests, with
    `plans/9001-downstream.md` and `skills/x/SKILL.md` each committed on
@@ -184,11 +194,11 @@ Steps 1 to 8 run on one implementation branch:
       skill deleted with `Reconciles: skills/x/SKILL.md`: exit 3.
    9. The skill deleted with no verdict, the plan abandoned: exit 2
       naming `skills/x/SKILL.md`.
-   10. With `src/shared.sh` committed on `dev` deriving from both
-       `docs/adr/0001-one.md` and a second ADR, a branch carrying
-       `Revises:` for the first and abandoning the second, with no
-       verdict: exit 2 naming `src/shared.sh`, and no `Defers:` naming
-       it.
+   10. With `docs/adr/0003-three.md` on `dev`, then `src/shared.sh`
+       added by one commit carrying `Derives-From:` for both ADRs, a
+       branch carrying `Revises:` for the first and abandoning the
+       second, with no verdict: exit 2 naming `src/shared.sh`, and no
+       `Defers:` naming it.
 
    In `skills/git-workflow/scripts/tests/discharge.sh`:
    11. With `O1_PATH` committed on `dev` after the base fixture's
@@ -215,10 +225,11 @@ Steps 1 to 8 run on one implementation branch:
    - Set `decision=1` when any `Abandons` value on `trunk..HEAD` starts
      `docs/adr/`.
    - Read the first commit's `Abandons` beside `Clarifies`, and
-     validate it the same way, with messages naming `Abandons`. Accept
-     a missing `Derives-From` when the first commit carries a valid
-     `Abandons`, and name `Abandons` in the refusal message, keeping
-     `Derives-From` and `first commit`.
+     validate it the same way, with messages naming `Abandons`. Set
+     `fork` whenever any `Abandons` is present on `trunk..HEAD`, not
+     only under `Clarifies`. Accept a missing `Derives-From` when the
+     first commit carries a valid `Abandons`, and name `Abandons` in the
+     refusal message, keeping `Derives-From` and `first commit`.
    - Read `Abandons` values once on `trunk..HEAD`; the ADR ones are
      `$abandons_adr`. Add all values to `autodefer_pool`,
      `trigger_pool` and (over `$trunk`) `trunk_pool`.
@@ -263,8 +274,10 @@ Steps 1 to 8 run on one implementation branch:
 7. **Reconcile `plans`.** In `skills/plans/SKILL.md`, "Status
    lifecycle", outside the review-loop block: a plan of an ADR
    abandoned outright leaves on the abandoning branch with `Abandons`
-   and needs no verdict; a substantive change made because its ADR was
-   revised carries `Reconciles:` as now.
+   and needs no verdict. In the in-place edit paragraph, a substantive
+   change carries `Reconciles:`, the verdict on an ADR's downstream
+   (ADR 0004), on the branch revising or abandoning that ADR or
+   bringing its deferral due.
    Commit: `Reconcile plans to abandonment (plan 0023 Step 7)`,
    carrying `Reconciles: skills/plans/SKILL.md`.
 
@@ -272,10 +285,11 @@ Steps 1 to 8 run on one implementation branch:
    `Completes: plans/0023-abandoning-an-adr.md` and one `Confirms:` for
    each of the seven files the "Deferrals" table assigns to Step 8. Its
    body says what the plan produced, and why each confirmed file is
-   unaffected: ADR 0006 and the discovery notes name abandonment as a
-   way out without stating its trailer; the `git-workflow-0` eval
-   scores a new ADR's landing, which is unchanged; `.gitignore` and
-   `AGENTS.md` state none of this. Land. Then, one `gh issue close` per
+   unaffected: ADR 0006 names abandonment as a way out without stating
+   its trailer; a discovery note records the thinking of its time, so
+   note 0003's routing, written before `Abandons`, stands; the
+   `git-workflow-0` eval scores a new ADR's landing, which is
+   unchanged; `.gitignore` and `AGENTS.md` state none of this. Land. Then, one `gh issue close` per
    call, close #191 with a comment naming the merge.
 
 ## Verification
