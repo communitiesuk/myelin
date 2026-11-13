@@ -52,7 +52,9 @@ same branch exactly one verdict:
   code, or plan), and only when reconciliation is blocked
   on some other artefact's own future change — accepted ADR at
   minimum; a plan or seed is too ephemeral to
-  anchor on (ADR 0004's escape, narrowed further here). The
+  anchor on (ADR 0004's escape, narrowed further here). The anchor is
+  the root of the deferral chain, the deferral a revision first
+  records; a re-defer is governed by ADR 0012's escape alone. The
   **origin** is that blocking artefact, named directly — never its
   upstream. The condition is the
   origin's path plus a description, load-bearing only when the path
