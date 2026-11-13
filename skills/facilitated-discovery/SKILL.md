@@ -154,7 +154,13 @@ The note leaves the tree when the ADR or ADRs it informed are accepted. It is de
 Consumed-By: docs/adr/NNNN-<slug>.md
 ```
 
-The value is the repository-relative path of the ADR. A note that informs none is abandoned by a deleting commit that says why. The note's text stays in git history; the tree holds only current intention.
+The value is the repository-relative path of the ADR. A note that informs no ADR is decided against, and leaves on its own branch (`begin <path>`) by a deleting commit carrying this trailer, copied exactly, whose body says why:
+
+```
+Abandons: docs/discovery/NNNN-<slug>.md
+```
+
+`land` accepts that commit alone, with no `Derives-From`. Source material that informed no note leaves the same way, by a deleting commit carrying `Abandons: <path>` on its own branch (`begin <path> --slug <slug>`, as for its other branches). The note's text stays in git history; the tree holds only current intention.
 
 ## What to avoid
 
