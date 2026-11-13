@@ -304,7 +304,7 @@ _derive_trunk() {
 _outstanding_deferrals_log() {
   local trunk="$1"
   git log "$trunk" --topo-order --reverse \
-    --format='%h%x1f%s%x1f%(trailers:key=Defers,valueonly,separator=%x1d)%x1f%(trailers:key=Reconciles,valueonly,separator=%x1d)%x1f%(trailers:key=Confirms,valueonly,separator=%x1d)%x1f%(trailers:key=Revises,valueonly,separator=%x1d)%x1f%(trailers:key=Derives-From,valueonly,separator=%x1d)'
+    --format='%h%x1f%s%x1f%(trailers:key=Defers,valueonly,separator=%x1d)%x1f%(trailers:key=Reconciles,valueonly,separator=%x1d)%x1f%(trailers:key=Confirms,valueonly,separator=%x1d)%x1f%(trailers:key=Revises,valueonly,separator=%x1d)%x1f%(trailers:key=Derives-From,valueonly,separator=%x1d)%x1f%(trailers:key=Abandons,valueonly,separator=%x1d)'
 }
 
 cmd_outstanding_deferrals() {
@@ -335,7 +335,7 @@ cmd_outstanding_deferrals() {
     function trim(s) { gsub(/^[ \t\r]+|[ \t\r]+$/, "", s); return s }
     {
       split($0, f, "\x1f")
-      h = f[1]; subj = f[2]; defers = f[3]; reconciles = f[4]; confirms = f[5]; revises = f[6]; derivesfrom = f[7]
+      h = f[1]; subj = f[2]; defers = f[3]; reconciles = f[4]; confirms = f[5]; revises = f[6]; derivesfrom = f[7]; abandons = f[8]
       seq = NR
 
       if (defers != "") {
@@ -389,6 +389,15 @@ cmd_outstanding_deferrals() {
         nf = split(derivesfrom, flist, "\x1d")
         for (i = 1; i <= nf; i++) {
           v = trim(flist[i])
+          if (v == "") continue
+          te++; tseq[te] = seq; th[te] = h; ts[te] = subj; tval[te] = v
+        }
+      }
+
+      if (abandons != "") {
+        na = split(abandons, alist, "\x1d")
+        for (i = 1; i <= na; i++) {
+          v = trim(alist[i])
           if (v == "") continue
           te++; tseq[te] = seq; th[te] = h; ts[te] = subj; tval[te] = v
         }
