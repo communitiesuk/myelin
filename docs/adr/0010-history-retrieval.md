@@ -72,9 +72,9 @@ text to interpret.
   landed on trunk after the deferral. It returns, per outstanding
   deferral, the deferred `D`, its origin, the condition, and
   due/not-due, where **due is a non-empty candidate set**. It does not
-  read the condition's description or match against it: where more than one
-  candidate is returned, that disambiguation is the consuming agent's
-  (ADR 0012), not the query's.
+  read the condition's description or match against it: where more
+  than one candidate is returned, that disambiguation is the consuming
+  agent's (ADR 0012), not the query's.
 
 ### What is deferred
 

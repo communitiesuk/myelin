@@ -43,10 +43,11 @@ code, ADRs, and plans still in the tree (deferred or in progress). For
 each of these on the `downstream:` list, the revision records on the
 same branch exactly one verdict:
 
-- **Reconciled** — edited to match the changed decision, or deleted
-  if it existed only for an abandoned ADR; the touching commit
-  corroborates, but the verdict trailer (below) is what the gate
-  reads;
+- **Reconciled** — edited to match the changed decision, or, for a
+  skill or code existing only for an abandoned ADR, deleted (a plan
+  existing only for one instead leaves with `Abandons` and needs no
+  verdict); the touching commit corroborates, but the verdict trailer
+  (below) is what the gate reads;
 - **Deferred** — applies to any durable, in-tree downstream (skill,
   code, or plan), and only when reconciliation is blocked
   on some other artefact's own future change — accepted ADR at
@@ -105,7 +106,7 @@ staleness problem trailers were introduced to solve. These are new
 edge types that **extend ADR 0004's exhaustive trailer table**, an
 extension made by the revision of ADR 0004 (a dependency this ADR
 carries). They are **cross-edges**: `Revises`/`Clarifies` are the
-self-edges (an ADR to itself), whereas a verdict links the revised ADR
+self-edges (an ADR to itself), whereas a verdict links an ADR
 to a *different* durable downstream (the `Derives-From`/`Completes`
 family). The trailer **names that downstream in its value**, read from
 the revision's side — "the revision Reconciled / Confirmed / Deferred

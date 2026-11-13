@@ -169,7 +169,7 @@ The vocabulary:
 | `Consumed-By:` | removes a consumed artefact: a discovery note, or source material | path of what it informed; one trailer per artefact informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
 | `Abandons:` | removes a whole artefact, as if it had never been: an ADR whose decision is reversed outright, a plan whose work will not be done, a discovery note that informs no ADR, or source material that informed no note | path of the artefact |
-| `Reconciles:` | revises or deletes a durable downstream to match the changed decision | path of that downstream |
+| `Reconciles:` | revises a durable downstream to match the changed decision, or deletes a skill or code existing only for an abandoned ADR | path of that downstream |
 | `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
 | `Defers:` | defers reconciling a durable downstream artefact, blocked on named other work | path of that downstream artefact; carries its named blocking condition |
 
@@ -379,9 +379,8 @@ question and is deferred to a separate ADR. Until it exists,
 - The `facilitated-discovery` skill changes: a discovery note leaves
   the tree when the ADR or ADRs it informed are accepted, with
   `Consumed-By`, or when abandoned, with `Abandons`; a landed note is
-  revised in place. Its entry
-  points, which assume a conversation with a human present, are left
-  to the implementing plan.
+  revised in place. Its entry points, which assume a conversation with
+  a human present, are left to the implementing plan.
 - The git-workflow skill that plan 0003 specifies must carry the
   trailer vocabulary, route a `Clarifies` branch to trunk, and accept an
   `Abandons` first commit, neither requiring `Derives-From`, since it is

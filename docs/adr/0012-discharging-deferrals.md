@@ -62,7 +62,7 @@ before it lands, by recording one of three verdicts against `D`, on
 that same branch:
 
 - **`Reconciles: D`** — `D` is revised to match the now-current
-  decision;
+  decision, or deleted as ADR 0011 allows;
 - **`Confirms: D`** — `D` turns out unaffected: the reconciling work
   leaves it untouched. "Examined and still correct" is a valid
   discharge outcome because the blast-radius model (ADR 0011) records
@@ -81,10 +81,10 @@ the blocker's, not the original deferring revision's.
 
 The check this ADR adds is a lookup by *blocker*, not by *downstream of
 the ADR being changed*: it asks which outstanding deferrals name, as
-their blocking condition, the artefact a branch is about to land —
-the reverse of ADR 0011's existing "what is downstream of the changed
-ADR" gate. Both checks run at `land`, and both must pass; neither
-subsumes the other.
+their blocking condition, the artefact a branch is about to land or
+abandon — the reverse of ADR 0011's existing "what is downstream of
+the changed ADR" gate. Both checks run at `land`, and both must pass;
+neither subsumes the other.
 
 ### Prerequisites, and their order
 
