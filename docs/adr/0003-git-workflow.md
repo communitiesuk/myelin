@@ -273,14 +273,14 @@ merge is for a repository with no remote and for nothing else. The
 platform skill anticipated below is therefore a host module of this
 script, and supporting a host is adding a module.
 
-Landing enforces one rule of ADR 0004 mechanically: the script
-refuses to land a branch whose first commit carries no `Derives-From`
-trailer, except where ADR 0004 needs none — a decision, a `Clarifies`
-edit to an artefact already in the tree, or a root carrying `Origin:`.
-For `Clarifies` it checks that the named path existed at the fork
-point; for `Origin:`, that its value is not empty. The trailer is
-written by whoever commits, under the governing skill; the script
-checks that it is there.
+Landing enforces one rule of ADR 0004 mechanically: the script refuses
+to land a branch whose first commit carries no `Derives-From` trailer,
+except where ADR 0004 needs none — a decision, a `Clarifies` edit to,
+or an `Abandons` removal of, an artefact already in the tree, or a
+root carrying `Origin:`. For `Clarifies` and `Abandons` it checks that
+the named path existed at the fork point; for `Origin:`, that its
+value is not empty. The trailer is written by whoever commits, under
+the governing skill; the script checks that it is there.
 
 The script is invoked by the model at the moments the skill body
 names. Running it without the model, by a hook or an orchestrator, is
@@ -292,11 +292,11 @@ happens at the moment.
 ### A decision lands only when a human merges it
 
 An artefact branch that adds a file under `docs/adr/`, or whose
-commits carry a `Revises` trailer, is landed by a human and never by
-the agent. The agent's job ends where it does for a refused merge:
-push the branch, open the pull request, stop, and report. Every other
-artefact — a discovery note, a plan, a skill, code, a release — the
-agent lands itself.
+commits carry a `Revises` trailer or an `Abandons` naming an ADR, is
+landed by a human and never by the agent. The agent's job ends where
+it does for a refused merge: push the branch, open the pull request,
+stop, and report. Every other artefact — a discovery note, a plan, a
+skill, code, a release — the agent lands itself.
 
 The line is drawn by what can check the artefact. A plan is reviewed
 against its ADR, a skill against its eval scenarios, code against its
@@ -307,7 +307,7 @@ confirm it says what they meant, so a human lands it. On 2026-09-23 an
 agent opened and merged a revision of this ADR within the same minute
 and then removed the discovery note it derived from, on the strength
 of an acceptance that had not happened; the text turned out to be
-fine, which is not the point. Both facts that select this rule are
+fine, which is not the point. The facts that select this rule are
 readable from the branch without judgement, so the script that lands
 enforces it, and until that script exists the skill body states it.
 

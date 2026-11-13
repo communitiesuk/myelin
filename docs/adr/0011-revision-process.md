@@ -9,10 +9,10 @@ date: 2026-10-28
 
 ## Context
 
-When an upstream artefact is revised, nothing enumerates what
-downstream must change with it (seed #92). Each ripple — a plan that
-now targets a changed decision, a skill written from that plan — has
-been found by hand.
+When an upstream artefact is revised or abandoned, nothing enumerates
+what downstream must change with it (seed #92). Each ripple — a plan
+that now targets a changed decision, a skill written from that plan —
+has been found by hand.
 
 The retrieval exists: `history downstream <path>` (ADR 0010) returns
 the transitive `Derives-From` graph of an artefact plus its `Revises`
@@ -43,9 +43,11 @@ code, ADRs, and plans still in the tree (deferred or in progress). For
 each of these on the `downstream:` list, the revision records on the
 same branch exactly one verdict:
 
-- **Reconciled** — edited to match the changed decision; the touching
-  commit corroborates, but the verdict trailer (below) is what the
-  gate reads;
+- **Reconciled** — edited to match the changed decision, or, for a
+  skill or code existing only for an abandoned ADR, deleted (a plan
+  existing only for one instead leaves with `Abandons` and needs no
+  verdict); the touching commit corroborates, but the verdict trailer
+  (below) is what the gate reads;
 - **Deferred** — applies to any durable, in-tree downstream (skill,
   code, or plan), and only when reconciliation is blocked
   on some other artefact's own future change — accepted ADR at
@@ -61,15 +63,15 @@ same branch exactly one verdict:
   origin: `Reconciles: <origin>` (until `<Y>` is reconciled to `<U>`,
   the description naming `<U>`, matched by a co-landing
   `Revises: <U>` on the same branch), `Revises: <origin>` (the origin
-  is an ADR revised directly), or `Derives-From: <origin>` (the
-  origin produces a new downstream). The match may be asserted by the
-  landing agent, not necessarily a human. Never open-ended — if
-  nothing specific blocks it, reconcile now or record *Confirmed*.
+  is an ADR revised directly), `Derives-From: <origin>` (the origin
+  produces a new downstream), or `Abandons: <origin>` (nothing more is
+  awaited). The match may be asserted by the landing agent, not
+  necessarily a human. Never open-ended — if nothing specific blocks
+  it, reconcile now or record *Confirmed*.
   Discharging a due deferral is ADR 0012's;
 - **Confirmed** — a downstream found unaffected, recorded explicitly.
-  This is now primarily a **discharge-time re-verdict** (ADR 0012),
-  not judged unaffected up front by the reviser — see the
-  blast-radius default below for when each verdict lands.
+  This is now primarily a **discharge-time re-verdict** (ADR 0012) —
+  see the blast-radius default below for when each verdict lands.
 
 **The blast-radius default.** The revision enumerates its transitive
 downstreams — the blast radius — up front: a readout of how much work
@@ -79,7 +81,9 @@ on its own branch, and marks the untouched remainder *Deferred* until a
 plan derives from this ADR — conservatively, without per-item
 judgement. That per-item judgement is deferred to discharge (ADR 0012),
 where each deferred downstream is re-verdicted *Reconciled* (the plan
-touched it) or *Confirmed* (it did not).
+touched it) or *Confirmed* (it did not). An ADR abandoned outright
+(ADR 0004) has no plan to come, so the default does not apply: its
+abandoning branch judges each downstream.
 
 A **completed plan has left the tree** (ADR 0004: a plan leaves when
 its work is complete) and is not revised. Its place in the
@@ -92,10 +96,8 @@ is the plan's.
 
 This generalises ADR 0004's "Reconciled or Deferred" from ADR → plan to
 the whole in-tree graph, and adds the explicit *Confirmed* verdict: an
-unaffected artefact is **recorded as Confirmed** — typically at
-discharge, when the reconciling plan leaves it untouched, rather than
-judged up front — not silently skipped, the hand-found ripple seed #92
-names.
+unaffected artefact is **recorded as Confirmed**, not silently
+skipped, the hand-found ripple seed #92 names.
 
 Verdicts are recorded as **trailers**, for the reasons ADR 0004
 adopted them: append-only, machine-readable, and timestamped by the
@@ -104,17 +106,17 @@ staleness problem trailers were introduced to solve. These are new
 edge types that **extend ADR 0004's exhaustive trailer table**, an
 extension made by the revision of ADR 0004 (a dependency this ADR
 carries). They are **cross-edges**: `Revises`/`Clarifies` are the
-self-edges (an ADR to itself), whereas a verdict links the revised ADR
+self-edges (an ADR to itself), whereas a verdict links an ADR
 to a *different* durable downstream (the `Derives-From`/`Completes`
 family). The trailer **names that downstream in its value**, read from
 the revision's side — "the revision Reconciled / Confirmed / Deferred
 `<D>`" — because the *Confirmed* verdict has no commit
 touching the downstream to carry it, and the gate must know which
 downstream a verdict covers; being on the branch that carries
-`Revises` scopes it to this revision. The keys are defined in ADR
-0004's trailer table; the gate's parsing stays the plan's. The gate
-checks that a verdict is present,
-not that its claim is true; a verdict is the reviser's assertion.
+`Revises`, or `Abandons` naming the ADR, scopes it to that change.
+The keys are defined in ADR 0004's trailer table; the gate's parsing
+stays the plan's. The gate checks that a verdict is present, not that
+its claim is true; a verdict is the reviser's assertion.
 
 ### A missing verdict is visible, and the gate is `land`
 
@@ -125,11 +127,11 @@ without a verdict.
 
 The gate runs at **`land`**, not at `begin`:
 
-- `land` already stops a `Revises` branch — a decision branch, landed
-  by a human (ADR 0003) — and already parses trailers. The
-  verdict-completeness check is the same shape of mechanical check at a
-  moment that already exists and already does decision-branch work; no
-  new gate moment is introduced.
+- `land` already stops a `Revises` branch, or one abandoning an ADR —
+  a decision branch, landed by a human (ADR 0003) — and already
+  parses trailers. The verdict-completeness check is the same shape
+  of mechanical check at a moment that already exists and already does
+  decision-branch work; no new gate moment is introduced.
 - Completeness can only be checked once the verdicts exist. `begin` is
   before any edit, so it has nothing to gate; a hard gate there would
   block the branch before the work that satisfies it could be done.
@@ -139,8 +141,6 @@ The gate runs at **`land`**, not at `begin`:
 
 `begin` still has a use: surfacing the `downstream:` worklist so the
 reviser sees the scope up front. That is advisory and blocks nothing.
-Verdicts are recorded on the branch as trailers `land` can check
-without judgement.
 
 ### Out of scope: eval scenarios
 
@@ -217,10 +217,9 @@ scope (discovery 0004 territory).
   separate verdict-giver (seed #124, the role-concentration theme of
   #119 and ADR 0008).
 - Narrowing the deferral's condition to `origin-path + description`
-  makes ADR 0012's due-deferral check mechanical: `land` tests
-  `Reconciles: <origin>`, `Revises: <origin>`, or
-  `Derives-From: <origin>` against trunk, no judgement required to
-  decide whether a deferral is due.
+  makes ADR 0012's due-deferral check mechanical: `land` tests the
+  keyed trailers above against trunk, no judgement required to decide
+  whether a deferral is due.
 - Evals stay outside the revision graph until #119; a revision that
   should change an eval leaves no verdict and no gate catches it.
 - "Downstream" here is the *production graph* (`Derives-From`: ADR →
@@ -253,7 +252,7 @@ scope (discovery 0004 territory).
 - `docs/adr/0010-history-retrieval.md` — the transitive
   `history downstream` query this process consumes, without
   re-traversing git.
-- `docs/adr/0003-git-workflow.md` — `land` stops a `Revises` branch
+- `docs/adr/0003-git-workflow.md` — `land` stops a decision branch
   and parses trailers, the moment this gate attaches to; and
   plan-merge-on-creation, which makes a revised ADR's plans "in the
   tree" so the downstream set is complete.

@@ -91,8 +91,8 @@ new ADR, and edit the old one only where the new decision changes it.
 Titles are therefore phrased as questions, so that the test can be
 applied by reading the title.
 
-A decision that is reversed outright is deleted, not marked. The
-commit that deletes it says why.
+A decision that is reversed outright is deleted, not marked: its
+deleting commit carries `Abandons`.
 
 The Alternatives section of the current ADR keeps its role. Paths
 rejected at decision time exist nowhere else, because they were never
@@ -120,15 +120,16 @@ tree when that purpose is served.
   above; for a skill or code it is a staleness marker, those never
   leaving the tree on completion.
 - A **discovery note** leaves when the ADR or ADRs it informed are
-  accepted. A note that informs none is abandoned, by a deleting
-  commit that says why.
+  accepted. A note that informs none is decided against, and leaves by
+  a deleting commit carrying `Abandons`, whose body says why.
 - **Source material** — any file brought in from outside the
   repository's workflow as input to discovery, imported or not — lives
   in `docs/discovery/sources/`, whose path marks it as consumable
   input and keeps it out of note numbering. A discovery note records
   what is drawn from it. It leaves on the branch of the last note
   drawing on it, by a later commit carrying `Consumed-By` naming each
-  note it informed.
+  note it informed. Source material that informed no note leaves
+  with `Abandons` instead.
 - An **ADR** stays for as long as its decision stands. ADRs are the
   current intention; they are consumed continuously, not once.
 
@@ -167,8 +168,8 @@ The vocabulary:
 | `Clarifies:` | edits in place an artefact already in the tree: for a discovery note or source material any edit; for any other artefact an edit changing no decision and no behaviour (typo, citation, metadata, or an uncaught cross-reference); a self-edge, as `Revises` is on an in-place revision | path of the artefact edited |
 | `Consumed-By:` | removes a consumed artefact: a discovery note, or source material | path of what it informed; one trailer per artefact informed |
 | `Completes:` | removes a plan whose work is done | path of the plan |
-| `Abandons:` | removes a plan whose work will not be done | path of the plan |
-| `Reconciles:` | revises a durable downstream to match the changed decision | path of that downstream |
+| `Abandons:` | removes a whole artefact, as if it had never been: an ADR whose decision is reversed outright, a plan whose work will not be done, a discovery note that informs no ADR, or source material that informed no note | path of the artefact |
+| `Reconciles:` | revises a durable downstream to match the changed decision, or deletes a skill or code existing only for an abandoned ADR | path of that downstream |
 | `Confirms:` | examines a durable downstream and finds it still correct | path of that downstream |
 | `Defers:` | defers reconciling a durable downstream artefact, blocked on named other work | path of that downstream artefact; carries its named blocking condition |
 
@@ -191,9 +192,9 @@ to the decision, `Clarifies` for a change to its expression. A
 revising edit carries `Revises`; only a non-revising edit carries
 `Clarifies`, and `land` sends it direct to trunk, with no human pull
 request. A substantive change to a skill or code derives from a plan;
-a substantive change to a plan carries `Reconciles:`, the verdict on a
-revised ADR's downstream, found through the `Derives-From` graph the
-history skill retrieves (ADR 0011).
+a substantive change to a plan carries `Reconciles:`, the verdict on
+an ADR's downstream, found through the `Derives-From` graph the history
+skill retrieves (ADR 0011).
 
 `Origin` exists because, without it, `land` refuses a first commit
 with no upstream in the repository, and such a root's provenance lives
@@ -209,11 +210,11 @@ files such as `tessl.json`, `.claude/` and `AGENTS.md` never do.
 
 The three verdict trailers are the cross-edge counterpart to those
 self-edges: `Revises` and `Clarifies` link an artefact to itself,
-whereas a verdict links the revised ADR to a *different* durable
-downstream named in its value. Introducing them extends this
-exhaustive vocabulary, which is why their keys are defined here;
-reading those keys and enforcing the verdicts — the gate's parsing —
-belong to ADR 0011's plan.
+whereas a verdict links an ADR to a *different* durable downstream
+named in its value. Introducing them extends this exhaustive
+vocabulary, which is why their keys are defined here; reading those
+keys and enforcing the verdicts — the gate's parsing — belong to ADR
+0011's plan.
 
 Trailers record edges between artefacts, and `Origin` a root's
 provenance. Structure inside an artefact, such as the order of
@@ -221,9 +222,14 @@ docstring, test and code commits under `test-first-workflow`, belongs
 to the governing skill under ADR 0003's delegation of commit cadence,
 and carries no trailer.
 
-The prose body of a `Revises`, `Clarifies`, `Abandons` or deleting commit
-must say what changed and why, in sentences. Trailers carry the edge;
-the body carries the reason. Neither is optional.
+`land` accepts a first commit carrying `Abandons` naming a path that
+existed at the fork point, as it does `Clarifies`, so a branch that
+only abandons an artefact lands without riding on another. Abandoning
+an ADR changes a decision, so a human lands it (ADR 0003).
+
+The prose body of a `Revises`, `Clarifies`, `Abandons` or deleting
+commit must say what changed and why, in sentences. Trailers carry the
+edge; the body carries the reason. Neither is optional.
 
 While an artefact is in the tree, its frontmatter names what it
 derives from, as plans already do with `adr:`. Once it leaves, the
@@ -237,13 +243,13 @@ one artefact, and its prohibition on squash merging now protects
 this too: a squash discards the individual commits, and their
 trailers with them.
 
-### Revising an ADR accounts for what is downstream of it
+### Revising or abandoning an ADR accounts for what is downstream of it
 
-When an ADR is revised, every durable downstream artefact in the tree
-must be accounted for. The full obligation to reconcile what the
-revision changes under it, and the verdicts that discharge it, lives in
-ADR 0011 as that obligation's single owner; the scope is stated here,
-the rule is not restated.
+When an ADR is revised or abandoned, every durable downstream
+artefact in the tree must be accounted for. The full obligation to
+reconcile what changes under it, and the verdicts that discharge it,
+lives in ADR 0011 as that obligation's single owner; the scope is
+stated here, the rule is not restated.
 
 ### The bookkeeping exception is adopted as a revision to ADR 0003
 
@@ -336,14 +342,28 @@ question and is deferred to a separate ADR. Until it exists,
 - **An `Amends:` trailer for in-place edits to non-ADR artefacts.**
   Rejected: a second self-edge key, where widening one row serves.
 - **Let `land` infer the case, with no trailer** — exempting a diff
-  that only edits existing files under `docs/discovery/`, or a first
-  commit that only adds new ones. Rejected: the edge, or the root's
-  provenance, would go unrecorded.
+  that only edits existing files under `docs/discovery/`, a diff that
+  only deletes them, or a first commit that only adds new ones.
+  Rejected: the edge, or the root's provenance, would go unrecorded,
+  and the exemption is a special case.
 - **An external `Derives-From` for a root.** Rejected: a loose local
   file has no `<owner>/<repo>@<rev>` to name. An external reference
   survives as one form of `Origin:` value.
 - **Source material alongside the notes in `docs/discovery/`.** Not
   chosen; it lives in `docs/discovery/sources/`.
+- **A discovery note abandoned, or an ADR reversed outright, by a
+  trailerless deletion.** This ADR's previous form. Reversed: `land`
+  refused a branch that only deleted a note, so the deletion had to
+  ride on another branch (#191); and with no edge, history could not
+  tell a decision from a mistaken deletion.
+- **Widen `Clarifies` to cover deletions.** Rejected: it would land,
+  but leave no edge saying "decided against".
+- **Infer abandonment from a deletion with no `Consumed-By`.**
+  Rejected: a mistaken deletion would read as a decision, and `land`
+  would still refuse the standalone branch.
+- **Mark a note `status: abandoned` by a `Clarifies` edit before
+  deleting it.** Not chosen: it restores a status this ADR removed and
+  splits abandonment into two steps.
 - **Every file an `Origin:` commit adds is consumable.** Rejected:
   bootstrap files must never leave the tree.
 
@@ -351,18 +371,20 @@ question and is deferred to a separate ADR. Until it exists,
 
 - The `adr` skill changes: question-shaped titles, the edit-or-new
   test, the withdrawal of the immutability and no-delete rules, a
-  smaller frontmatter schema, and the `Revises` commit rule.
+  smaller frontmatter schema, and the `Revises` and `Abandons` commit
+  rules.
 - The `plans` skill changes: `done` and `abandoned` become removal
   with `Completes` and `Abandons`, the no-delete and no-archive rules
   are withdrawn, and the introducing commit carries `Derives-From`.
 - The `facilitated-discovery` skill changes: a discovery note leaves
   the tree when the ADR or ADRs it informed are accepted, with
-  `Consumed-By`, and a landed note is revised in place. Its entry
-  points, which assume a conversation with a human present, are left
-  to the implementing plan.
+  `Consumed-By`, or when abandoned, with `Abandons`; a landed note is
+  revised in place. Its entry points, which assume a conversation with
+  a human present, are left to the implementing plan.
 - The git-workflow skill that plan 0003 specifies must carry the
-  trailer vocabulary and route a `Clarifies` branch to trunk without
-  requiring `Derives-From`, since it is the skill that lands commits.
+  trailer vocabulary, route a `Clarifies` branch to trunk, and accept an
+  `Abandons` first commit, neither requiring `Derives-From`, since it is
+  the skill that lands commits.
   It also lands a root carrying `Origin:`, where the history skill
   stops traversal. Plan 0003 is revised accordingly under ADR
   0011.
@@ -373,7 +395,9 @@ question and is deferred to a separate ADR. Until it exists,
   exception is folded in, and its claim that the `adr` skill's
   prohibition on editing a merged ADR "becomes meaningful" is
   removed, since that prohibition is withdrawn. Its land rule carries
-  the exceptions: a decision, `Clarifies`, or `Origin:`.
+  the exceptions: a decision, `Clarifies` or `Abandons` naming a path
+  that existed at the fork point, or `Origin:`. Abandoning an ADR
+  changes a decision, so a human lands it.
 - ADRs 0001 to 0003 lose the `supersedes` and `superseded_by`
   fields. Plans 0001 and 0002, both done, leave the tree.
 - The human trajectory is now only as good as commit discipline.
@@ -382,8 +406,9 @@ question and is deferred to a separate ADR. Until it exists,
   is the job of the git-workflow skill and of the governing skills'
   commit rules, and it is the cost of not writing history twice.
 - Agents may edit ADRs casually where before they could not. The
-  `Revises` trailer with a mandatory reason, the no-fast-forward
-  merge, and human acceptance at merge are what stand in the way.
+  `Revises` and `Abandons` trailers with a mandatory reason, the
+  no-fast-forward merge, and human acceptance at merge are what stand
+  in the way.
 - The artefact graph is recoverable but not yet cheaply queryable.
   The history skill is a separate ADR and its absence is felt until
   it lands.
@@ -432,9 +457,10 @@ question and is deferred to a separate ADR. Until it exists,
 - `docs/adr/0010-history-retrieval.md` — the `Defers` condition,
   whose origin a root is not.
 - `docs/adr/0011-revision-process.md` — the reconciliation of a
-  revised ADR's downstreams, and the verdicts that discharge it.
-- Issues #182 and #184 — the root and the revision of a landed
-  discovery note.
+  revised or abandoned ADR's downstreams, and the verdicts that
+  discharge it.
+- Issues #182, #184 and #191 — the root, the revision of a landed
+  discovery note, and its abandonment.
 - `git-interpret-trailers(1)` — the trailer format and tooling.
 - Nygard, "Documenting Architecture Decisions" (2011) — the source of
   the immutability convention this ADR withdraws, written for a
