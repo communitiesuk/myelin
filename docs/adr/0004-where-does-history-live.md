@@ -91,8 +91,8 @@ new ADR, and edit the old one only where the new decision changes it.
 Titles are therefore phrased as questions, so that the test can be
 applied by reading the title.
 
-A decision that is reversed outright is deleted, not marked, by a
-commit carrying `Abandons`.
+A decision that is reversed outright is deleted, not marked: its
+deleting commit carries `Abandons`.
 
 The Alternatives section of the current ADR keeps its role. Paths
 rejected at decision time exist nowhere else, because they were never
@@ -227,9 +227,9 @@ existed at the fork point, as it does `Clarifies`, so a branch that
 only abandons an artefact lands without riding on another. Abandoning
 an ADR changes a decision, so a human lands it (ADR 0003).
 
-The prose body of a `Revises`, `Clarifies`, `Abandons` or deleting commit
-must say what changed and why, in sentences. Trailers carry the edge;
-the body carries the reason. Neither is optional.
+The prose body of a `Revises`, `Clarifies`, `Abandons` or deleting
+commit must say what changed and why, in sentences. Trailers carry the
+edge; the body carries the reason. Neither is optional.
 
 While an artefact is in the tree, its frontmatter names what it
 derives from, as plans already do with `adr:`. Once it leaves, the
@@ -245,11 +245,11 @@ trailers with them.
 
 ### Revising or abandoning an ADR accounts for what is downstream of it
 
-When an ADR is revised or abandoned, every durable downstream artefact in the tree
-must be accounted for. The full obligation to reconcile what the
-revision changes under it, and the verdicts that discharge it, lives in
-ADR 0011 as that obligation's single owner; the scope is stated here,
-the rule is not restated.
+When an ADR is revised or abandoned, every durable downstream
+artefact in the tree must be accounted for. The full obligation to
+reconcile what changes under it, and the verdicts that discharge it,
+lives in ADR 0011 as that obligation's single owner; the scope is
+stated here, the rule is not restated.
 
 ### The bookkeeping exception is adopted as a revision to ADR 0003
 
@@ -397,8 +397,8 @@ question and is deferred to a separate ADR. Until it exists,
   prohibition on editing a merged ADR "becomes meaningful" is
   removed, since that prohibition is withdrawn. Its land rule carries
   the exceptions: a decision, `Clarifies` or `Abandons` naming a path
-  that existed at the fork point, or `Origin:`. Abandoning an ADR is a
-  decision, which a human lands.
+  that existed at the fork point, or `Origin:`. Abandoning an ADR
+  changes a decision, so a human lands it.
 - ADRs 0001 to 0003 lose the `supersedes` and `superseded_by`
   fields. Plans 0001 and 0002, both done, leave the tree.
 - The human trajectory is now only as good as commit discipline.
@@ -458,7 +458,8 @@ question and is deferred to a separate ADR. Until it exists,
 - `docs/adr/0010-history-retrieval.md` — the `Defers` condition,
   whose origin a root is not.
 - `docs/adr/0011-revision-process.md` — the reconciliation of a
-  revised ADR's downstreams, and the verdicts that discharge it.
+  revised or abandoned ADR's downstreams, and the verdicts that
+  discharge it.
 - Issues #182, #184 and #191 — the root, the revision of a landed
   discovery note, and its abandonment.
 - `git-interpret-trailers(1)` — the trailer format and tooling.

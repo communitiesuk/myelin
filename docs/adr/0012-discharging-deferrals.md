@@ -39,7 +39,8 @@ plain surface addition to 0010, not an un-deferral of the latter.
 A deferral `Defers: <D> <condition>` is **outstanding** while no later
 verdict (`Reconciles:`/`Confirms:`/`Defers:`) targets the same `D`. An
 outstanding deferral becomes **due** the moment its named condition is
-satisfied — the blocking work has landed on trunk.
+satisfied — the blocking work has landed on trunk, or its origin is
+abandoned (ADR 0011).
 
 ### Persistent visibility, scoped hard-stop
 

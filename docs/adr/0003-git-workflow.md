@@ -293,10 +293,10 @@ happens at the moment.
 
 An artefact branch that adds a file under `docs/adr/`, or whose
 commits carry a `Revises` trailer or an `Abandons` naming an ADR, is
-landed by a human and never by the agent. The agent's job ends where it does for a refused merge:
-push the branch, open the pull request, stop, and report. Every other
-artefact — a discovery note, a plan, a skill, code, a release — the
-agent lands itself.
+landed by a human and never by the agent. The agent's job ends where
+it does for a refused merge: push the branch, open the pull request,
+stop, and report. Every other artefact — a discovery note, a plan, a
+skill, code, a release — the agent lands itself.
 
 The line is drawn by what can check the artefact. A plan is reviewed
 against its ADR, a skill against its eval scenarios, code against its
@@ -307,7 +307,7 @@ confirm it says what they meant, so a human lands it. On 2026-09-23 an
 agent opened and merged a revision of this ADR within the same minute
 and then removed the discovery note it derived from, on the strength
 of an acceptance that had not happened; the text turned out to be
-fine, which is not the point. Both facts that select this rule are
+fine, which is not the point. The facts that select this rule are
 readable from the branch without judgement, so the script that lands
 enforces it, and until that script exists the skill body states it.
 
