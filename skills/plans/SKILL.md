@@ -242,13 +242,13 @@ deferred_reason: null
   Abandons: plans/NNNN-<slug>.md
   ```
 
-  The commit body says, in sentences, why the work will not be done.
+  The commit body says, in sentences, why the work will not be done. A plan of an ADR abandoned outright leaves this way on the abandoning branch, and needs no verdict there (ADR 0011).
 
 Both bodies are mandatory. Trailers carry the edge; the body carries the reason. Neither is optional.
 
 Status updates ride with the code changes that reflect the new reality — e.g. flip `draft` → `in-progress` in the same commit as the first implementation change. Completion is the concrete case: the commit that deletes the plan file is the one that makes completion true. There is no status to flip first.
 
-A plan in the tree is edited in place. A substantive change made because its ADR was revised carries `Reconciles: plans/NNNN-<slug>.md` (ADR 0011), on the revising branch or the branch that brings its deferral due. An edit changing no decision and no behaviour (a typo, citation, metadata, or an uncaught cross-reference) carries `Clarifies: plans/NNNN-<slug>.md` and lands direct to trunk.
+A plan in the tree is edited in place. A substantive change carries `Reconciles: plans/NNNN-<slug>.md`, the verdict on an ADR's downstream (ADR 0004), on the branch revising or abandoning that ADR or bringing its deferral due (ADR 0011). An edit changing no decision and no behaviour (a typo, citation, metadata, or an uncaught cross-reference) carries `Clarifies: plans/NNNN-<slug>.md` and lands direct to trunk.
 
 ## The introducing commit
 
