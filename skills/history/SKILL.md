@@ -108,7 +108,7 @@ bash "$SKILL_DIR/scripts/history.sh" outstanding-deferrals
 No argument: the query always runs against the resolved trunk (never
 `--all`). The script prints one record per outstanding deferral,
 separated by a blank line: `D:` (the deferred artefact), `origin:` (the
-path whose landing re-triggers the check), `condition:` (the full
+path whose landing or abandonment re-triggers the check), `condition:` (the full
 condition text, unmodified, including the origin token), `due:`
 (`true` or `false`), and, only when `due: true`, one `candidate:
 <short-hash> <subject>` line per commit that may have discharged the

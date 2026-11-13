@@ -57,15 +57,16 @@
 #       <condition> seen; D is outstanding only when that latest event is
 #       a Defers:. For each outstanding D, due is true when any later
 #       commit (strictly after the Defers: commit, in that same ordering)
-#       carries Reconciles:, Revises: or Derives-From: naming the
-#       deferral's own origin path — distinct from the D-verdicts above,
+#       carries Reconciles:, Revises:, Derives-From: or Abandons: naming
+#       the deferral's own origin path (an Abandons: means nothing more is
+#       awaited) — distinct from the D-verdicts above,
 #       which decide outstanding-ness, not due-ness. Prints one record per
 #       outstanding deferral, separated by a blank line: D:, origin:,
 #       condition: (the raw value after D, unmodified, including the
 #       origin token), due: true|false, and zero or more
 #       candidate: <short-hash> <subject> lines, present only when due is
-#       true. Reads Defers:/Reconciles:/Confirms:/Revises:/Derives-From:
-#       trailers via `git log <trunk> --format=...`, never a commit
+#       true. Reads Defers:/Reconciles:/Confirms:/Revises:/Derives-From:/
+#       Abandons: trailers via `git log <trunk> --format=...`, never a commit
 #       subject.
 #
 # Exit codes
@@ -296,13 +297,14 @@ _derive_trunk() {
 # Print, one line per commit on $1 (the trunk) in `--topo-order --reverse`
 # order (Mechanism 3), the fields `cmd_outstanding_deferrals` needs:
 # `<short-hash>\x1f<subject>\x1f<Defers values>\x1f<Reconciles values>\x1f
-# <Confirms values>\x1f<Revises values>\x1f<Derives-From values>`, each
+# <Confirms values>\x1f<Revises values>\x1f<Derives-From values>\x1f
+# <Abandons values>`, each
 # trailer field's multiple values (a commit may carry a key more than
 # once) joined by \x1d. One git pass.
 _outstanding_deferrals_log() {
   local trunk="$1"
   git log "$trunk" --topo-order --reverse \
-    --format='%h%x1f%s%x1f%(trailers:key=Defers,valueonly,separator=%x1d)%x1f%(trailers:key=Reconciles,valueonly,separator=%x1d)%x1f%(trailers:key=Confirms,valueonly,separator=%x1d)%x1f%(trailers:key=Revises,valueonly,separator=%x1d)%x1f%(trailers:key=Derives-From,valueonly,separator=%x1d)'
+    --format='%h%x1f%s%x1f%(trailers:key=Defers,valueonly,separator=%x1d)%x1f%(trailers:key=Reconciles,valueonly,separator=%x1d)%x1f%(trailers:key=Confirms,valueonly,separator=%x1d)%x1f%(trailers:key=Revises,valueonly,separator=%x1d)%x1f%(trailers:key=Derives-From,valueonly,separator=%x1d)%x1f%(trailers:key=Abandons,valueonly,separator=%x1d)'
 }
 
 cmd_outstanding_deferrals() {
@@ -320,7 +322,7 @@ cmd_outstanding_deferrals() {
   # (oldest first, per _outstanding_deferrals_log's ordering) tracks, per
   # D, the latest of {Defers: D <origin> <condition>, Reconciles: D,
   # Confirms: D} (Mechanism 5) and collects every Reconciles:/Revises:/
-  # Derives-From: value seen, with its sequence number, as a candidate
+  # Derives-From:/Abandons: value seen, with its sequence number, as a candidate
   # due-trigger pool (Mechanism 6). The END block then reports every D
   # whose latest event is still a Defers:, checking that pool for any
   # entry whose value matches that deferral's origin with a strictly
@@ -333,7 +335,7 @@ cmd_outstanding_deferrals() {
     function trim(s) { gsub(/^[ \t\r]+|[ \t\r]+$/, "", s); return s }
     {
       split($0, f, "\x1f")
-      h = f[1]; subj = f[2]; defers = f[3]; reconciles = f[4]; confirms = f[5]; revises = f[6]; derivesfrom = f[7]
+      h = f[1]; subj = f[2]; defers = f[3]; reconciles = f[4]; confirms = f[5]; revises = f[6]; derivesfrom = f[7]; abandons = f[8]
       seq = NR
 
       if (defers != "") {
@@ -387,6 +389,15 @@ cmd_outstanding_deferrals() {
         nf = split(derivesfrom, flist, "\x1d")
         for (i = 1; i <= nf; i++) {
           v = trim(flist[i])
+          if (v == "") continue
+          te++; tseq[te] = seq; th[te] = h; ts[te] = subj; tval[te] = v
+        }
+      }
+
+      if (abandons != "") {
+        na = split(abandons, alist, "\x1d")
+        for (i = 1; i <= na; i++) {
+          v = trim(alist[i])
           if (v == "") continue
           te++; tseq[te] = seq; th[te] = h; ts[te] = subj; tval[te] = v
         }

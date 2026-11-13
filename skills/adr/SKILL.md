@@ -278,7 +278,19 @@ date: YYYY-MM-DD
 - **The human's merge is the act of accepting.** The merge commit records who accepted and when. There is nothing to set or flip.
 - **Not accepting** is either asking for changes, after which work continues on the branch, or closing the pull request unmerged. An ADR whose pull request is closed unmerged was not accepted and is no longer proposed. It never reaches the trunk.
 
-A decision that is reversed outright is deleted, not marked. The commit that deletes it says why.
+An ADR reversed outright is deleted, not marked, on its own branch (`begin docs/adr/NNNN-<slug>.md`), by a commit carrying this trailer, copied exactly:
+
+```
+Abandons: docs/adr/NNNN-<slug>.md
+```
+
+The commit body says, in sentences, why the decision is reversed. The same branch gives each durable downstream still in the tree a verdict (ADR 0011), judged one by one; there is no auto-defer, because no plan is to come. `history downstream docs/adr/NNNN-<slug>.md` lists them, and `begin` prints the same worklist.
+
+- A plan of the ADR leaves with `Abandons: <plan path>` and needs no verdict.
+- A skill or code existing only for the ADR is deleted, by a commit carrying `Reconciles: <path>`.
+- Anything else is reconciled, confirmed or deferred, as on a revision.
+
+Abandoning an ADR changes a decision, so `land` stops for a human to land it.
 
 ## Revising an ADR
 
@@ -291,6 +303,7 @@ An ADR is not frozen at merge. When the answer to its question changes, edit it 
   ```
 
   The value is the repository-relative path of the ADR. The commit body says, in sentences, what changed and why. Trailer and body are both mandatory.
+- An ADR whose decision is reversed outright is not revised: its deleting commit carries `Abandons: docs/adr/NNNN-<slug>.md` instead, with the same mandatory body (see "Proposed and accepted").
 - On a revision branch, the first revising commit carries `Revises`,
   and its body carries both the reason (what changed and why) and the
   summary, as the introducing commit does (see "The
@@ -356,4 +369,4 @@ All of the above belong in `plans/NNNN-*.md`.
 
 - Do not put decisions in `plans/`. Plans reference ADRs; they don't replace them.
 - Do not write a new ADR to change the answer to a question an existing ADR already answers. Revise it.
-- Do not keep a reversed ADR in the tree under a status flag. Delete it; the commit and git history are the record.
+- Do not keep a reversed ADR in the tree under a status flag. Delete it on its own branch with `Abandons:`; the commit and git history are the record.
