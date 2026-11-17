@@ -14,7 +14,8 @@ Implements the revision of `docs/adr/0003-git-workflow.md` merged in
 f8f2a93 (PR #201): every artefact branch is created with its own
 worktree at `.worktrees/<branch>`, there is no in-place path, no
 session works in the primary checkout, and the plugin's documentation
-tells new teams that the worktree path is longer. Closes seeds #143
+tells new teams that the worktree path is longer. ADR 0007's restatement
+of the rule is already reconciled (b572550). Closes seeds #143
 (concurrent sessions collide) and #112 (dropped files trip `begin`).
 Seed #200 (strays in the primary checkout) and #84 (numbering race)
 are not this plan's.
@@ -35,23 +36,23 @@ revised ADR by reading it.
 | `skills/git-workflow/scripts/tests/land.sh` | `Defers:`, then `Reconciles:` | `--where in-place` fixtures and in-place landing | Step 3 |
 | `skills/git-workflow/SKILL.md` | `Defers:`, then `Reconciles:` | description, "isolates ... when", exit 0 | Step 4 |
 | `skills/git-workflow/references/RULES.md` | `Defers:`, then `Reconciles:` | Rule 5 and Rule 14 | Step 4 |
-| `evals/git-workflow-0/criteria.json`, `scenario.json` | `Defers:`, then `Reconciles:` | name the contention check as the reason for isolating | Step 6 |
+| `.claude/skills/release/SKILL.md` | `Defers:`, then `Reconciles:` | branches with `git switch -c` in the primary checkout, expects HEAD on `dev` throughout, and switches the primary at merge | Step 6 |
+| `evals/git-workflow-0/criteria.json`, `scenario.json` | `Defers:`, then `Reconciles:` | name the contention check as the reason for isolating | Step 7 |
 | `skills/git-workflow/scripts/tests/lib.sh`, `contract.sh`, `run.sh` | `Confirms:` | fixture builder, `--help` words and runner state no isolation rule; `--dirty` stays a legitimate fixture | Landing |
 | `skills/plans/SKILL.md`, `skills/facilitated-discovery/SKILL.md` | `Confirms:` | say `begin` and "edit in place" (a file edit), never when it isolates | Landing |
-| `evals/plan-numbering-0/criteria.json`, `scenario.json`, `setup.sh`, `task.md` | `Confirms:` | score the number a plan is given; no remote, so the local merge works from a trunk-parked primary (Step 7 re-checks it) | Landing |
+| `evals/plan-numbering-0/criteria.json`, `scenario.json`, `setup.sh`, `task.md` | `Confirms:` | score the number a plan is given; no remote, so `begin` gives the agent a worktree and the local merge works from it, as the eval already scores | Landing |
 | `docs/adr/0006-where-do-captured-ideas-live.md`, `docs/discovery/0003-escalation-and-orchestration.md`, `docs/discovery/0005-compression-and-handover.md` | `Confirms:` | none states the isolation rule; a note records the thinking of its time | Landing |
-| `.claude/skills/release/SKILL.md` | `Confirms:` | its worktree is a scratch one for publishing | Landing |
 | `.gitignore`, `AGENTS.md` | `Confirms:` | `.worktrees/` is already ignored; `AGENTS.md` states no isolation rule | Landing |
 
-That is 7 files re-deferred and 15 confirmed: 22.
+That is 8 files re-deferred and 14 confirmed: 22.
 
 **Landing.** After the closing pass, if any, and before `land`, commit,
 empty, `Account for ADR 0003's deferrals at plan 0024's landing`,
 carrying:
 
-- one `Confirms:` for each of the 15 files the table confirms at
+- one `Confirms:` for each of the 14 files the table confirms at
   Landing, its body giving the reasons in the table.
-- for each of the seven files the table reconciles in a step,
+- for each of the eight files the table reconciles in a step,
   `Defers: <file> plans/0024-worktree-for-every-artefact.md until plan 0024's implementation lands`,
   its body saying the implementation branch reconciles them. ADR
   0011's anchor rule governs a chain's root, here ADR 0003; a re-defer
@@ -60,27 +61,22 @@ carrying:
 
 The implementation branch's first commit carries
 `Derives-From: plans/0024-worktree-for-every-artefact.md`, so `land`
-refuses it until each of the seven carries `Reconciles:`. The
+refuses it until each of the eight carries `Reconciles:`. The
 trailers go in the same last paragraph as `Co-Authored-By`.
 
 Not downstream of ADR 0003 in the graph, and so carrying no verdict,
 but edited because they state the rule or depend on in-place work:
 `README.md` (Step 5), `evals/git-workflow-1/`, `evals/plans-0/` and
-`evals/plans-1/` (Step 6), and the comments in
-`skills/git-workflow/scripts/git-workflow.sh` and
-`skills/git-workflow/scripts/tests/autodefer.sh`.
+`evals/plans-1/` (Step 7), `skills/git-workflow/scripts/tests/autodefer.sh`
+and `discharge.sh` (Step 3), and the comments in
+`skills/git-workflow/scripts/git-workflow.sh`.
 
 ## Steps
 
-Steps 1 to 8 run on one implementation branch, `chore-worktree-for-every-artefact`.
-Begin it with `begin skills/git-workflow/scripts/git-workflow.sh --slug worktree-for-every-artefact`.
-The script that runs is still the old one, which branches in place when
-the primary checkout is on a clean trunk. That is what this plan removes:
-if `begin` prints `dir=` as the primary checkout, move the branch into
-`.worktrees/chore-worktree-for-every-artefact` by hand before editing
-(`git switch dev`, then `git worktree add` it, then copy `.claude/`
-across) and say so in the first commit's body. From Step 1 on, work in
-`dir=` and use absolute paths.
+Steps 1 to 9 run on one implementation branch, `chore-worktree-for-every-artefact`.
+Begin it with `begin skills/git-workflow/scripts/git-workflow.sh --slug worktree-for-every-artefact`,
+and work in `dir=` by absolute path. Until this plan lands, the installed
+rule governs how that branch is made.
 
 1. **`begin` always makes a worktree, and makes it under the primary checkout.**
 
@@ -95,9 +91,12 @@ across) and say so in the first commit's body. From Step 1 on, work in
      (`.worktrees/a/.worktrees/b`), which this ADR's
      `.worktrees/<branch>` inside the repository does not mean, and
      every session now runs from a worktree;
-   - the doc-comment says so: no in-place branching, strays and a dirty
-     primary checkout trigger nothing, and `begin` never touches the
-     primary checkout's files (its trunk update excepted).
+   - the doc-comment says so: no in-place branching; strays and a
+     dirty primary checkout do not change where the branch goes, though
+     `begin` still stops with `sync_trunk`'s report when the trunk is
+     behind its remote and the primary checkout cannot be
+     fast-forwarded; and `begin` never touches the primary checkout's
+     files (its trunk update excepted).
 
    Tests, `skills/git-workflow/scripts/tests/begin.sh` (red first):
    - replace "in place: on the trunk and clean, the primary checkout
@@ -108,6 +107,9 @@ across) and say so in the first commit's body. From Step 1 on, work in
      worktree, the stray untouched;
    - `begin` run from inside an existing worktree puts the new one at
      `<primary>/.worktrees/<branch>`, not under the first;
+   - two `begin`s on different slugs in one repository with no remote,
+     the second while the first's worktree exists: both succeed, at
+     distinct `.worktrees/` paths;
    - rename "worklist ... in place" to match; keep the worktree tests;
    - correct `skills/git-workflow/scripts/tests/autodefer.sh`'s comment
      that `begin` is in-place on a clean trunk.
@@ -150,22 +152,40 @@ across) and say so in the first commit's body. From Step 1 on, work in
 
    Tests, `skills/git-workflow/scripts/tests/land.sh` (red first):
    - `artefact` loses `--where`; every fixture is a worktree, so the
-     `g switch -q -c topic` that forced one goes too and the ~25 callers
-     drop `--where in-place`;
+     ~25 callers drop `--where in-place`. The `g switch -q -c topic`
+     that forced a worktree becomes an option, `--park`, that parks the
+     primary on `topic` before `begin`; m3, k1 to k3 and wc1, which
+     assert a primary off the trunk, pass it;
+   - primary-checkout assertions that it "must stay on the branch" or
+     that the refusal "must change nothing" by naming the artefact
+     branch (lines 85, 148, 204, 495) now expect `dev`, because the
+     primary never leaves the trunk;
+   - the `abandoning` helper begins "in place" and commits no
+     `.worktrees/` ignore line; it now begins a worktree, and commits
+     the line as `artefact` does (line 46) so `begin` leaves nothing
+     uncommitted; ab5 drops `--where`;
+   - in `skills/git-workflow/scripts/tests/autodefer.sh`, test 8 lands
+     the repository root (`land "$R/t5"`), which `land` now refuses;
+     land the worktree `two_downstream_revision` echoes. In
+     `skills/git-workflow/scripts/tests/discharge.sh`, test 14's `base`
+     commits no `.worktrees/` ignore line, so the `.gitignore` that
+     `begin` writes in the worktree stays uncommitted and `land`
+     refuses it as dirty before the check under test; commit the line
+     in `base`. Run both files after Step 1's change and fix any other
+     test that fails the same way;
    - new: `land` run from the primary checkout on an artefact branch
      exits 2, naming `.worktrees/`, and changes nothing;
-   - rename "merge in place" and "Clarifies: an in-place edit" tests to
-     say what they test; the primary ends on the trunk because it never
-     left it;
+   - rename the "merge in place" tests to say what they test; the
+     primary ends on the trunk because it never left it;
    - update the header's coverage line for git-workflow-0 #3.
 
    The last commit carries `Reconciles: skills/git-workflow/scripts/tests/land.sh`.
 
 4. **State the rule in the skill and its rules file.**
 
-   `skills/git-workflow/SKILL.md`, not `description`'s trigger or skip
-   clauses: in `description`, "worktree isolation on contention"
-   becomes "a worktree for every artefact". In "The two moments":
+   `skills/git-workflow/SKILL.md`: in `description`'s opening sentence
+   (its trigger and skip clauses unchanged), "worktree isolation on
+   contention" becomes "a worktree for every artefact". In "The two moments":
    `begin` "creates the branch together with its worktree" instead of
    isolating "when the checkout is not on the trunk or is dirty", and
    "Work in `dir=` and nowhere else" gains "never in the primary
@@ -173,8 +193,8 @@ across) and say so in the first commit's body. From Step 1 on, work in
    work was in place"; the exit 2 bullet adds running `land` from the
    primary checkout. "What the script decides": "whether to isolate and
    where" becomes "where the worktree goes". "Do not": the stash and
-   `git add -A` line keeps its rule and loses its reason ("that is what
-   the worktree is for" stays true).
+   `git add -A` line is unchanged, including "that is what the
+   worktree is for", which stays true.
    `skills/git-workflow/references/RULES.md`: retitle Rule 5 "Every
    artefact branch gets its own worktree" (keep the number; evals cite
    it), give the command, the reason (parallel sessions share one HEAD in
@@ -182,7 +202,10 @@ across) and say so in the first commit's body. From Step 1 on, work in
    that git refuses a branch checked out twice so no lock is needed, and
    that the `.worktrees/` ignore-line paragraph is unchanged; Rule 14:
    cut the "Work done in the primary checkout returns that checkout to
-   trunk" sentences and "or on trunk where the work was in place".
+   trunk" sentence, "Where the work was isolated" (the primary checkout
+   never moves), and "or on trunk where the work was in place"; Rule 11's
+   refused-merge paragraph loses "primary checkout not returned to trunk"
+   from the state left behind, since Rule 14 never returns it.
    Do not edit `.claude/skills/tessl__git-workflow/`; it is a merged
    install of `dev`.
    Commit: `Document a worktree for every artefact in git-workflow (plan 0024 Step 4)`,
@@ -206,53 +229,81 @@ across) and say so in the first commit's body. From Step 1 on, work in
    downstream graph. Commit:
    `Tell new teams where worktrees are (plan 0024 Step 5)`.
 
-6. **Update the evals.**
+6. **Reconcile the release skill.**
+   `.claude/skills/release/SKILL.md` (not code, no wrapper): the primary
+   checkout stays on `dev`. The skill's section 2 creates the branch with its
+   worktree (`git worktree add .worktrees/chore-release-<version> -b chore-release-<version> dev`)
+   and the later steps work in it by absolute path; section 9's
+   `git switch dev && git pull --ff-only origin dev` becomes a
+   fast-forward pull in the primary, which is already on `dev`, and
+   removes the worktree first if `gh pr merge --delete-branch` cannot
+   delete a branch a worktree holds; section 11's primary-or-scratch
+   rule keeps; section 12 removes the worktree and the branch and checks
+   that the primary is on `dev`. Commit:
+   `Reconcile the release skill to a worktree per release branch (plan 0024 Step 6)`,
+   carrying `Reconciles: .claude/skills/release/SKILL.md`.
+
+7. **Update the evals.**
 
    > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
-   Here the evals are the tests; run each before editing (step 7 gives
+   Here the evals are the tests; run each before editing (Step 8 gives
    the command) so the failure being fixed is seen.
-   - `evals/git-workflow-0/criteria.json`, `scenario.json` and the
-     setup.sh comments (lines 224 and 288-292), and
-     `evals/git-workflow-1/criteria.json` and setup.sh comments: the
-     fixtures stay dirty and off-trunk, which now tests that the
-     primary checkout is untouched; reword "the contention check must
-     select isolation" and "Rule 5 selects isolation" to "every
-     artefact branch gets a worktree".
-   - `evals/plans-0/` and `evals/plans-1/`: their fixtures check the plan
-     branch out in the primary checkout, from which `land` now refuses.
-     Build it as a worktree at `.worktrees/plan-0001-forecast-source`
-     with the primary on `dev`, and say in `task.md` and the
+   - `evals/git-workflow-0/`: the fixture is dirty on the trunk, which
+     the old rule isolated too, so it does not tell the rules apart.
+     Make it a clean trunk: drop the README edit and
+     `benchmark-notes.txt`, and ignore `.venv/` and `node_modules/` so
+     `git status --porcelain` is empty (the criteria that nothing built
+     is committed still hold). Reword the criteria and `scenario.json`
+     ("isolate into a worktree", "the contention check must select
+     isolation") to "every artefact branch gets a worktree" and the
+     primary checkout stays on `dev`, tree clean, branch never checked
+     out; fix the setup.sh comments (lines 224 and 288-292). The old
+     rule branched in place here, so the run before editing fails on
+     the right thing.
+   - `evals/git-workflow-1/`: the primary sits on `main`, off the trunk
+     (not dirty); reword "the contention check must select isolation"
+     and "Rule 5 selects isolation" to "every artefact branch gets a
+     worktree" in `criteria.json` and the setup.sh comments (lines 235
+     and 240).
+   - `evals/plans-0/` and `evals/plans-1/`: their fixtures check the
+     plan branch out in the primary checkout. `plans-0` lands, and
+     `land` now refuses that; build the branch as a worktree at
+     `.worktrees/plan-0001-forecast-source` with the primary on `dev`.
+     `plans-1` never reaches `land` (it stops at an escalation), but its
+     fixture and context would describe a layout the workflow no longer
+     produces; change it the same way. In each, say in `task.md` and the
      `criteria.json` context where the plan is ("checked out in place"
      goes).
-   - `evals/adr-0/` and `evals/adr-1/`: their criteria read the repo
-     at `solution/` with HEAD on `dev`; where one reads the working
-     tree rather than `git show <branch>:<path>`, read the branch.
-   Commit: `Reconcile the git-workflow evals to a worktree per artefact (plan 0024 Step 6)`,
+   Commit: `Reconcile the git-workflow evals to a worktree per artefact (plan 0024 Step 7)`,
    carrying `Reconciles: evals/git-workflow-0/criteria.json` and
    `Reconciles: evals/git-workflow-0/scenario.json`.
 
-7. **Run the tests and the evals.**
+8. **Run the tests and the evals.**
    - `bash skills/git-workflow/scripts/tests/run.sh` and
      `bash skills/history/scripts/tests/run.sh` pass.
-   - Run `tessl eval run` on `evals/git-workflow-0` and
-     `evals/git-workflow-1`, three repeats each, on deepseek-v4-flash
-     (the model `git-workflow`'s `compatibility` cites), and on
-     `evals/plan-numbering-0`, `evals/plans-0`, `evals/plans-1`,
-     `evals/adr-0` and `evals/adr-1` once each. Read each activation
+   - Run, as plan 0012 did, for `s` in `git-workflow-0` and
+     `git-workflow-1` with `-n 3`, and for `s` in `plan-numbering-0`,
+     `plans-0`, `plans-1`, `adr-0` and `adr-1` without it (once each):
+
+     ```sh
+     tessl eval run evals/$s --context . --skip-baseline --agent claude --model deepseek-v4.1-flash -n 3 --label "plan 0024 $s" --wait --json --yes
+     ```
+
+     `deepseek-v4.1-flash` is the model `git-workflow`'s `compatibility`
+     cites. Read each activation
      record and scorer reasoning, so a failure is classed as "never
      ran the script" or "worked in the primary checkout", not
      "merged wrongly".
-   - If a `Confirms:` in the Landing table proves wrong (plan-numbering-0
-     is the one at risk), reconcile that file in this step, with its
-     own `Reconciles:`.
+   - If a `Confirms:` in the Landing table proves wrong, reconcile that
+     file in this step, with its own `Reconciles:`.
    - Update `git-workflow`'s `compatibility` frontmatter to cite the new
      runs and bars if the numbers moved; leave the floor unchanged
      unless they fall below the bars cited there.
    Record the results in Progress notes. Commit:
-   `Record the runs of the git-workflow evals (plan 0024 Step 7)`.
+   `Record the runs of the git-workflow evals (plan 0024 Step 8)`.
 
-8. **Complete.** Delete this plan. Commit `Complete plans/0024-worktree-for-every-artefact.md`
+9. **Complete.** Delete this plan. Commit `Complete plans/0024-worktree-for-every-artefact.md`
    with the trailer
 
    ```
@@ -260,7 +311,7 @@ across) and say so in the first commit's body. From Step 1 on, work in
    ```
 
    and a body that says what the plan produced, and which of the 22
-   deferred files were reconciled and which confirmed. Add
+   deferred files were reconciled (8) and which confirmed (14). Add
    `Fixes #143` and `Fixes #112` lines before the trailers so the
    merge closes both seeds.
 
@@ -270,24 +321,19 @@ across) and say so in the first commit's body. From Step 1 on, work in
   worktree each print `dir=<primary>/.worktrees/<branch>`; the primary
   checkout is unchanged (`git -C <primary> status --porcelain` and
   `rev-parse HEAD` equal before and after).
-- Two `begin`s run concurrently from the primary checkout both succeed,
-  with distinct worktrees.
+- Two `begin`s on different slugs in one repository, the second while the
+  first's worktree exists, both succeed at distinct worktrees (the
+  Step 1 test; a repository with a remote is not claimed).
 - `check` prints three lines and no `contention=`.
 - `land` from the primary checkout on a non-trunk branch exits 2;
   from the worktree it merges with two parents and leaves the primary
   on the trunk.
-- `grep -rn -i 'contention\|in place\|in-place' skills evals README.md`
-  finds no statement that `begin` isolates only on contention; the
-  remaining hits are "edit in place" about a file.
+- `grep -rn 'contention=\|isolation on contention\|on contention' skills evals/git-workflow-0 evals/git-workflow-1 README.md`
+  and `grep -rn -i 'where the work was in place\|--where\|checked out in place\|begun in place\|in-place branching' skills evals`
+  find nothing. Other "in place" hits are about editing a file, and
+  `evals/scenario-0`'s "contention" is database write contention.
 - `git worktree list` after landing shows only the primary checkout.
 - `history outstanding-deferrals` lists none whose origin is
   `docs/adr/0003-git-workflow.md`.
-
-## Open items
-
-- `docs/adr/0007-readme-requirements-and-opinions.md` line 91, "Worktree
-  isolation on contention", now contradicts ADR 0003, and Step 5 makes
-  the README follow ADR 0003. Editing an accepted ADR is the human's
-  call; it is escalated and unanswered. No step edits ADR 0007.
 
 ## Progress notes
