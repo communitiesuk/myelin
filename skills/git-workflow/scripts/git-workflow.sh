@@ -119,22 +119,13 @@ derive_host() {
   esac
 }
 
-derive_contention() {
-  local trunk="$1"
-  if [ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" = "$trunk" ] && [ -z "$(git status --porcelain)" ]; then
-    echo in-place
-  else
-    echo worktree
-  fi
-}
-
 cmd_check() {
   git rev-parse --git-dir >/dev/null 2>&1 || die 2 "not inside a git repository"
   local trunk remote host
   trunk="$(derive_trunk)" || die 2 "no trunk resolves: looked for refs/heads/dev, refs/heads/develop and the branch named by refs/remotes/origin/HEAD; this repository is not set up for the workflow (git remote set-head origin -a satisfies it where a remote exists)"
   remote="$(derive_remote)" || die 2 "more than one remote and none named origin: $(git remote | tr '\n' ' ')— say which by naming it origin"
   host="$(derive_host "$remote")"
-  printf 'trunk=%s\nremote=%s\nhost=%s\ncontention=%s\n' "$trunk" "$remote" "$host" "$(derive_contention "$trunk")"
+  printf 'trunk=%s\nremote=%s\nhost=%s\n' "$trunk" "$remote" "$host"
 }
 # begin <artefact-path> [--slug <slug>] — start the artefact's branch.
 #
