@@ -6,17 +6,17 @@ kept here for the reasoning, not for execution: do not run these
 commands by hand where the script runs them for you. Rationale in
 `docs/adr/0003-git-workflow.md` and `docs/adr/0004-where-does-history-live.md`.
 
-## Rule 5 — Isolate on contention, not by default
+## Rule 5 — Every artefact branch gets its own worktree
 
-Branch in the primary checkout when that checkout is **on trunk and clean**. Otherwise branch together with a worktree at `.worktrees/<branch>` inside the repository. Both conditions are readable without judgement, and **nothing has to be inferred about whether work is "parallel"** — run the commands and read the answer off them.
+Every artefact branch is created together with a worktree at `.worktrees/<branch>` inside the repository, from the trunk. There is no in-place path: no session works in the primary checkout, whatever state it is in.
 
 ```sh
-git rev-parse --abbrev-ref HEAD   # must equal the trunk derived by Rule 6, not merely a default-looking branch
-git status --porcelain            # must print nothing
-git worktree add .worktrees/<branch> -b <branch> <trunk>   # if either check fails
+git worktree add .worktrees/<branch> -b <branch> <trunk>
 ```
 
-When you isolate, work inside `.worktrees/<branch>` and do not touch the primary checkout's files at all: its dirty state belongs to somebody else's work in progress. Never `git add -A` there, never stash it, never revert or delete a file to make it clean.
+The reason is that parallel agent sessions share one HEAD in the primary checkout: a session that branched there has its checkout moved underneath it by another session's land or sync. A check made once, when the branch is created — on trunk, clean — cannot hold afterwards, so the workflow makes none. Git refuses to check one branch out in two worktrees, so no lock is needed.
+
+Work inside `.worktrees/<branch>` and do not touch the primary checkout's files at all: its dirty state belongs to somebody else's work in progress. Never `git add -A` there, never stash it, never revert or delete a file to make it clean.
 
 **`.worktrees/` must be gitignored.** Where the repository's `.gitignore` lacks the entry, add it *inside the new worktree* and leave it uncommitted: it goes into the artefact's first commit, so it rides on the artefact's branch under Rule 4 and the first commit still carries the trailer. Not in the primary checkout, which would put it on trunk, and not in a commit of its own, which records nothing.
 
@@ -77,7 +77,7 @@ Propose and land **through the host's pull-request mechanism whenever the reposi
 
 **A pull request is titled with the first commit's subject**, and its description is every commit's message and body, oldest first; landing again rewrites both.
 
-**A refused merge ends the procedure at step 7.** When the pull request is open and its merge is refused — by the host, or by the harness's permission layer — stop and report: the pull request URL, the exact command that was refused, and the state left behind (branch pushed, worktree kept, primary checkout not returned to trunk, because Rule 14 runs on merge and nothing merged). Say that allowing the merge command in the harness's permission settings, for example `Bash(gh pr merge *)`, lets future artefacts land unattended. Do **not** take the local-merge fallback: it exists for a repository with no remote, and here it would bypass whoever refused. Do not describe the artefact as landed.
+**A refused merge ends the procedure at step 7.** When the pull request is open and its merge is refused — by the host, or by the harness's permission layer — stop and report: the pull request URL, the exact command that was refused, and the state left behind (branch pushed, worktree kept, because Rule 14 runs on merge and nothing merged). Say that allowing the merge command in the harness's permission settings, for example `Bash(gh pr merge *)`, lets future artefacts land unattended. Do **not** take the local-merge fallback: it exists for a repository with no remote, and here it would bypass whoever refused. Do not describe the artefact as landed.
 
 **No host tooling is not the no-remote case.** The fallback is selected by one fact, `git remote` printing nothing, and by nothing else. Where a remote exists but the session has no command that can open a pull request — no `gh`, no host API, or one that fails for want of credentials — push the branch, then stop and report exactly as for a refusal, naming the command that was missing or failed. The pushed branch is what the human opens the pull request from; a local merge into trunk is not a substitute for it, and neither is cleaning up as if something had merged.
 
@@ -90,7 +90,7 @@ git worktree remove .worktrees/<branch>   # --force once dependencies are instal
 git branch -d <branch>
 ```
 
-`--force` is required where dependencies were installed, because removal refuses on untracked files. The now-empty `.worktrees/` parent may stay. Work done **in the primary checkout returns that checkout to trunk**, or the next artefact branches from the previous one. Where the work was isolated the primary checkout never moved: **confirm its branch, do not check it out** — `git rev-parse --abbrev-ref HEAD` answers the question, while `git checkout <trunk>` against a checkout already on trunk changes nothing and writes a spurious line into the reflog. With the primary checkout left off the trunk, the local trunk is advanced by ref and never by switching the primary. After cleanup, `git branch` shows no artefact branch, `git worktree list` shows only the primary checkout, and HEAD is where it was, or on trunk where the work was in place.
+`--force` is required where dependencies were installed, because removal refuses on untracked files. The now-empty `.worktrees/` parent may stay. The primary checkout never moved: **confirm its branch, do not check it out** — `git rev-parse --abbrev-ref HEAD` answers the question, while `git checkout <trunk>` against a checkout already on trunk changes nothing and writes a spurious line into the reflog. With the primary checkout left off the trunk, the local trunk is advanced by ref and never by switching the primary. After cleanup, `git branch` shows no branch for the artefact, `git worktree list` shows no worktree for it (other sessions' worktrees remain), and the primary checkout's HEAD is where it was.
 
 ## Rule 15 — The verdict-completeness gate at land
 
