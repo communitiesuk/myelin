@@ -1,6 +1,6 @@
 ---
 title: A worktree for every artefact branch
-status: draft
+status: in-progress
 adr: 0003
 date: 2026-11-17
 deferred_reason: null
@@ -381,3 +381,9 @@ one being edited, does the `begin` and the `land` throughout.
   files each carry `Reconciles:`.
 
 ## Progress notes
+
+- Step 1: the "untracked stray only" test (#112) passes under the old
+  code as well, since the old contention check counted untracked files
+  as dirt and isolated; it stays as a guard. The "from inside a
+  worktree" test parks the primary off the trunk so that the old code
+  makes its first worktree too and fails on the nesting alone.

@@ -25,8 +25,8 @@ trailer_values() { (cd "$1" && git log --format="%(trailers:key=$3,valueonly)" "
 # (plans/9001-downstream.md, plans/9002-other.md, both
 # Derives-From: docs/adr/0001-one.md), then the revising commit carrying
 # Revises: docs/adr/0001-one.md and any trailer lines held in $VERDICT (an
-# embedded-newline string for more than one). begin is in-place on a clean
-# trunk, so the echoed wd is the repository root. Echoes wd.
+# embedded-newline string for more than one). begin always makes a
+# worktree, so the echoed wd is <DIR>/.worktrees/adr-0001-one. Echoes wd.
 two_downstream_revision() {
   local dir="$1"
   local out wd

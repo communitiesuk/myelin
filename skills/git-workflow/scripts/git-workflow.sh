@@ -13,9 +13,11 @@
 #           host=<none|github|unknown:<url>>, contention=<in-place|worktree>.
 #   begin   Name the artefact branch from its path; where a remote
 #           exists, fetch it and fast-forward the local trunk to the
-#           remote's, or stop (exit 1) creating nothing; then branch in
-#           place or into .worktrees/<branch> from the trunk, copy the small
-#           configuration files into a worktree, and print trunk=, branch=
+#           remote's, or stop (exit 1) creating nothing; then create the
+#           branch from the trunk together with its worktree at
+#           <primary checkout>/.worktrees/<branch>, always (no in-place
+#           branching), copy the small configuration files into it, and
+#           print trunk=, branch=
 #           and dir=, and include=.gitignore when the .worktrees/ ignore
 #           line was added and awaits the artefact's first commit. Makes no
 #           commit. Never stages, stashes, reverts or deletes anything in
@@ -150,16 +152,22 @@ cmd_check() {
 # cannot (the fetch fails, the local trunk has commits the remote lacks,
 # the primary checkout is on the trunk with tracked changes, or the trunk
 # is checked out in another worktree), exits 1 with sync_trunk's report
-# and creates no branch and no worktree. Then, when contention is
-# in-place, creates the branch from the trunk in the primary checkout and
-# switches to it. Otherwise creates
-# .worktrees/<branch> from the trunk, copies the untracked files under
+# and creates no branch and no worktree. Then creates the branch from the
+# trunk together with its worktree at .worktrees/<branch> under the
+# primary checkout, always: there is no in-place branching. Strays (an
+# untracked file), a dirty primary checkout or a primary checkout parked
+# off the trunk do not change where the branch goes, though sync_trunk's
+# stops above apply unchanged. Run from inside another worktree, it still
+# puts the new one under the primary checkout, never nested in that
+# worktree. Copies the untracked files under
 # .claude/, .env and .mcp.json into it where they exist and never .venv/
 # or node_modules/, and, when the repository ignores no .worktrees/,
 # appends that line to the worktree's .gitignore and leaves it
 # uncommitted: it is bookkeeping and rides on the artefact's first
-# commit, which carries the trailer. Makes no commit. Never stages,
-# stashes, reverts or deletes anything in the primary checkout.
+# commit, which carries the trailer. Makes no commit. Never touches the
+# primary checkout's files or HEAD (sync_trunk's fast-forward of the
+# trunk excepted): never switches, stages, stashes, reverts or deletes
+# anything there.
 #
 # Prints trunk=<ref>, branch=<name> and dir=<absolute path to work in>,
 # then include=.gitignore when it added the ignore line, naming the file
@@ -209,7 +217,7 @@ copy_if_present() {
 # resolve the sibling history script and print its downstream: section under
 # a worklist: header, one indented path per line. Advisory — skips silently
 # when PATH is not an on-trunk ADR or the history script is absent, and never
-# changes begin's exit code. Invoked at both of cmd_begin's exit points.
+# changes begin's exit code. Invoked at the end of cmd_begin.
 begin_worklist() {
   local path="$1" trunk="$2"
   case "$path" in docs/adr/*.md) ;; *) return 0 ;; esac
