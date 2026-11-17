@@ -46,8 +46,8 @@ must derive its targets rather than be told them.
 
 ## Decision
 
-Adopt a branch-per-artefact workflow, each branch in its own worktree, landed
-through the host's pull-request mechanism where one exists, with
+Adopt a branch-per-artefact workflow, each branch in its own worktree,
+landed through the host's pull-request mechanism where one exists, with
 integration that preserves commit structure. The workflow's mechanics
 are a script shipped with the skill; the skill body says when to run
 it and what only a model can decide.
@@ -88,12 +88,11 @@ created, cannot hold afterwards.
 
 So every artefact branch is created together with a worktree at
 `.worktrees/<branch>` inside the repository, which is gitignored, and
-there is no in-place path. No session works in the primary checkout,
-so only the trunk sync touches it, and it fast-forwards only when the
-checkout is on trunk with no tracked changes. Git refuses to check one
-branch out in two worktrees, so no lock is needed. Whether the
-checkout is dirty or already holds another artefact never selects a
-path, and untracked strays in it do not trigger anything.
+there is no in-place path. No session works in the primary checkout;
+only bringing trunk up to date touches it, and that fast-forwards it
+only when it is on trunk with no tracked changes. Git refuses to check
+one branch out in two worktrees, so no lock is needed. Untracked
+strays in the checkout trigger nothing.
 
 The plugin's documentation tells new teams that the worktree path is
 longer than the checkout's: review in the pull request, or ask the
@@ -249,9 +248,9 @@ host, and which setting, is for the skill that knows the host.
 ### The mechanics are a script; the model decides what and when
 
 The rules above split into two kinds. Mechanical rules have a factual
-answer that git can give: which ref is the trunk, what a branch is called given the
-artefact's path, whether a remote exists and which host it names,
-whether a merge happened. Judgement rules do not: what the artefact
+answer that git can give: which ref is the trunk, what a branch is
+called given the artefact's path, whether a remote exists and which
+host it names, whether a merge happened. Judgement rules do not: what the artefact
 is, what it derives from, and what a commit contains, all of which
 this decision already delegates to the governing skill.
 
@@ -335,9 +334,9 @@ completion to be a `git rm` of a file that is actually there.
 
 ### Worktree bootstrap is split
 
-A worktree receives tracked files only. Git offers
-no option to populate it with ignored files and cannot: ignored files
-are not in the object database. The two categories of missing file
+A worktree receives tracked files only. Git offers no option to
+populate it with ignored files and cannot: ignored files are not in
+the object database. The two categories of missing file
 are treated differently:
 
 - **Small configuration files** — `.claude/`, `.env`, `.mcp.json` and
@@ -392,10 +391,10 @@ containing untracked files.
   for a single-developer project, which is a cost model for a human
   and not for the agent that executes this workflow. It also left the
   condition untested: unlike the fork point, which is derived,
-  "where integration goes through
-  GitHub" had no test attached — so on a protected trunk the workflow
-  would merge locally, succeed, and then fail to push, leaving trunk
-  diverged with the artefact apparently landed.
+  "where integration goes through GitHub" had no test attached — so on
+  a protected trunk the workflow would merge locally, succeed, and then
+  fail to push, leaving trunk diverged with the artefact apparently
+  landed.
 - **Requiring a human to approve every pull request.** Rejected here
   as the wrong default and deferred as a question in its own right.
   Applied to everything it makes each cheap revision cost a review,
@@ -412,17 +411,19 @@ containing untracked files.
   (now ADR 0011's, relocated there from ADR 0004), and leaves an
   abandoned plan with no reachable record
   because its file never entered the tree.
-- **Isolate only on contention.** The original form of this
-  decision, reversed here. It branched in the primary checkout when
-  that was on trunk and clean, to spare the first artefact the
-  worktree's longer path, and wrongly claimed that concurrent strands
-  never contend. The check ran once, at branching, so another
-  session's land or sync could still move the shared HEAD, two
-  branchings could both see a clean trunk, and plain `git checkout`
-  bypassed it; this happened twice. The toll it avoided is review of a
-  file at a longer path, which review in the pull request or asking the
-  agent to open the file removes; a new team would meet worktrees
-  under contention anyway.
+- **Isolate only on contention.** The previous form of this decision,
+  itself a reversal of always-worktree (the original form), and
+  reversed again here. It branched in the primary checkout when that
+  was on trunk and clean, to spare the first artefact the worktree's
+  longer path, and wrongly claimed that concurrent strands never
+  contend. The check ran once, at branching, so another session's land
+  or sync could still move the shared HEAD, two branchings could both
+  see a clean trunk, and plain `git checkout` bypassed it; this
+  happened twice. The reason it gave for rejecting always-worktree, a
+  toll on every first artefact, no longer holds: the toll is review of
+  a file at a longer path, which review in the pull request or asking
+  the agent to open the file removes, and a new team would meet
+  worktrees under contention anyway.
 - **Keep that rule and guard the shared checkout**, by moving HEAD at
   land only if it is still the session's branch, checking the branch
   before commit, and locking against the double branching. Rejected,
@@ -430,7 +431,7 @@ containing untracked files.
   where removing the shared checkout from use removes them all.
 - **Hand isolation to the host harness's worktree support.** Rejected:
   the script already isolates without depending on a harness, and
-  moving it would make harnesses drift apart.
+  moving it would make harnesses drift apart for no gain.
 - **Per-repository configuration of trunk and naming.** Rejected: the
   derivation rule above reproduces the intended behaviour everywhere
   it was tested, and configuration that must be maintained per
@@ -565,19 +566,12 @@ containing untracked files.
   ADR, a plan and an implementation, each with its own branch, merge
   and review point. This is heavier than the current practice,
   particularly in single-developer repositories.
-- Every artefact begins in a worktree without installed
-  dependencies. Harmless for markdown artefacts; for implementation
-  artefacts the governing skill must provision before it can run
-  anything.
-- `.worktrees/` holds a directory per artefact in flight, and
-  requires the cleanup discipline described above.
 - A worktree's longer path costs the human a few steps to open a file
-  locally, and the agent absolute paths, bootstrap and cleanup. The
-  documentation for new teams carries the first.
-- The in-place path leaves the script's `land` and `begin`, and with
-  it the dirty-tree trigger and its tests. Seed #112 (dropped files
-  tripping `begin`) closes with it; strays left in the primary
-  checkout are a separate concern.
+  locally, and the agent absolute paths. The documentation for new
+  teams carries the first.
+- The dirty-tree trigger leaves with the in-place path. Seed #112
+  (dropped files tripping `begin`) closes with it; strays left in the
+  primary checkout are seed #200's concern.
 - The invariant "no artefact lands on trunk unmerged" is enforceable
   outside the agent altogether — by a `pre-commit` hook refusing
   commits made on trunk, or by branch protection on the remote. Hooks
