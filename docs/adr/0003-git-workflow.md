@@ -75,8 +75,7 @@ material (ADR 0004), or an experiment.
 
 No file is created or modified until a branch exists for the artefact
 being produced. This applies to markdown decision artefacts exactly
-as it applies to code. The base checkout stays on the trunk and is
-never worked in directly.
+as it applies to code. The base checkout is never worked in directly.
 
 ### Every artefact branch gets its own worktree
 
@@ -89,10 +88,10 @@ created, cannot hold afterwards.
 So every artefact branch is created together with a worktree at
 `.worktrees/<branch>` inside the repository, which is gitignored, and
 there is no in-place path. No session works in the primary checkout;
-only bringing trunk up to date touches it, and that fast-forwards it
-only when it is on trunk with no tracked changes. Git refuses to check
-one branch out in two worktrees, so no lock is needed. Untracked
-strays in the checkout trigger nothing.
+only bringing trunk up to date and, where there is no remote, the
+local merge touch it. The sync fast-forwards it only when it is on
+trunk with no tracked changes. Git refuses to check one branch out in
+two worktrees, so no lock is needed.
 
 The plugin's documentation tells new teams that the worktree path is
 longer than the checkout's: review in the pull request, or ask the
@@ -250,9 +249,9 @@ host, and which setting, is for the skill that knows the host.
 The rules above split into two kinds. Mechanical rules have a factual
 answer that git can give: which ref is the trunk, what a branch is
 called given the artefact's path, whether a remote exists and which
-host it names, whether a merge happened. Judgement rules do not: what the artefact
-is, what it derives from, and what a commit contains, all of which
-this decision already delegates to the governing skill.
+host it names, whether a merge happened. Judgement rules do not: what
+the artefact is, what it derives from, and what a commit contains, all
+of which this decision already delegates to the governing skill.
 
 The mechanical rules are implemented as a script shipped in the
 skill's `scripts/` directory, and the skill body is reduced to naming
@@ -336,8 +335,8 @@ completion to be a `git rm` of a file that is actually there.
 
 A worktree receives tracked files only. Git offers no option to
 populate it with ignored files and cannot: ignored files are not in
-the object database. The two categories of missing file
-are treated differently:
+the object database. The two categories of missing file are treated
+differently:
 
 - **Small configuration files** — `.claude/`, `.env`, `.mcp.json` and
   similar — are copied into the new worktree from the base checkout.
@@ -432,6 +431,8 @@ containing untracked files.
 - **Hand isolation to the host harness's worktree support.** Rejected:
   the script already isolates without depending on a harness, and
   moving it would make harnesses drift apart for no gain.
+- **Branch without a worktree at all.** Rejected: concurrent strands
+  then contend for one working tree.
 - **Per-repository configuration of trunk and naming.** Rejected: the
   derivation rule above reproduces the intended behaviour everywhere
   it was tested, and configuration that must be maintained per
