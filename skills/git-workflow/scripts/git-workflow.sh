@@ -527,6 +527,10 @@ cmd_land() {
   host="$(derive_host "$remote")"
   branch="$(git rev-parse --abbrev-ref HEAD)"
   [ "$branch" != "$trunk" ] || die 2 "HEAD is the trunk ($trunk): land runs from the artefact branch"
+  local primary wt
+  primary="$(primary_checkout)"
+  wt="$(physical "$(git rev-parse --show-toplevel)")"
+  [ "$wt" != "$primary" ] || die 2 "this is the primary checkout: artefact branches live in .worktrees/<branch>, and land runs from there"
   [ -z "$(git status --porcelain --untracked-files=no)" ] || die 2 "working tree is dirty: tracked files have uncommitted changes; commit or discard before landing"
   local first
   first="$(git rev-list --reverse "$trunk..HEAD" | head -1)"
@@ -808,11 +812,6 @@ $(printf '%s' "$bad_redefer" | sort -u)
     die 2 "$msg"
   fi
 
-  local primary here inplace=0 wt=""
-  primary="$(primary_checkout)"
-  here="$(physical "$(git rev-parse --show-toplevel)")"
-  if [ "$here" = "$primary" ]; then inplace=1; else wt="$here"; fi
-
   local module="" url=""
   case "$host" in github) module="$(script_dir)/hosts/$host.sh" ;; esac
 
@@ -841,11 +840,7 @@ $(printf '%s' "$bad_redefer" | sort -u)
   fi
 
   if [ "$host" = none ]; then
-    if [ "$inplace" -eq 1 ]; then
-      git switch -q "$trunk" || die 2 "could not switch the primary checkout to $trunk"
-    else
-      [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ] || stop 1 "the primary checkout is on $(git -C "$primary" rev-parse --abbrev-ref HEAD), not the trunk $trunk, so the local merge cannot run there" "" "" "$branch" "$remote" "$primary" "$wt"
-    fi
+    [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ] || stop 1 "the primary checkout is on $(git -C "$primary" rev-parse --abbrev-ref HEAD), not the trunk $trunk, so the local merge cannot run there" "" "" "$branch" "$remote" "$primary" "$wt"
     git -C "$primary" merge -q --no-ff -m "Merge $branch" "$branch" || die 1 "merge of $branch into $trunk failed; resolve it in the primary checkout"
     cleanup_after_merge "$primary" "$wt" "$branch" "$trunk" "$remote"
     printf 'landed %s into %s as %s\n' "$branch" "$trunk" "$(git -C "$primary" rev-parse --short "$trunk")"
@@ -861,7 +856,6 @@ $(printf '%s' "$bad_redefer" | sort -u)
   url="$(bash "$module" propose "$branch" "$trunk")" || {
     rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request could not be opened" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"
     stop 1 "the host refused to open the pull request" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"; }
-  if [ "$inplace" -eq 1 ]; then git switch -q "$trunk" || die 2 "could not switch the primary checkout to $trunk"; fi
   (cd "$primary" && bash "$module" merge "$branch" "$trunk") || {
     rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"
     stop 1 "the merge was refused; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"; }
