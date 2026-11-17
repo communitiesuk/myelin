@@ -88,7 +88,8 @@ meets it before it surprises them:
   recommends disabling the squash/rebase buttons at the repo level.
 - PR by default where a remote exists; decision branches are landed
   by a human (ADR 0003), everything else the agent lands itself.
-- Worktree isolation on contention; `.worktrees/` is gitignored.
+- Every artefact branch gets its own worktree; `.worktrees/` is
+  gitignored.
 - Seeds live in a *user-owned* store, located by an optional one-line
   pointer in `AGENTS.md`/`CLAUDE.md`; agents *read* it and never write
   a human's private one (ADR 0006). This convention was deferred from
