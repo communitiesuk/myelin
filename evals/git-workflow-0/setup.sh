@@ -43,11 +43,10 @@ decisions, which is why the `docs/adr/` directory exists.
 Run the ingester with `python -m orchard.ingest`.
 EOF
 
-# `.venv/` is deliberately NOT ignored here: the entry reads `venv/`, the
-# common misspelling. So a body that copies built dependencies into a
-# worktree and then stages everything will commit them, and the criterion
-# on built dependencies can actually fail. `.worktrees/` is deliberately
-# absent: the workflow has to add it, which is the bookkeeping criterion.
+# `.worktrees/` is deliberately absent: the workflow has to add it, which
+# is the bookkeeping criterion. No `.venv/` is created below (an untracked
+# one would leave the trunk dirty), so the `venv/` spelling matters to
+# nothing here.
 cat > .gitignore <<'EOF'
 node_modules/
 venv/
@@ -218,38 +217,20 @@ git tag fixture-base-dev dev
 git tag fixture-base-main main
 
 # ---------------------------------------------------------------------------
-# The working tree the agent meets: on dev, and dirty.
+# The working tree the agent meets: on dev, and clean.
 #
-# Dirty on purpose, and dirty in three different ways, so that the
-# contention check has something real to find and so that "the primary
-# checkout was left alone" is falsifiable.
+# Clean on purpose: every artefact branch gets a worktree (ADR 0003), so
+# the worktree must come from that rule and not from contention. A dirty
+# trunk would have been isolated by the old contention rule too, and the
+# scenario would not tell the two rules apart; the old rule branched a
+# clean trunk in place. So no tracked file is modified and no untracked,
+# unignored file exists; only gitignored files sit in the checkout.
 # ---------------------------------------------------------------------------
 
-# An uncommitted modification to a tracked file. A body that stages the
-# primary checkout, or that stashes and forgets to restore, loses this.
-cat >> README.md <<'EOF'
-
-TODO(orchard): document the retry budget before the 1.5 release.
-EOF
-
-# An untracked, unignored file. A body that runs `git add -A` in the
-# primary checkout commits it.
-cat > benchmark-notes.txt <<'EOF'
-2026-09-18: p99 1.8s at 400 rps, measured against staging.
-Re-run once heartbeat sampling is in place.
-EOF
-
-# Built dependencies with real contents. Without these, "the git workflow
-# did not carry built dependencies into the worktree, and committed none
-# of them" is vacuously true because there would be nothing to carry.
-# `.venv/` is not ignored (see .gitignore above), so a body that copies it
-# and stages everything commits it and fails that criterion.
-mkdir -p .venv/bin .venv/lib/python3.12/site-packages/requests
-printf 'home = /usr/local/opt/python@3.12/bin\ninclude-system-site-packages = false\nversion = 3.12.4\n' > .venv/pyvenv.cfg
-printf '#!/usr/bin/env bash\nexec "$(dirname "$0")/python3" "$@"\n' > .venv/bin/python
-chmod +x .venv/bin/python
-printf '__version__ = "2.32.3"\n' > .venv/lib/python3.12/site-packages/requests/__init__.py
-
+# A built dependency with real contents, gitignored. Without it, "the git
+# workflow did not carry built dependencies into the worktree, and
+# committed none of them" is vacuously true because there would be
+# nothing to carry.
 mkdir -p node_modules/.bin node_modules/left-pad
 printf '{\n  "name": "left-pad",\n  "version": "1.3.0",\n  "main": "index.js"\n}\n' > node_modules/left-pad/package.json
 printf 'module.exports = function leftPad(s, n, c) { return String(s).padStart(n, c || " "); };\n' > node_modules/left-pad/index.js
@@ -285,8 +266,9 @@ EOF
 
 git remote remove origin 2>/dev/null || true
 
-# The agent is left on dev with a dirty tree. Note that nothing above
+# The agent is left on dev with a clean tree. Note that nothing above
 # checks dev out a second time: the fixture must leave NO reflog entry
 # reading `checkout: moving from dev to ...` in .git/logs/HEAD, because
-# the absence of exactly that entry is the durable evidence that the work
-# was isolated into a worktree rather than branched in place.
+# the absence of exactly that entry is the durable evidence that the
+# artefact branch got its own worktree and was never checked out in the
+# primary checkout.

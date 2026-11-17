@@ -4,7 +4,7 @@
 #
 # Builds the repository the agent is dropped into, BEFORE the agent runs:
 # an accepted ADR on `dev`, and a drafted but unreviewed plan for it on
-# its own branch, checked out in place. The task asks only that the plan
+# its own branch, in its own worktree. The task asks only that the plan
 # be taken through to landing; the plans skill must supply the review
 # loop. The plan carries four planted defects, each a finding a reviewer
 # should raise:
@@ -127,10 +127,17 @@ git commit -q -m "Add ADR 0001: which forecast source the scheduler trusts"
 git tag fixture-base-dev dev
 
 # ---------------------------------------------------------------------------
-# The plan branch, checked out in place, with the drafted plan.
+# The plan branch, in its own worktree at .worktrees/plan-0001-forecast-source,
+# with the drafted plan; the primary checkout stays on dev, as the
+# git-workflow skill's begin leaves it. --relative-paths so the worktree
+# survives the harness moving the fixture. The .worktrees/ ignore line
+# rides on the plan's commit, as begin's include=.gitignore does.
 # ---------------------------------------------------------------------------
 
-git checkout -q -b plan-0001-forecast-source
+root="$(pwd)"
+git worktree add --relative-paths -q .worktrees/plan-0001-forecast-source -b plan-0001-forecast-source dev
+cd .worktrees/plan-0001-forecast-source
+printf '.worktrees/\n' > .gitignore
 
 mkdir -p plans
 cat > plans/0001-forecast-source.md <<'EOF'
@@ -188,10 +195,12 @@ Add plan 0001: forecast source with fallback
 
 Derives-From: docs/adr/0001-forecast-source.md
 EOF
-git add plans/0001-forecast-source.md
+git add plans/0001-forecast-source.md .gitignore
 git commit -q -F "$(git rev-parse --git-dir)/fixture-msg"
 rm "$(git rev-parse --git-dir)/fixture-msg"
 
 git tag fixture-base-plan plan-0001-forecast-source
 
-# HEAD stays on the plan branch, clean, with no review record anywhere.
+# The plan's worktree is left clean, with no review record anywhere, and
+# the primary checkout on dev.
+cd "$root"

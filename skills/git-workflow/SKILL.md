@@ -1,7 +1,7 @@
 ---
 name: git-workflow
-compatibility: "Needs Bash and git, and the host CLI (gh for GitHub) where a remote exists. No model floor: measured 2026-09-28 with the script on deepseek-v4.1-flash, evals/git-workflow-0 100/100/100 (run 01a0e7ca-2dc2-74ee-8495-8200d2acacb1) and evals/git-workflow-1 100/98/94 (run 01a0e75f-1236-727c-a8db-f848fce7eb91), against bars of 87 and 86 (plan 0005 Step 6, plan 0009)."
-description: Governs where work happens in a git repository and how it lands — branch-per-artefact, worktree isolation on contention, and integration that preserves commit structure. TRIGGER on any task about to create or modify a file in a git repository, before the first edit — a discovery note, an ADR, a plan, or code alike, all need a branch first. SKIP for read-only exploration that edits nothing, and for work already proceeding on an artefact branch this workflow created.
+compatibility: "Needs Bash and git, and the host CLI (gh for GitHub) where a remote exists. No model floor: measured 2026-11-17 with the script on deepseek-v4.1-flash, evals/git-workflow-0 100/100/100 (run 01a1ea89-853a-7369-a60d-1396150f9718) and evals/git-workflow-1 100/100/99 (run 01a1ea89-8626-7546-acee-dbc7d2c04d33), against bars of 87 and 86 (plan 0005 Step 6, plan 0009, plan 0024)."
+description: Governs where work happens in a git repository and how it lands — branch-per-artefact, a worktree for every artefact, and integration that preserves commit structure. TRIGGER on any task about to create or modify a file in a git repository, before the first edit — a discovery note, an ADR, a plan, or code alike, all need a branch first. SKIP for read-only exploration that edits nothing, and for work already proceeding on an artefact branch this workflow created.
 ---
 # Git workflow
 
@@ -25,7 +25,7 @@ It needs git, and the host's command-line tool (`gh` for GitHub) where the repos
 bash "$SKILL_DIR/scripts/git-workflow.sh" begin <artefact-path>          # or --slug <slug> for work no skill governs
 ```
 
-It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It derives the trunk, isolates into a worktree when the checkout is not on the trunk or is dirty, names the branch from the path, copies the small configuration files, and ignores `.worktrees/`. `begin` also brings the local trunk current, or stops with a report; when it exits 1, relay the report in full and do not create the branch by hand. When it prints `include=<file>`, it has left that file changed and uncommitted: include it in the artefact's first commit. You have not begun the deliverable until it has run; if you are editing and cannot name the branch you are on, stop and run it.
+It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else, never in the primary checkout. It derives the trunk, names the branch from the path, creates the branch together with its worktree at `.worktrees/<branch>`, copies the small configuration files, and ignores `.worktrees/`. `begin` also brings the local trunk current, or stops with a report; when it exits 1, relay the report in full and do not create the branch by hand. When it prints `include=<file>`, it has left that file changed and uncommitted: include it in the artefact's first commit. You have not begun the deliverable until it has run; if you are editing and cannot name the branch you are on, stop and run it.
 
 **When the governing skill says the artefact is complete**, from inside `dir=`, with everything committed:
 
@@ -33,10 +33,10 @@ It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else. It de
 bash "$SKILL_DIR/scripts/git-workflow.sh" land
 ```
 
-- **0**: it merged with two parents, cleaned up, and left the primary checkout where it was, or on the trunk where the work was in place, and the local trunk is current or a note says why not. Report the merge it printed.
+- **0**: it merged with two parents, cleaned up, and left the primary checkout where it was, and the local trunk is current or a note says why not. Report the merge it printed.
 - **3**: the branch adds an ADR, carries `Revises`, or carries `Abandons` naming an ADR, so it is a decision: it is pushed and proposed, and a human merges it. Say so, give the pull request and each `artefact:` link it printed (the ADR as it stands on the branch, for the human to read before merging, or, for an abandoned ADR, as it stands on the trunk), and stop.
 - **1**: a host command was missing, failed or refused. Relay the report it printed in full: the pull request if one was opened, the command, the state left behind, and the permission hint. Do not merge locally, do not clean up, and do not describe the artefact as landed.
-- **2**: a precondition failed, usually the trailer on the first commit or a dirty tree. Fix it and run `land` again.
+- **2**: a precondition failed, usually the trailer on the first commit, a dirty tree, or `land` run from the primary checkout rather than the artefact's worktree. Fix it and run `land` again from `dir=`.
 
 Between the two moments, commit as the governing skill directs (Rule 3), and put the trailers where Rule 9 says.
 
@@ -103,7 +103,7 @@ An experiment may remain unmerged; its branch and worktree stay. Do not remove a
 
 ## What the script decides — do not re-derive it by hand
 
-The trunk (from three refs, never from configuration or prose); whether to isolate and where; the branch name from the artefact path; what a worktree receives; whether a remote exists and which host it names; that a pull request is titled with the first commit's subject; that integration is a two-parent merge and never a squash, rebase or fast-forward; that a decision is landed by a human; what a stop leaves behind; and cleanup. `references/RULES.md` has each rule with its reasoning, for when you need to explain the script's behaviour, not to reproduce it.
+The trunk (from three refs, never from configuration or prose); where the worktree goes; the branch name from the artefact path; what a worktree receives; whether a remote exists and which host it names; that a pull request is titled with the first commit's subject; that integration is a two-parent merge and never a squash, rebase or fast-forward; that a decision is landed by a human; what a stop leaves behind; and cleanup. `references/RULES.md` has each rule with its reasoning, for when you need to explain the script's behaviour, not to reproduce it.
 
 ## Do not
 

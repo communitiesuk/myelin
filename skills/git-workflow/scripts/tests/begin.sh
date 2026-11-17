@@ -1,5 +1,6 @@
-# begin: name the branch from the artefact path, branch in place or into a
-# worktree from the trunk, bootstrap the worktree, and touch nothing else.
+# begin: name the branch from the artefact path, branch from the trunk into
+# its own worktree under the primary checkout (always: no in-place
+# branching), bootstrap the worktree, and touch nothing else.
 
 R="$TMP_ROOT/begin"
 begin() { local d="$1"; shift; (cd "$d" && bash "$SCRIPT" begin "$@" 2>&1); }
@@ -43,14 +44,52 @@ t "naming: an ungoverned path needs --slug and gives chore-<slug>"
   out="$(begin "$R/n5" src/thing.py --slug fix-thing)"
   assert_eq "branch=chore-fix-thing" "$(line "$out" branch)" "$out"
 
-t "in place: on the trunk and clean, the primary checkout moves to the new branch"
-  fixture "$R/p1" --trunk dev --config >/dev/null
+t "worktree: on the trunk and clean, dir= is .worktrees/<branch>, the primary stays on the trunk at the same tip, config copied"
+  fixture "$R/p1" --trunk dev --ignored >/dev/null
+  head_before="$(tip "$R/p1" HEAD)"; status_before="$(cd "$R/p1" && git status --porcelain --untracked-files=no)"
   out="$(begin "$R/p1" docs/adr/0002-x.md)"
+  wt="$(cd "$R/p1" && pwd -P)/.worktrees/adr-0002-x"
   assert_eq "trunk=dev" "$(line "$out" trunk)" "$out"
-  assert_eq "dir=$(cd "$R/p1" && pwd -P)" "$(line "$out" dir)" "$out"
-  assert_eq "adr-0002-x" "$(cd "$R/p1" && git rev-parse --abbrev-ref HEAD)"
+  assert_eq "dir=$wt" "$(line "$out" dir)" "$out"
+  assert_eq "adr-0002-x" "$(cd "$wt" 2>/dev/null && git rev-parse --abbrev-ref HEAD)" "worktree not on the branch"
+  assert_eq "dev" "$(cd "$R/p1" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the trunk"
+  assert_eq "$head_before" "$(tip "$R/p1" HEAD)" "primary checkout's HEAD moved"
+  assert_eq "$status_before" "$(cd "$R/p1" && git status --porcelain --untracked-files=no)" "primary checkout's tracked files changed"
   assert_eq "$(tip "$R/p1" dev)" "$(tip "$R/p1" adr-0002-x)" "branch must start at the trunk tip"
-  assert_eq "0" "$(cd "$R/p1" && git worktree list | grep -c worktrees)" "no worktree in place"
+  [ -f "$wt/.claude/settings.local.json" ] || fail ".claude not copied into the worktree"
+
+t "worktree: on the trunk with only an untracked stray (#112), a worktree, the stray untouched"
+  fixture "$R/p2" --trunk dev >/dev/null
+  (cd "$R/p2" && printf 'stray\n' > dropped.txt)
+  out="$(begin "$R/p2" docs/adr/0002-x.md; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "dir=$(cd "$R/p2" && pwd -P)/.worktrees/adr-0002-x" "$(line "$out" dir)" "$out"
+  assert_eq "dev" "$(cd "$R/p2" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the trunk"
+  assert_eq "stray" "$(cat "$R/p2/dropped.txt" 2>/dev/null)" "the stray was touched"
+  [ -e "$R/p2/.worktrees/adr-0002-x/dropped.txt" ] && fail "the stray was copied into the worktree"
+  true
+
+t "worktree: run from inside an existing worktree, the new one goes under the primary checkout, not nested"
+  # the primary is parked off the trunk so the old rule made a worktree too: this tests nesting alone
+  fixture "$R/p3" --trunk dev --branch topic >/dev/null; (cd "$R/p3" && g switch -q topic)
+  begin "$R/p3" docs/adr/0002-x.md >/dev/null
+  out="$(begin "$R/p3/.worktrees/adr-0002-x" docs/adr/0003-y.md; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "dir=$(cd "$R/p3" && pwd -P)/.worktrees/adr-0003-y" "$(line "$out" dir)" "$out"
+  [ -d "$R/p3/.worktrees/adr-0003-y" ] || fail "worktree not under the primary checkout"
+  [ -e "$R/p3/.worktrees/adr-0002-x/.worktrees/adr-0003-y" ] && fail "worktree nested inside the first"
+  true
+
+t "worktree: two begins on different slugs, no remote, the second while the first's worktree exists, both succeed apart"
+  fixture "$R/p4" --trunk dev >/dev/null
+  out1="$(begin "$R/p4" src/a.py --slug one; echo "exit=$?")"
+  out2="$(begin "$R/p4" src/b.py --slug two; echo "exit=$?")"
+  assert_contains "$out1" "exit=0" "$out1"; assert_contains "$out2" "exit=0" "$out2"
+  assert_eq "dir=$(cd "$R/p4" && pwd -P)/.worktrees/chore-one" "$(line "$out1" dir)" "$out1"
+  assert_eq "dir=$(cd "$R/p4" && pwd -P)/.worktrees/chore-two" "$(line "$out2" dir)" "$out2"
+  assert_eq "chore-one" "$(cd "$R/p4/.worktrees/chore-one" 2>/dev/null && git rev-parse --abbrev-ref HEAD)"
+  assert_eq "chore-two" "$(cd "$R/p4/.worktrees/chore-two" 2>/dev/null && git rev-parse --abbrev-ref HEAD)"
+  assert_eq "dev" "$(cd "$R/p4" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the trunk"
 
 t "worktree: on another branch, the worktree forks from the trunk, not from HEAD"
   fixture "$R/w1" --trunk dev --branch topic --config >/dev/null
@@ -222,7 +261,7 @@ t "trunk: trunk checked out in another worktree, remote ahead -> exit 1, no bran
 
 # --- Step 2: the advisory downstream worklist (ADR 0011, plan 0017) ----------
 
-t "worklist: a revision of an on-trunk ADR surfaces its downstream advisorily, in place"
+t "worklist: a revision of an on-trunk ADR, begun on a clean trunk, surfaces its downstream advisorily"
   fixture "$R/wl1" --trunk dev >/dev/null
   (cd "$R/wl1" && mkdir -p plans && printf -- '---\ntitle: d\n---\n' > plans/9001-downstream.md && g add plans/9001-downstream.md \
     && g commit -q -m "$(printf 'Add downstream\n\nDerives-From: docs/adr/0001-one.md\n')")
@@ -238,7 +277,7 @@ t "worklist: a new ADR not on the trunk surfaces no worklist"
   assert_contains "$out" "exit=0"
   case "$out" in *worklist:*) fail "a new ADR must surface no worklist: $out" ;; esac
 
-t "worklist: the advisory block prints on the worktree path too, and never blocks begin"
+t "worklist: the advisory block prints with the primary parked off the trunk too, and never blocks begin"
   fixture "$R/wl3" --trunk dev --branch topic >/dev/null
   (cd "$R/wl3" && mkdir -p plans && printf -- '---\ntitle: d\n---\n' > plans/9001-downstream.md && g add plans/9001-downstream.md \
     && g commit -q -m "$(printf 'Add downstream\n\nDerives-From: docs/adr/0001-one.md\n')" && g switch -q topic)

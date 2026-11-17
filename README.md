@@ -59,7 +59,7 @@ The workflow stages, left to right:
 And four that cut across them:
 
 5. **`skill-forge`** — the mandatory workflow for authoring a new skill, for when a plan needs a capability myelin doesn't have. Frontmatter first, then a failing eval scenario, then the body. The eval scenario is the contract.
-6. **`git-workflow`** — where work happens and how it lands: a branch per artefact, isolated into a worktree on contention, landed through a pull request as a two-parent merge so that commit structure and trailers survive. The trunk, the branch name and the integration path are derived from the repository, never read from its configuration or prose.
+6. **`git-workflow`** — where work happens and how it lands: a branch per artefact, each in its own worktree, landed through a pull request as a two-parent merge so that commit structure and trailers survive. The trunk, the branch name and the integration path are derived from the repository, never read from its configuration or prose.
 7. **`history`** — answers questions from git history, since completed and superseded artefacts leave the working tree: which paths on a topic are already closed and why, what derives from or revises a given artefact, and which deferrals are outstanding or due a recheck.
 8. **`setup`** — checks a repository against myelin's requirements and, with your consent, fixes what it flags. The same check runs automatically whenever a session starts.
 
@@ -82,10 +82,14 @@ myelin is opinionated about how work is done, so that the later, cheaper stages 
 - **host configured for merge commits only.** The host should be configured for merge commits only — no squash, no rebase, no fast-forward — so landed work preserves its commit structure. Fix: `gh api -X PATCH repos/{owner}/{repo} -F allow_squash_merge=false -F allow_rebase_merge=false`.
 <!-- End generated section. -->
 - **Pull request by default where a remote exists.** The agent lands its own work; an ADR, and any branch that revises or abandons one, is left for a human to merge.
-- **Isolation on contention.** A single strand of work branches in place; a second strand in flight branches into a gitignored `.worktrees/` worktree instead of fighting for the checkout.
+- **A worktree for every artefact branch.** Each branch gets its own gitignored worktree at `.worktrees/<branch>`; your own checkout stays on the trunk and is not worked in, so parallel sessions never fight over it.
 - **Seeds live in a store you own** — an org file, a `seeds.md`, issues tagged on your host, or several at once — found through an optional one-line pointer in `AGENTS.md`/`CLAUDE.md`. Agents read that store to start a conversation; they never write into your private one.
 
 These are decisions with reasons behind them; the reasoning lives in `docs/adr/`.
+
+### Working in a worktree
+
+The agent's files for an artefact are under `.worktrees/<branch>`, a longer path than your checkout's, and the agent works there by absolute path. To see a change, review it in the pull request, or ask the agent to open the file. The worktree is removed when the branch merges; an experiment left unmerged keeps its worktree until you remove it.
 
 ## How this repo records its own work
 

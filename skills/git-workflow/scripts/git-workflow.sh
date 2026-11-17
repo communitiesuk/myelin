@@ -10,17 +10,20 @@
 # Subcommands
 #   check   Derive and print the facts the workflow acts on, changing
 #           nothing: trunk=<ref>, remote=<name|none>,
-#           host=<none|github|unknown:<url>>, contention=<in-place|worktree>.
+#           host=<none|github|unknown:<url>>.
 #   begin   Name the artefact branch from its path; where a remote
 #           exists, fetch it and fast-forward the local trunk to the
-#           remote's, or stop (exit 1) creating nothing; then branch in
-#           place or into .worktrees/<branch> from the trunk, copy the small
-#           configuration files into a worktree, and print trunk=, branch=
+#           remote's, or stop (exit 1) creating nothing; then create the
+#           branch from the trunk together with its worktree at
+#           <primary checkout>/.worktrees/<branch>, always (no in-place
+#           branching), copy the small configuration files into it, and
+#           print trunk=, branch=
 #           and dir=, and include=.gitignore when the .worktrees/ ignore
 #           line was added and awaits the artefact's first commit. Makes no
 #           commit. Never stages, stashes, reverts or deletes anything in
 #           the primary checkout.
-#   land    From the artefact's checkout: refuse unless the first commit
+#   land    From the artefact's worktree (refusing the primary checkout,
+#           exit 2): refuse unless the first commit
 #           since the fork point carries Derives-From, a Clarifies or an
 #           Abandons naming a path that existed at the fork point, or a
 #           non-empty Origin (a root's provenance, not checked as a path);
@@ -34,7 +37,7 @@
 #           locally where there is no remote and through hosts/<name>.sh
 #           otherwise, bringing the local trunk current after a host merge
 #           or noting why not; then clean up, leaving the primary checkout
-#           where it was, or on the trunk where the work was in place.
+#           where it was, always.
 #
 # Host modules live in hosts/<name>.sh beside this script. Each is an
 # executable taking one of:
@@ -75,7 +78,7 @@ die() {
 
 # check — derive the facts the workflow acts on; change nothing.
 #
-# Prints four lines to stdout:
+# Prints three lines to stdout:
 #   trunk=<ref>        the first of: a local dev branch, a local develop
 #                      branch, the branch refs/remotes/origin/HEAD names
 #   remote=<name|none> none when `git remote` prints nothing; origin when
@@ -83,8 +86,6 @@ die() {
 #   host=<...>         none when there is no remote; github when the
 #                      remote's URL names github.com in https or ssh
 #                      form; otherwise unknown:<url>
-#   contention=<...>   in-place when HEAD is the trunk and the working
-#                      tree is clean; worktree otherwise
 # Exits 2, printing which refs were looked for, when no rung of the
 # trunk ladder resolves; exits 2 naming the candidates when there is
 # more than one remote and none is origin. Reads configuration keys and
@@ -119,22 +120,13 @@ derive_host() {
   esac
 }
 
-derive_contention() {
-  local trunk="$1"
-  if [ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" = "$trunk" ] && [ -z "$(git status --porcelain)" ]; then
-    echo in-place
-  else
-    echo worktree
-  fi
-}
-
 cmd_check() {
   git rev-parse --git-dir >/dev/null 2>&1 || die 2 "not inside a git repository"
   local trunk remote host
   trunk="$(derive_trunk)" || die 2 "no trunk resolves: looked for refs/heads/dev, refs/heads/develop and the branch named by refs/remotes/origin/HEAD; this repository is not set up for the workflow (git remote set-head origin -a satisfies it where a remote exists)"
   remote="$(derive_remote)" || die 2 "more than one remote and none named origin: $(git remote | tr '\n' ' ')— say which by naming it origin"
   host="$(derive_host "$remote")"
-  printf 'trunk=%s\nremote=%s\nhost=%s\ncontention=%s\n' "$trunk" "$remote" "$host" "$(derive_contention "$trunk")"
+  printf 'trunk=%s\nremote=%s\nhost=%s\n' "$trunk" "$remote" "$host"
 }
 # begin <artefact-path> [--slug <slug>] — start the artefact's branch.
 #
@@ -150,16 +142,22 @@ cmd_check() {
 # cannot (the fetch fails, the local trunk has commits the remote lacks,
 # the primary checkout is on the trunk with tracked changes, or the trunk
 # is checked out in another worktree), exits 1 with sync_trunk's report
-# and creates no branch and no worktree. Then, when contention is
-# in-place, creates the branch from the trunk in the primary checkout and
-# switches to it. Otherwise creates
-# .worktrees/<branch> from the trunk, copies the untracked files under
+# and creates no branch and no worktree. Then creates the branch from the
+# trunk together with its worktree at .worktrees/<branch> under the
+# primary checkout, always: there is no in-place branching. Strays (an
+# untracked file), a dirty primary checkout or a primary checkout parked
+# off the trunk do not change where the branch goes, though sync_trunk's
+# stops above apply unchanged. Run from inside another worktree, it still
+# puts the new one under the primary checkout, never nested in that
+# worktree. Copies the untracked files under
 # .claude/, .env and .mcp.json into it where they exist and never .venv/
 # or node_modules/, and, when the repository ignores no .worktrees/,
 # appends that line to the worktree's .gitignore and leaves it
 # uncommitted: it is bookkeeping and rides on the artefact's first
-# commit, which carries the trailer. Makes no commit. Never stages,
-# stashes, reverts or deletes anything in the primary checkout.
+# commit, which carries the trailer. Makes no commit. Never touches the
+# primary checkout's files or HEAD (sync_trunk's fast-forward of the
+# trunk excepted): never switches, stages, stashes, reverts or deletes
+# anything there.
 #
 # Prints trunk=<ref>, branch=<name> and dir=<absolute path to work in>,
 # then include=.gitignore when it added the ignore line, naming the file
@@ -209,7 +207,7 @@ copy_if_present() {
 # resolve the sibling history script and print its downstream: section under
 # a worklist: header, one indented path per line. Advisory — skips silently
 # when PATH is not an on-trunk ADR or the history script is absent, and never
-# changes begin's exit code. Invoked at both of cmd_begin's exit points.
+# changes begin's exit code. Invoked at the end of cmd_begin.
 begin_worklist() {
   local path="$1" trunk="$2"
   case "$path" in docs/adr/*.md) ;; *) return 0 ;; esac
@@ -233,25 +231,17 @@ cmd_begin() {
   [ -n "$path" ] || die 2 "usage: begin <artefact-path> [--slug <slug>]"
   local branch
   branch="$(branch_name_for "$path" "$slug")" || die 2 "$path is governed by no skill: name the branch with --slug <slug> (becomes chore-<slug>)"
-  local facts trunk contention root
+  local facts trunk root
   facts="$(cmd_check)" || exit $?
   trunk="${facts#*trunk=}"; trunk="${trunk%%
 *}"
-  contention="${facts#*contention=}"; contention="${contention%%
-*}"
-  root="$(git rev-parse --show-toplevel)"
+  root="$(primary_checkout)"
   git rev-parse --verify --quiet "refs/heads/$branch" >/dev/null && die 2 "branch $branch already exists"
   local remote msg
   remote="${facts#*remote=}"; remote="${remote%%
 *}"
   if [ "$remote" != none ]; then
-    msg="$(sync_trunk "$(primary_checkout)" "$remote" "$trunk")" || die 1 "$msg; no branch created"
-  fi
-  if [ "$contention" = in-place ]; then
-    git switch -q -c "$branch" "$trunk" || die 2 "could not create $branch"
-    printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$root"
-    begin_worklist "$path" "$trunk"
-    return 0
+    msg="$(sync_trunk "$root" "$remote" "$trunk")" || die 1 "$msg; no branch created"
   fi
   local wt="$root/.worktrees/$branch"
   git worktree add -q "$wt" -b "$branch" "$trunk" || die 2 "could not create worktree $wt"
@@ -267,11 +257,13 @@ cmd_begin() {
 }
 # land — integrate the artefact branch, or stop and say why.
 #
-# Run from inside the artefact's checkout, primary or worktree. In order:
-#   1. Refuses (exit 2) when HEAD is the trunk, tracked files have
-#      uncommitted changes (untracked files are not the artefact and may
-#      be a worktree's installed dependencies), or there is nothing since
-#      the fork point.
+# Run from inside the artefact's worktree, .worktrees/<branch>. In order:
+#   1. Refuses (exit 2, nothing changed) when HEAD is the trunk, when the
+#      artefact's checkout is the primary checkout (artefact branches live
+#      in .worktrees/<branch>, and land runs from there), when tracked
+#      files have uncommitted changes (untracked files are not the
+#      artefact and may be a worktree's installed dependencies), or when
+#      there is nothing since the fork point.
 #   2. Decides whether the branch is a decision: a commit since the fork
 #      point carries Revises, a commit since the fork point carries
 #      Abandons naming a file under docs/adr/ (abandoning an ADR changes
@@ -413,9 +405,9 @@ cmd_begin() {
 #      verdict for:", and a D whose only verdict is a Defers: failing
 #      either check under "this branch triggers a due deferral with an
 #      invalid re-defer (condition unchanged or already met) for:".
-#   3. Otherwise, by host. none: from the primary checkout with the trunk
-#      checked out (switching to it first when the work was in place),
-#      git merge --no-ff. A host module: push, propose, then merge, both
+#   3. Otherwise, by host. none: git merge --no-ff in the primary
+#      checkout, which must have the trunk checked out; it is never
+#      switched. A host module: push, propose, then merge, both
 #      from the primary checkout; afterwards, whether or not the primary
 #      checkout is on the trunk, bring the local trunk current with
 #      sync_trunk (fast-forwarded in place where the primary is on it, or
@@ -438,8 +430,8 @@ cmd_begin() {
 #      remove the worktree (--force, because it holds the untracked config
 #      files begin copied in), delete the local branch, delete the remote
 #      branch where a remote exists. The primary checkout is left where it
-#      was: a parked primary stays on its branch. Where the work was in
-#      place the checkout was switched to the trunk in 3. With no remote,
+#      was, always: a parked primary stays on its branch, and land never
+#      switches it. With no remote,
 #      where the primary checkout is on neither the trunk nor the branch,
 #      no merge can run there: exit 1 with a report.
 # sync_trunk PRIMARY REMOTE TRUNK — bring the local trunk current.
@@ -488,7 +480,8 @@ physical() { (cd "$1" 2>/dev/null && pwd -P); }
 
 # stop CODE SUMMARY URL COMMAND BRANCH REMOTE PRIMARY WT [LINKS] — report and
 # exit. LINKS, optional, is newline-separated URLs, each printed after the
-# pull request as "  artefact: <url>".
+# pull request as "  artefact: <url>". The state line reports the primary
+# checkout where it was, since land never moves it.
 stop() {
   local code="$1" summary="$2" url="$3" command="$4" branch="$5" remote="$6" primary="$7" wt="$8" links="${9:-}"
   printf 'git-workflow: stopped: %s\n' "$summary"
@@ -507,6 +500,9 @@ stop() {
   exit "$code"
 }
 
+# cleanup_after_merge PRIMARY WT BRANCH TRUNK [REMOTE] — after a merge, from
+# PRIMARY: remove the artefact's worktree WT, delete BRANCH locally and on
+# REMOTE. Never switches PRIMARY: it is left where it was, always.
 cleanup_after_merge() {
   local primary="$1" wt="$2" branch="$3" remote="${5:-none}"
   # chdir into the primary checkout first: removing $wt must not pull the
@@ -531,6 +527,10 @@ cmd_land() {
   host="$(derive_host "$remote")"
   branch="$(git rev-parse --abbrev-ref HEAD)"
   [ "$branch" != "$trunk" ] || die 2 "HEAD is the trunk ($trunk): land runs from the artefact branch"
+  local primary wt
+  primary="$(primary_checkout)"
+  wt="$(physical "$(git rev-parse --show-toplevel)")"
+  [ "$wt" != "$primary" ] || die 2 "this is the primary checkout: artefact branches live in .worktrees/<branch>, and land runs from there"
   [ -z "$(git status --porcelain --untracked-files=no)" ] || die 2 "working tree is dirty: tracked files have uncommitted changes; commit or discard before landing"
   local first
   first="$(git rev-list --reverse "$trunk..HEAD" | head -1)"
@@ -812,11 +812,6 @@ $(printf '%s' "$bad_redefer" | sort -u)
     die 2 "$msg"
   fi
 
-  local primary here inplace=0 wt=""
-  primary="$(primary_checkout)"
-  here="$(physical "$(git rev-parse --show-toplevel)")"
-  if [ "$here" = "$primary" ]; then inplace=1; else wt="$here"; fi
-
   local module="" url=""
   case "$host" in github) module="$(script_dir)/hosts/$host.sh" ;; esac
 
@@ -845,11 +840,7 @@ $(printf '%s' "$bad_redefer" | sort -u)
   fi
 
   if [ "$host" = none ]; then
-    if [ "$inplace" -eq 1 ]; then
-      git switch -q "$trunk" || die 2 "could not switch the primary checkout to $trunk"
-    else
-      [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ] || stop 1 "the primary checkout is on $(git -C "$primary" rev-parse --abbrev-ref HEAD), not the trunk $trunk, so the local merge cannot run there" "" "" "$branch" "$remote" "$primary" "$wt"
-    fi
+    [ "$(git -C "$primary" rev-parse --abbrev-ref HEAD)" = "$trunk" ] || stop 1 "the primary checkout is on $(git -C "$primary" rev-parse --abbrev-ref HEAD), not the trunk $trunk, so the local merge cannot run there" "" "" "$branch" "$remote" "$primary" "$wt"
     git -C "$primary" merge -q --no-ff -m "Merge $branch" "$branch" || die 1 "merge of $branch into $trunk failed; resolve it in the primary checkout"
     cleanup_after_merge "$primary" "$wt" "$branch" "$trunk" "$remote"
     printf 'landed %s into %s as %s\n' "$branch" "$trunk" "$(git -C "$primary" rev-parse --short "$trunk")"
@@ -865,7 +856,6 @@ $(printf '%s' "$bad_redefer" | sort -u)
   url="$(bash "$module" propose "$branch" "$trunk")" || {
     rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request could not be opened" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"
     stop 1 "the host refused to open the pull request" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"; }
-  if [ "$inplace" -eq 1 ]; then git switch -q "$trunk" || die 2 "could not switch the primary checkout to $trunk"; fi
   (cd "$primary" && bash "$module" merge "$branch" "$trunk") || {
     rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"
     stop 1 "the merge was refused; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"; }
