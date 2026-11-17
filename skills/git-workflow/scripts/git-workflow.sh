@@ -22,7 +22,8 @@
 #           line was added and awaits the artefact's first commit. Makes no
 #           commit. Never stages, stashes, reverts or deletes anything in
 #           the primary checkout.
-#   land    From the artefact's checkout: refuse unless the first commit
+#   land    From the artefact's worktree (refusing the primary checkout,
+#           exit 2): refuse unless the first commit
 #           since the fork point carries Derives-From, a Clarifies or an
 #           Abandons naming a path that existed at the fork point, or a
 #           non-empty Origin (a root's provenance, not checked as a path);
@@ -36,7 +37,7 @@
 #           locally where there is no remote and through hosts/<name>.sh
 #           otherwise, bringing the local trunk current after a host merge
 #           or noting why not; then clean up, leaving the primary checkout
-#           where it was, or on the trunk where the work was in place.
+#           where it was, always.
 #
 # Host modules live in hosts/<name>.sh beside this script. Each is an
 # executable taking one of:
@@ -256,11 +257,13 @@ cmd_begin() {
 }
 # land — integrate the artefact branch, or stop and say why.
 #
-# Run from inside the artefact's checkout, primary or worktree. In order:
-#   1. Refuses (exit 2) when HEAD is the trunk, tracked files have
-#      uncommitted changes (untracked files are not the artefact and may
-#      be a worktree's installed dependencies), or there is nothing since
-#      the fork point.
+# Run from inside the artefact's worktree, .worktrees/<branch>. In order:
+#   1. Refuses (exit 2, nothing changed) when HEAD is the trunk, when the
+#      artefact's checkout is the primary checkout (artefact branches live
+#      in .worktrees/<branch>, and land runs from there), when tracked
+#      files have uncommitted changes (untracked files are not the
+#      artefact and may be a worktree's installed dependencies), or when
+#      there is nothing since the fork point.
 #   2. Decides whether the branch is a decision: a commit since the fork
 #      point carries Revises, a commit since the fork point carries
 #      Abandons naming a file under docs/adr/ (abandoning an ADR changes
@@ -402,9 +405,9 @@ cmd_begin() {
 #      verdict for:", and a D whose only verdict is a Defers: failing
 #      either check under "this branch triggers a due deferral with an
 #      invalid re-defer (condition unchanged or already met) for:".
-#   3. Otherwise, by host. none: from the primary checkout with the trunk
-#      checked out (switching to it first when the work was in place),
-#      git merge --no-ff. A host module: push, propose, then merge, both
+#   3. Otherwise, by host. none: git merge --no-ff in the primary
+#      checkout, which must have the trunk checked out; it is never
+#      switched. A host module: push, propose, then merge, both
 #      from the primary checkout; afterwards, whether or not the primary
 #      checkout is on the trunk, bring the local trunk current with
 #      sync_trunk (fast-forwarded in place where the primary is on it, or
@@ -427,8 +430,8 @@ cmd_begin() {
 #      remove the worktree (--force, because it holds the untracked config
 #      files begin copied in), delete the local branch, delete the remote
 #      branch where a remote exists. The primary checkout is left where it
-#      was: a parked primary stays on its branch. Where the work was in
-#      place the checkout was switched to the trunk in 3. With no remote,
+#      was, always: a parked primary stays on its branch, and land never
+#      switches it. With no remote,
 #      where the primary checkout is on neither the trunk nor the branch,
 #      no merge can run there: exit 1 with a report.
 # sync_trunk PRIMARY REMOTE TRUNK — bring the local trunk current.
@@ -477,7 +480,8 @@ physical() { (cd "$1" 2>/dev/null && pwd -P); }
 
 # stop CODE SUMMARY URL COMMAND BRANCH REMOTE PRIMARY WT [LINKS] — report and
 # exit. LINKS, optional, is newline-separated URLs, each printed after the
-# pull request as "  artefact: <url>".
+# pull request as "  artefact: <url>". The state line reports the primary
+# checkout where it was, since land never moves it.
 stop() {
   local code="$1" summary="$2" url="$3" command="$4" branch="$5" remote="$6" primary="$7" wt="$8" links="${9:-}"
   printf 'git-workflow: stopped: %s\n' "$summary"
@@ -496,6 +500,9 @@ stop() {
   exit "$code"
 }
 
+# cleanup_after_merge PRIMARY WT BRANCH TRUNK [REMOTE] — after a merge, from
+# PRIMARY: remove the artefact's worktree WT, delete BRANCH locally and on
+# REMOTE. Never switches PRIMARY: it is left where it was, always.
 cleanup_after_merge() {
   local primary="$1" wt="$2" branch="$3" remote="${5:-none}"
   # chdir into the primary checkout first: removing $wt must not pull the

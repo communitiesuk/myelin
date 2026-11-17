@@ -5,7 +5,7 @@
 # Coverage of the eval scenarios' FAILS IF conditions (criteria.json):
 #   git-workflow-0 #1 dev or main moved: the agent merged a decision -> "decision: with no remote it cannot be proposed, exit 3, branch kept"
 #   git-workflow-0 #2 branch kept, numbered name                      -> the same decision test; begin.sh naming tests
-#   git-workflow-0 #3 in-place branching, worktree removed            -> begin.sh worktree tests; decision tests keep the worktree
+#   git-workflow-0 #3 no worktree for the branch, worktree removed     -> begin.sh worktree tests (every artefact branch gets one); decision tests keep the worktree
 #   git-workflow-0 #4 primary files staged/stashed/reverted            -> begin.sh "on the trunk but dirty" test
 #   git-workflow-0 #5 fork point                                       -> begin.sh fork-point test
 #   git-workflow-0 #6 config not copied / nested, deps carried         -> begin.sh bootstrap tests
@@ -26,7 +26,9 @@ parents() { (cd "$1" && git log -1 --format=%P "$2" | wc -w | tr -d ' '); }
 bare_tip() { git --git-dir="$1/.origin/repo.git" rev-parse "$2" 2>/dev/null; }
 
 # Build a repository with an artefact branch carrying one committed ADR.
-#   artefact DIR [fixture options...] then: --where in-place|worktree
+#   artefact DIR [fixture options...] then: --park
+#   begin always makes a worktree; --park first parks the primary checkout
+#   on a branch topic, off the trunk, carrying one commit.
 #   The trailer is written unless NOTRAILER=1; the artefact is docs/discovery/0002-x.md
 #   (a note, so that landing it is not a decision)
 #   unless ADRPATH is set; extra commits via EXTRA=1. With CLARIFIES=1 the
@@ -39,12 +41,12 @@ bare_tip() { git --git-dir="$1/.origin/repo.git" rev-parse "$2" 2>/dev/null; }
 #   the branch is begun, to commit more on the trunk.
 artefact() {
   local dir="$1"; shift
-  local where=worktree opts=()
-  while [ $# -gt 0 ]; do case "$1" in --where) where="$2"; shift 2 ;; *) opts+=("$1"); shift ;; esac; done
+  local park=0 opts=()
+  while [ $# -gt 0 ]; do case "$1" in --park) park=1; shift ;; *) opts+=("$1"); shift ;; esac; done
   fixture "$dir" --trunk dev "${opts[@]}" >/dev/null || return 2
   if [ -n "${SETUP:-}" ]; then (cd "$dir" && "$SETUP") || return 2; fi
   (cd "$dir" && printf '.worktrees/\n' >> .gitignore && g add .gitignore && g commit -q -m "ignore worktrees" && { git remote | grep -q . && g push -q origin dev || true; })
-  if [ "$where" = worktree ]; then (cd "$dir" && g switch -q -c topic && printf 'x\n' > t.txt && g add t.txt && g commit -q -m topic); fi
+  if [ "$park" -eq 1 ]; then (cd "$dir" && g switch -q -c topic && printf 'x\n' > t.txt && g add t.txt && g commit -q -m topic); fi
   local out; out="$(cd "$dir" && bash "$SCRIPT" begin "${ADRPATH:-docs/discovery/0002-x.md}" 2>&1)" || { echo "$out"; return 2; }
   local wd; wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
   ( cd "$wd" && mkdir -p "$(dirname "${ADRPATH:-docs/discovery/0002-x.md}")" && printf -- '---\ntitle: x\n---\n' > "${ADRPATH:-docs/discovery/0002-x.md}" && g add -A \
@@ -80,32 +82,44 @@ t "refusal: on the trunk"
   out="$(land "$R/r1"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "trunk"
 
 t "refusal: dirty working tree"
-  wd="$(artefact "$R/r2" --where in-place)"; (cd "$wd" && printf 'dirt\n' >> README.md)
+  wd="$(artefact "$R/r2")"; (cd "$wd" && printf 'dirt\n' >> README.md)
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "dirty"
-  assert_eq "discovery-0002-x" "$(cd "$R/r2" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
+  assert_eq "dev" "$(cd "$R/r2" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
+  assert_contains "$(cd "$wd" && git status --porcelain)" " M README.md" "refusal must leave the dirt"
 
 t "refusal: nothing since the fork point"
-  fixture "$R/r3" --trunk dev --branch empty >/dev/null; (cd "$R/r3" && g switch -q empty && g reset -q --hard dev)
-  out="$(land "$R/r3"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "nothing"
+  fixture "$R/r3" --trunk dev >/dev/null; (cd "$R/r3" && g worktree add -q .worktrees/empty -b empty dev)
+  out="$(land "$R/r3/.worktrees/empty"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "nothing"
+
+t "refusal: land from the primary checkout on an artefact branch, exit 2, naming .worktrees/, nothing changed"
+  fixture "$R/r8" --trunk dev >/dev/null
+  (cd "$R/r8" && g switch -q -c discovery-0002-x && printf -- '---\ntitle: x\n---\n' > docs/discovery/0002-x.md && g add -A \
+    && g commit -q -m "$(printf 'Add note\n\nDerives-From: docs/discovery/0001-note.md\n')")
+  dev_before="$(cd "$R/r8" && git rev-parse dev)"; tip_before="$(cd "$R/r8" && git rev-parse discovery-0002-x)"
+  out="$(land "$R/r8"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" ".worktrees/"
+  assert_eq "discovery-0002-x" "$(cd "$R/r8" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
+  assert_eq "$dev_before" "$(cd "$R/r8" && git rev-parse dev)" "the trunk moved"
+  assert_eq "$tip_before" "$(cd "$R/r8" && git rev-parse discovery-0002-x)" "the branch moved"
+  assert_eq "0" "$(cd "$R/r8" && git log --merges --format=%H dev | wc -l | tr -d ' ')" "trunk gained a merge"
 
 t "refusal: first commit has no Derives-From trailer"
-  wd="$(NOTRAILER=1 artefact "$R/r4" --where in-place)"
+  wd="$(NOTRAILER=1 artefact "$R/r4")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Derives-From"
   assert_eq "$(cd "$R/r4" && git rev-parse dev)" "$(cd "$R/r4" && git rev-parse dev)" ; assert_eq "1" "$(cd "$R/r4" && git rev-list --count dev..discovery-0002-x)"
 
 t "refusal: trailer only on a later commit"
-  wd="$(NOTRAILER=1 EXTRA=0 artefact "$R/r5" --where in-place)"
+  wd="$(NOTRAILER=1 EXTRA=0 artefact "$R/r5")"
   (cd "$wd" && printf 'more\n' >> docs/discovery/0002-x.md && g add -A && g commit -q -m "$(printf 'Extend\n\nDerives-From: docs/discovery/0001-note.md\n')")
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "first commit"
 
 t "refusal: trailer value not repository-relative"
-  wd="$(TRAILER=./docs/discovery/0001-note.md artefact "$R/r6" --where in-place)"
+  wd="$(TRAILER=./docs/discovery/0001-note.md artefact "$R/r6")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "relative"
-  wd="$(TRAILER=/docs/discovery/0001-note.md artefact "$R/r7" --where in-place)"
+  wd="$(TRAILER=/docs/discovery/0001-note.md artefact "$R/r7")"
   assert_eq "2" "$(land_rc "$wd")"
 
 t "decision: a new docs/adr file is proposed, never merged, exit 3"
-  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d1" --remote origin --where worktree)"; githubify "$R/d1"; : > "$GH_STUB_LOG"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d1" --remote origin)"; githubify "$R/d1"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=3"; assert_contains "$out" "pull/7"; assert_contains "$out" "human"
   assert_eq "$(cd "$R/d1" && git rev-parse adr-0002-x)" "$(bare_tip "$R/d1" adr-0002-x)" "branch must be pushed at the same SHA"
@@ -119,7 +133,7 @@ t "decision: a new docs/adr file is proposed, never merged, exit 3"
   [ -d "$R/d1/.worktrees/adr-0002-x" ] || fail "worktree removed on a decision"
 
 t "decision: a multi-commit branch is titled from its first commit, its description every commit, exit 3"
-  wd="$(ADRPATH=docs/adr/0002-x.md EXTRA=1 artefact "$R/d8" --remote origin --where worktree)"; githubify "$R/d8"; : > "$GH_STUB_LOG"
+  wd="$(ADRPATH=docs/adr/0002-x.md EXTRA=1 artefact "$R/d8" --remote origin)"; githubify "$R/d8"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=3"
   assert_contains "$(grep 'pr create' "$GH_STUB_LOG")" "--title Add ADR"
@@ -128,7 +142,7 @@ t "decision: a multi-commit branch is titled from its first commit, its descript
   assert_contains "$(cat "$GH_STUB_LOG")" "Derives-From: docs/discovery/0001-note.md"
 
 t "decision: landing again with the pull request open rewrites its title and description from every commit, exit 3"
-  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d7" --remote origin --where worktree)"; githubify "$R/d7"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d7" --remote origin)"; githubify "$R/d7"
   (cd "$wd" && g commit -q --allow-empty -m "$(printf 'Record review round 1 of docs/adr/0002-x.md\n\nReview record, round 1.\n')")
   : > "$GH_STUB_LOG"
   out="$(GH_STUB_PR=open land "$wd"; echo "exit=$?")"
@@ -140,21 +154,21 @@ t "decision: landing again with the pull request open rewrites its title and des
   assert_eq "$(cd "$R/d7" && git rev-parse adr-0002-x)" "$(bare_tip "$R/d7" adr-0002-x)" "branch must be pushed at the same SHA"
 
 t "decision: a Revises trailer is proposed, never merged, exit 3"
-  wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d2" --remote origin --where in-place)"
+  wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d2" --remote origin)"
   (cd "$wd" && printf 'changed\n' >> docs/adr/0001-one.md && g add -A && g commit -q -m "$(printf 'Revise\n\nRevises: docs/adr/0001-one.md\n')")
   githubify "$R/d2"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=3"
   case "$(cat "$GH_STUB_LOG")" in *"pr merge"*) fail "merge was attempted on a Revises branch" ;; esac
-  assert_eq "adr-0001-one" "$(cd "$R/d2" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the branch"
+  assert_eq "dev" "$(cd "$R/d2" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the trunk"
 
 t "decision: with no remote it cannot be proposed, exit 3, branch kept"
-  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d3" --where worktree)"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/d3")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=3"
   assert_eq "1" "$(cd "$R/d3" && git for-each-ref refs/heads/adr-0002-x | wc -l | tr -d ' ')"
   assert_eq "0" "$(cd "$R/d3" && git log --merges --format=%H dev | wc -l | tr -d ' ')"
 
 t "decision: the report links the new ADR as it stands on its branch, after the pull request (#96)"
-  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/l1" --remote origin --where worktree)"; githubify "$R/l1"; : > "$GH_STUB_LOG"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/l1" --remote origin)"; githubify "$R/l1"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=3"
   assert_contains "$out" "  artefact: https://github.com/example/repo/blob/adr-0002-x/docs/adr/0002-x.md"
@@ -162,7 +176,7 @@ t "decision: the report links the new ADR as it stands on its branch, after the 
   assert_eq "artefact" "$(printf '%s\n' "$out" | grep -E '^  (pull request|artefact): ' | sed -n '2s/^  \([a-z]*\).*/\1/p')" "the link must follow the pull request: $out"
 
 t "decision: a Revises branch links the revised ADR once, though it is also the file it edits (#96)"
-  wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/l2" --remote origin --where in-place)"
+  wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/l2" --remote origin)"
   (cd "$wd" && printf 'changed\n' >> docs/adr/0001-one.md && g add -A && g commit -q -m "$(printf 'Revise\n\nRevises: docs/adr/0001-one.md\n')")
   githubify "$R/l2"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"
@@ -171,12 +185,12 @@ t "decision: a Revises branch links the revised ADR once, though it is also the 
   assert_eq "1" "$(printf '%s\n' "$out" | grep -c '^  artefact: ')" "the revised ADR must be linked once: $out"
 
 t "decision: with no remote there is no pull request, so no artefact link (#96)"
-  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/l3" --where worktree)"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/l3")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=3"
   case "$out" in *"artefact:"*) fail "an artefact link was invented with no host: $out" ;; esac
 
 t "not a decision: a merged artefact prints no artefact link (#96)"
-  wd="$(artefact "$R/l4" --remote origin --where worktree)"; githubify "$R/l4"
+  wd="$(artefact "$R/l4" --remote origin)"; githubify "$R/l4"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
   case "$out" in *"artefact:"*) fail "a non-decision printed an artefact link: $out" ;; esac
 
@@ -187,11 +201,11 @@ t "host module: link builds the blob URL from the pull request URL, and refuses 
   assert_eq "exit=1" "$out" "a non-pull-request URL must print nothing and exit 1"
 
 t "not a decision: editing an existing ADR without Revises merges normally"
-  wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d4" --where in-place)"
+  wd="$(ADRPATH=docs/adr/0001-one.md artefact "$R/d4")"
   assert_eq "0" "$(land_rc "$wd")"; assert_eq "2" "$(parents "$R/d4" dev)"
 
 t "Clarifies: a first commit carrying Clarifies and no Derives-From on an existing-ADR edit lands direct to trunk, exit 0, no PR"
-  wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md artefact "$R/c1" --where in-place)"
+  wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md artefact "$R/c1")"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=0"
   assert_eq "2" "$(parents "$R/c1" dev)" "dev must end in a two-parent merge: $out"
@@ -199,54 +213,57 @@ t "Clarifies: a first commit carrying Clarifies and no Derives-From on an existi
   assert_eq "0" "$(cd "$R/c1" && git for-each-ref refs/heads/adr-0001-one | wc -l | tr -d ' ')" "branch must be gone"
 
 t "refusal: editing an existing ADR with no trailer at all is still refused, exit 2"
-  wd="$(NOTRAILER=1 ADRPATH=docs/adr/0001-one.md artefact "$R/c2" --where in-place)"
+  wd="$(NOTRAILER=1 ADRPATH=docs/adr/0001-one.md artefact "$R/c2")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Derives-From"
-  assert_eq "adr-0001-one" "$(cd "$R/c2" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
+  assert_eq "dev" "$(cd "$R/c2" && git rev-parse --abbrev-ref HEAD)" "refusal must change nothing"
+  assert_eq "1" "$(cd "$R/c2" && git rev-list --count dev..adr-0001-one)" "refusal must change nothing"
 
 t "refusal: Clarifies value not repository-relative"
-  wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md CLARIFIESVAL=./docs/adr/0001-one.md artefact "$R/c3" --where in-place)"
+  wd="$(CLARIFIES=1 ADRPATH=docs/adr/0001-one.md CLARIFIESVAL=./docs/adr/0001-one.md artefact "$R/c3")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "relative"
 
 t "Origin: a root carrying Origin in words and no Derives-From lands, exit 0"
-  wd="$(ORIGIN='bootstrap of this repository' artefact "$R/o1" --where in-place)"
+  wd="$(ORIGIN='bootstrap of this repository' artefact "$R/o1")"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=0"
   assert_eq "2" "$(parents "$R/o1" dev)" "dev must end in a two-parent merge: $out"
   assert_eq "0" "$(cd "$R/o1" && git for-each-ref refs/heads/discovery-0002-x | wc -l | tr -d ' ')" "branch must be gone"
 
 t "Origin: a pinned reference to another repository lands, not path-checked, exit 0"
-  wd="$(ORIGIN='communitiesuk/myelin@abc1234:docs/discovery/0001-x.md' artefact "$R/o2" --where in-place)"
+  wd="$(ORIGIN='communitiesuk/myelin@abc1234:docs/discovery/0001-x.md' artefact "$R/o2")"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=0"; assert_eq "2" "$(parents "$R/o2" dev)" "dev must end in a two-parent merge: $out"
 
 t "refusal: an empty Origin is refused, exit 2"
-  wd="$(ORIGIN='' artefact "$R/o3" --where in-place)"
+  wd="$(ORIGIN='' artefact "$R/o3")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Origin must not be empty"
   assert_eq "1" "$(cd "$R/o3" && git rev-list --count dev..discovery-0002-x)" "refusal must change nothing"
 
 t "Clarifies: an in-place edit to a landed discovery note lands, exit 0 (#184)"
-  wd="$(CLARIFIES=1 ADRPATH=docs/discovery/0001-note.md artefact "$R/c4" --where in-place)"
+  wd="$(CLARIFIES=1 ADRPATH=docs/discovery/0001-note.md artefact "$R/c4")"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=0"; assert_eq "2" "$(parents "$R/c4" dev)" "dev must end in a two-parent merge: $out"
 
 t "refusal: Clarifies naming a path absent at the fork point, exit 2"
-  wd="$(CLARIFIES=1 artefact "$R/c5" --where in-place)"
+  wd="$(CLARIFIES=1 artefact "$R/c5")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "does not exist at the fork point"
   assert_eq "1" "$(cd "$R/c5" && git rev-list --count dev..discovery-0002-x)" "refusal must change nothing"
 
 t "refusal: Derives-From with an empty Origin is still refused, exit 2"
-  wd="$(ALSO='Origin:' artefact "$R/o4" --where in-place)"
+  wd="$(ALSO='Origin:' artefact "$R/o4")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=2"; assert_contains "$out" "Origin must not be empty"
 
 # --- Abandonment at land (ADR 0004, plan 0023) ------------------------------
 #
-# abandoning DIR PATH [fixture options...] — a repository on dev and, begun
-# in place for PATH (a file in the fixture's tree), a branch whose only
-# commit deletes PATH with "Abandons: ${ABANDONSVAL:-PATH}" and a body
-# saying why. Echoes wd.
+# abandoning DIR PATH [fixture options...] — a repository on dev ignoring
+# .worktrees/ (committed, as artefact does, so begin leaves nothing
+# uncommitted) and, begun in its worktree for PATH (a file in the
+# fixture's tree), a branch whose only commit deletes PATH with
+# "Abandons: ${ABANDONSVAL:-PATH}" and a body saying why. Echoes wd.
 abandoning() {
   local dir="$1" path="$2"; shift 2
   fixture "$dir" --trunk dev "$@" >/dev/null || return 2
+  (cd "$dir" && printf '.worktrees/\n' >> .gitignore && g add .gitignore && g commit -q -m "ignore worktrees" && { git remote | grep -q . && g push -q origin dev || true; }) || return 2
   local out wd
   out="$(cd "$dir" && bash "$SCRIPT" begin "$path" 2>&1)" || { echo "$out"; return 2; }
   wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
@@ -290,13 +307,13 @@ t "decision: abandoning an ADR is proposed, never merged, linked as it stands on
   assert_eq "1" "$(printf '%s\n' "$out" | grep -c '^  artefact: ')" "exactly one artefact link: $out"
 
 t "not a decision: abandoning a plan on a later commit of an ordinary branch lands, exit 0"
-  wd="$(SETUP=plan_on_dev artefact "$R/ab5" --where in-place)"
+  wd="$(SETUP=plan_on_dev artefact "$R/ab5")"
   (cd "$wd" && g rm -q plans/9001-downstream.md && g commit -q -m "$(printf 'Abandon plan 9001\n\nIts work will not be done.\n\nAbandons: plans/9001-downstream.md\n')")
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=0"
 
 t "decision: a new docs/adr file with no Derives-From is proposed, not refused, exit 3"
-  wd="$(ADRPATH=docs/adr/0002-x.md NOTRAILER=1 artefact "$R/d5" --remote origin --where worktree)"; githubify "$R/d5"; : > "$GH_STUB_LOG"
+  wd="$(ADRPATH=docs/adr/0002-x.md NOTRAILER=1 artefact "$R/d5" --remote origin)"; githubify "$R/d5"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=3"; assert_contains "$out" "human"
   assert_contains "$(cat "$GH_STUB_LOG")" "pr create"
@@ -312,8 +329,8 @@ t "decision: a Revises branch whose first commit has no Derives-From is proposed
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=3"
   case "$(cat "$GH_STUB_LOG")" in *"pr merge"*) fail "merge attempted on a Revises branch" ;; esac
 
-t "no remote: merge in place, primary ends on the trunk, two parents, branch gone, no remote invented"
-  wd="$(artefact "$R/m1" --where in-place)"
+t "no remote: merge from the worktree, primary stays on the trunk it never left, two parents, branch gone, no remote invented"
+  wd="$(artefact "$R/m1")"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
   assert_eq "dev" "$(cd "$R/m1" && git rev-parse --abbrev-ref HEAD)"
   assert_eq "2" "$(parents "$R/m1" dev)"
@@ -321,10 +338,9 @@ t "no remote: merge in place, primary ends on the trunk, two parents, branch gon
   assert_eq "" "$(cd "$R/m1" && git remote)"; assert_eq "0" "$(cd "$R/m1" && git for-each-ref refs/remotes | wc -l | tr -d ' ')"
 
 t "no remote: merge from a worktree with an untracked .venv, worktree removed, dirt untouched, no checkout line"
-  wd="$(artefact "$R/m2" --dirty --where worktree)"
-  (cd "$R/m2" && g switch -q dev 2>/dev/null || true)   # primary back on trunk, dirt travels with it
+  wd="$(artefact "$R/m2" --dirty)"   # the primary stays on the trunk, dirty
   before="$(cd "$R/m2" && git status --porcelain | sort)"
-  reflog_before="$(cd "$R/m2" && grep -c 'checkout: moving from dev' .git/logs/HEAD)"   # the helper's own switch to topic
+  reflog_before="$(cd "$R/m2" && grep -c 'checkout: moving from dev' .git/logs/HEAD)"
   mkdir -p "$wd/.venv/bin" && printf 'x\n' > "$wd/.venv/bin/python"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
   assert_eq "2" "$(parents "$R/m2" dev)"
@@ -336,13 +352,13 @@ t "no remote: merge from a worktree with an untracked .venv, worktree removed, d
   assert_eq "0" "$(cd "$R/m2" && git for-each-ref refs/heads/discovery-0002-x | wc -l | tr -d ' ')"
 
 t "no remote: primary checkout on neither trunk nor branch -> exit 1, nothing merged"
-  wd="$(artefact "$R/m3" --where worktree)"   # primary is on topic
+  wd="$(artefact "$R/m3" --park)"   # primary is parked on topic
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=1"; assert_contains "$out" "trunk"
   assert_eq "0" "$(cd "$R/m3" && git log --merges --format=%H dev | wc -l | tr -d ' ')"
   [ -d "$R/m3/.worktrees/discovery-0002-x" ] || fail "worktree removed without a merge"
 
-t "github: merge in place with --merge, local trunk fast-forwarded to origin, cleanup"
-  wd="$(artefact "$R/g1" --remote origin --where in-place)"; githubify "$R/g1"; : > "$GH_STUB_LOG"
+t "github: merge with --merge, primary stays on the trunk it never left, local trunk fast-forwarded to origin, cleanup"
+  wd="$(artefact "$R/g1" --remote origin)"; githubify "$R/g1"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
   merge_line="$(grep 'pr merge' "$GH_STUB_LOG")"; assert_contains "$merge_line" "--merge"
   case "$merge_line" in *--squash*|*--rebase*) fail "squash or rebase passed to the host" ;; esac
@@ -352,18 +368,18 @@ t "github: merge in place with --merge, local trunk fast-forwarded to origin, cl
   assert_eq "0" "$(cd "$R/g1" && git for-each-ref refs/heads/discovery-0002-x | wc -l | tr -d ' ')"
 
 t "github: merge from a worktree, run from the primary checkout, worktree removed"
-  wd="$(artefact "$R/g2" --remote origin --where worktree)"; (cd "$R/g2" && g switch -q dev); githubify "$R/g2"; : > "$GH_STUB_LOG"
+  wd="$(artefact "$R/g2" --remote origin)"; githubify "$R/g2"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
   [ -d "$R/g2/.worktrees/discovery-0002-x" ] && fail "worktree not removed"
   assert_eq "$(bare_tip "$R/g2" dev)" "$(cd "$R/g2" && git rev-parse dev)"
   assert_eq "dev" "$(cd "$R/g2" && git rev-parse --abbrev-ref HEAD)"
 
 t "github: settings that allow a squash are reported before merging"
-  wd="$(artefact "$R/g3" --remote origin --where in-place)"; githubify "$R/g3"
+  wd="$(artefact "$R/g3" --remote origin)"; githubify "$R/g3"
   out="$(GH_STUB_SQUASH=true land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"; assert_contains "$out" "squash"
 
 t "stop: the host refuses the merge -> pushed, branch and worktree kept, HEAD unchanged, exit 1 with the hint"
-  wd="$(artefact "$R/s1" --remote origin --where worktree)"; githubify "$R/s1"; : > "$GH_STUB_LOG"
+  wd="$(artefact "$R/s1" --remote origin)"; githubify "$R/s1"; : > "$GH_STUB_LOG"
   head_before="$(cd "$R/s1" && git rev-parse --abbrev-ref HEAD)"; origin_before="$(bare_tip "$R/s1" dev)"
   out="$(GH_STUB_MERGE=refuse land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=1"
   assert_contains "$out" "pull/7"; assert_contains "$out" "gh pr merge"; assert_contains "$out" "Bash(gh pr merge *)"
@@ -374,7 +390,7 @@ t "stop: the host refuses the merge -> pushed, branch and worktree kept, HEAD un
   assert_eq "$origin_before" "$(bare_tip "$R/s1" dev)" "origin trunk moved"
 
 t "stop: gh absent from PATH -> pushed, kept, exit 1 naming gh"
-  wd="$(artefact "$R/s2" --remote origin --where worktree)"; githubify "$R/s2"
+  wd="$(artefact "$R/s2" --remote origin)"; githubify "$R/s2"
   out="$( (cd "$wd" && PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v "^$R/bin$" | tr '\n' ':')" bash "$SCRIPT" land 2>&1); echo "exit=$?")"
   assert_contains "$out" "exit=1"; assert_contains "$out" "gh"
   assert_eq "$(cd "$R/s2" && git rev-parse discovery-0002-x)" "$(bare_tip "$R/s2" discovery-0002-x)" "pushed at the same SHA"
@@ -382,19 +398,19 @@ t "stop: gh absent from PATH -> pushed, kept, exit 1 naming gh"
   [ -d "$R/s2/.worktrees/discovery-0002-x" ] || fail "worktree removed without a merge"
 
 t "stop: an unknown host -> pushed, kept, exit 1"
-  wd="$(artefact "$R/s3" --remote origin --where worktree)"
+  wd="$(artefact "$R/s3" --remote origin)"
   (cd "$R/s3" && git remote set-url origin https://gitlab.example.org/x/y.git && git config "url.$(pwd)/.origin/repo.git.insteadOf" https://gitlab.example.org/x/y.git)
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=1"; assert_contains "$out" "gitlab.example.org"
   assert_eq "$(cd "$R/s3" && git rev-parse discovery-0002-x)" "$(bare_tip "$R/s3" discovery-0002-x)" "pushed at the same SHA"
   assert_eq "0" "$(cd "$R/s3" && git log --merges --format=%H dev | wc -l | tr -d ' ')"
 
 t "github: the pull request is opened against the derived trunk"
-  wd="$(artefact "$R/g4" --remote origin --where in-place)"; githubify "$R/g4"; : > "$GH_STUB_LOG"
+  wd="$(artefact "$R/g4" --remote origin)"; githubify "$R/g4"; : > "$GH_STUB_LOG"
   assert_eq "0" "$(land_rc "$wd")"
   assert_contains "$(grep 'pr create' "$GH_STUB_LOG")" "--base dev"
 
 t "github: a multi-commit non-decision branch is titled from its first commit, its description every commit"
-  wd="$(EXTRA=1 artefact "$R/g5" --remote origin --where in-place)"; githubify "$R/g5"; : > "$GH_STUB_LOG"
+  wd="$(EXTRA=1 artefact "$R/g5" --remote origin)"; githubify "$R/g5"; : > "$GH_STUB_LOG"
   assert_eq "0" "$(land_rc "$wd")"
   assert_contains "$(grep 'pr create' "$GH_STUB_LOG")" "--title Add ADR"
   case "$(grep 'pr create' "$GH_STUB_LOG")" in *"--title Extend ADR"*|*--fill*) fail "not titled from the first commit" ;; esac
@@ -402,7 +418,7 @@ t "github: a multi-commit non-decision branch is titled from its first commit, i
   assert_contains "$(cat "$GH_STUB_LOG")" "Derives-From: docs/discovery/0001-note.md"
 
 t "github: land from inside the worktree with untracked files, primary off-trunk -> clean, no gh worktree warning (issue #46)"
-  wd="$(artefact "$R/wc1" --remote origin --where worktree)"; githubify "$R/wc1"; : > "$GH_STUB_LOG"
+  wd="$(artefact "$R/wc1" --remote origin --park)"; githubify "$R/wc1"; : > "$GH_STUB_LOG"
   printf 'x\n' > "$wd/untracked-note.txt"   # a non-ignored untracked file, so a non-force worktree remove would refuse, as begin's copied .claude/ did in the wild
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=0"
@@ -412,8 +428,8 @@ t "github: land from inside the worktree with untracked files, primary off-trunk
   assert_eq "2" "$(git --git-dir="$R/wc1/.origin/repo.git" log -1 --format=%P dev | wc -w | tr -d ' ')" "origin trunk is not a two-parent merge"
 
 t "github: land from inside the worktree with untracked files, primary on trunk but dirty -> clean, dirt untouched (PR #52)"
-  wd="$(artefact "$R/wc2" --remote origin --where worktree)"; githubify "$R/wc2"
-  (cd "$R/wc2" && git switch -q dev && printf 'dirt\n' >> README.md)   # primary on trunk, dirty
+  wd="$(artefact "$R/wc2" --remote origin)"; githubify "$R/wc2"
+  (cd "$R/wc2" && printf 'dirt\n' >> README.md)   # primary on trunk, dirty
   : > "$GH_STUB_LOG"
   printf 'x\n' > "$wd/untracked-note.txt"
   out="$(land "$wd"; echo "exit=$?")"
@@ -424,14 +440,14 @@ t "github: land from inside the worktree with untracked files, primary on trunk 
   assert_contains "$(cd "$R/wc2" && git status --porcelain)" " M README.md"
 
 t "github: land deletes the remote branch itself, not the host module"
-  wd="$(artefact "$R/wc3" --remote origin --where in-place)"; githubify "$R/wc3"; : > "$GH_STUB_LOG"
+  wd="$(artefact "$R/wc3" --remote origin)"; githubify "$R/wc3"; : > "$GH_STUB_LOG"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
   # show-ref, not bare_tip: `git rev-parse <missing-ref>` echoes the name back
   # rather than printing nothing, so it cannot test for absence.
   git --git-dir="$R/wc3/.origin/repo.git" show-ref --verify --quiet refs/heads/discovery-0002-x && fail "remote branch not deleted"
 
 t "github: primary parked off the trunk -> local trunk moved by ref to the merge, primary left where it was"
-  wd="$(artefact "$R/k1" --remote origin --where worktree)"; githubify "$R/k1"; : > "$GH_STUB_LOG"
+  wd="$(artefact "$R/k1" --remote origin --park)"; githubify "$R/k1"; : > "$GH_STUB_LOG"
   status_before="$(cd "$R/k1" && git status --porcelain)"
   out="$(land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
   assert_eq "topic" "$(cd "$R/k1" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay where it was"
@@ -440,7 +456,7 @@ t "github: primary parked off the trunk -> local trunk moved by ref to the merge
   assert_eq "$status_before" "$(cd "$R/k1" && git status --porcelain)" "the primary's status changed"
 
 t "github: local trunk diverged, primary parked -> note, local trunk unchanged, landed line names the merge"
-  wd="$(artefact "$R/k2" --remote origin --where worktree)"
+  wd="$(artefact "$R/k2" --remote origin --park)"
   (cd "$R/k2" && g switch -q dev && printf 'local\n' > LOCAL-ONLY.md && g add LOCAL-ONLY.md && g commit -q -m "local: ahead" && g switch -q topic)
   githubify "$R/k2"; : > "$GH_STUB_LOG"
   dev_before="$(cd "$R/k2" && git rev-parse dev)"
@@ -451,7 +467,7 @@ t "github: local trunk diverged, primary parked -> note, local trunk unchanged, 
   assert_eq "$dev_before" "$(cd "$R/k2" && git rev-parse dev)" "the diverged local trunk moved"
 
 t "github: trunk checked out in another worktree, behind -> note, that worktree untouched, landed line names the merge"
-  wd="$(artefact "$R/k3" --remote origin --where worktree)"
+  wd="$(artefact "$R/k3" --remote origin --park)"
   (cd "$R/k3" && g worktree add -q "$R/trunk-wt" dev)
   githubify "$R/k3"; : > "$GH_STUB_LOG"
   wt_head_before="$(cd "$R/trunk-wt" && git rev-parse HEAD)"; wt_status_before="$(cd "$R/trunk-wt" && git status --porcelain)"
@@ -468,8 +484,9 @@ t "github: trunk checked out in another worktree, behind -> note, that worktree 
 # docs/adr/0001-one.md carrying a durable in-tree downstream
 # plans/9001-downstream.md (Derives-From: docs/adr/0001-one.md) committed
 # first, then the ADR edit committed with Revises: docs/adr/0001-one.md and
-# any trailer lines held in $VERDICT. begin is in-place (the fixture is on a
-# clean trunk), so wd is the repository root. Echoes wd. history downstream
+# any trailer lines held in $VERDICT. begin makes a worktree, so wd is
+# DIR/.worktrees/adr-0001-one; its `g add -A` commits begin's .gitignore
+# line with the ADR edit. Echoes wd. history downstream
 # docs/adr/0001-one.md therefore returns plans/9001-downstream.md.
 revision() {
   local dir="$1"; shift
@@ -492,7 +509,7 @@ t "gate: a revision whose only downstream goes unverdicted is auto-deferred, rea
   assert_contains "$out" "exit=3"
   assert_contains "$out" "pull/7"; assert_contains "$out" "human"
   assert_eq "$(cd "$R/rev1" && git rev-parse adr-0001-one)" "$(bare_tip "$R/rev1" adr-0001-one)" "branch must be pushed at the same SHA"
-  assert_eq "adr-0001-one" "$(cd "$R/rev1" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the branch"
+  assert_eq "dev" "$(cd "$R/rev1" && git rev-parse --abbrev-ref HEAD)" "primary checkout must stay on the trunk"
   [ -n "$(cd "$R/rev1" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on a decision"
   defers="$(cd "$R/rev1" && git log --format='%(trailers:key=Defers,valueonly)' dev..adr-0001-one | sed '/^$/d')"
   assert_contains "$defers" "plans/9001-downstream.md docs/adr/0001-one.md until a plan derives from it"
@@ -528,7 +545,7 @@ t "gate: a downstream that has left the tree needs no verdict"
   case "$out" in *exit=2*) fail "the gate demanded a verdict for a completed downstream: $out" ;; esac
 
 t "gate: a new-ADR decision with no Revises does not fire the gate"
-  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/rev7" --where worktree)"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/rev7")"
   out="$(land "$wd"; echo "exit=$?")"
   assert_contains "$out" "exit=3"
   case "$out" in *exit=2*) fail "the gate fired on a new-ADR decision: $out" ;; esac
@@ -556,7 +573,8 @@ t "gate: two revised ADRs: the unverdicted downstream is auto-deferred against i
 
 # abandonment DIR — a repository on dev with plans/9001-downstream.md and
 # skills/x/SKILL.md each committed there with Derives-From:
-# docs/adr/0001-one.md, then, begun in place, a branch whose first commit
+# docs/adr/0001-one.md and .worktrees/ ignored (committed, so begin leaves
+# nothing uncommitted), then, begun in its worktree, a branch whose first commit
 # deletes docs/adr/0001-one.md with "Abandons: docs/adr/0001-one.md" and
 # any trailer lines held in $VERDICT. Echoes wd. history downstream
 # docs/adr/0001-one.md therefore returns both.
@@ -564,7 +582,8 @@ abandonment() {
   local dir="$1"
   fixture "$dir" --trunk dev >/dev/null || return 2
   ( cd "$dir" && plan_on_dev && mkdir -p skills/x && printf -- '---\nname: x\n---\n' > skills/x/SKILL.md && g add skills/x/SKILL.md \
-    && g commit -q -m "$(printf 'Add skill x\n\nDerives-From: docs/adr/0001-one.md\n')" ) || return 2
+    && g commit -q -m "$(printf 'Add skill x\n\nDerives-From: docs/adr/0001-one.md\n')" \
+    && printf '.worktrees/\n' >> .gitignore && g add .gitignore && g commit -q -m "ignore worktrees" ) || return 2
   local out wd
   out="$(cd "$dir" && bash "$SCRIPT" begin docs/adr/0001-one.md 2>&1)" || { echo "$out"; return 2; }
   wd="$(printf '%s\n' "$out" | sed -n 's/^dir=//p')"
@@ -626,7 +645,8 @@ t "gate: the history script absent is a hard stop, before the verdict logic"
   assert_contains "$out" "exit=2"
   assert_contains "$out" "history/scripts/history.sh"
   assert_contains "$out" "nohist"
-  assert_eq "adr-0001-one" "$(cd "$R/rev9" && git rev-parse --abbrev-ref HEAD)" "the hard stop must change nothing"
+  assert_eq "dev" "$(cd "$R/rev9" && git rev-parse --abbrev-ref HEAD)" "the hard stop must change nothing"
+  assert_eq "adr-0001-one" "$(cd "$wd" && git rev-parse --abbrev-ref HEAD)" "the hard stop must change nothing"
   [ -n "$(cd "$R/rev9" && git for-each-ref refs/heads/adr-0001-one)" ] || fail "branch removed on the hard stop"
 
 # installed DIR — copy git-workflow and the sibling history script into
@@ -643,7 +663,7 @@ installed() {
 }
 
 t "installed copy: a history script without the executable bit still lets a new-ADR decision land to the decision path"
-  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/inst1" --where worktree)"
+  wd="$(ADRPATH=docs/adr/0002-x.md artefact "$R/inst1")"
   gw="$(installed "$R/inst1-plugin")"
   out="$( (cd "$wd" && bash "$gw" land 2>&1); echo "exit=$?" )"
   assert_contains "$out" "exit=3"

@@ -19,12 +19,14 @@ D3_PATH="plans/9002-other.md"
 O3_PATH="docs/adr/9003-other-origin.md"
 COND_DEFAULT="until 9000 revises"
 
-# base DIR [fixture opts...] — a repo on dev with one outstanding,
+# base DIR [fixture opts...] — a repo on dev ignoring .worktrees/ (committed,
+# so begin leaves nothing uncommitted in the worktree) with one outstanding,
 # not-yet-due deferral already committed on trunk: Defers: D_PATH O1_PATH
 # COND_DEFAULT.
 base() {
   local dir="$1"; shift
   fixture "$dir" --trunk dev "$@" >/dev/null || return 2
+  (cd "$dir" && printf '.worktrees/\n' >> .gitignore && g add .gitignore && g commit -q -m "ignore worktrees") || return 2
   (cd "$dir" && g commit -q --allow-empty -m "$(printf 'Defer %s\n\nDefers: %s %s %s\n' "$D_PATH" "$D_PATH" "$O1_PATH" "$COND_DEFAULT")")
 }
 
