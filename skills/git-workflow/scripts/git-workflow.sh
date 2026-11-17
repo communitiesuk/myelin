@@ -241,25 +241,17 @@ cmd_begin() {
   [ -n "$path" ] || die 2 "usage: begin <artefact-path> [--slug <slug>]"
   local branch
   branch="$(branch_name_for "$path" "$slug")" || die 2 "$path is governed by no skill: name the branch with --slug <slug> (becomes chore-<slug>)"
-  local facts trunk contention root
+  local facts trunk root
   facts="$(cmd_check)" || exit $?
   trunk="${facts#*trunk=}"; trunk="${trunk%%
 *}"
-  contention="${facts#*contention=}"; contention="${contention%%
-*}"
-  root="$(git rev-parse --show-toplevel)"
+  root="$(primary_checkout)"
   git rev-parse --verify --quiet "refs/heads/$branch" >/dev/null && die 2 "branch $branch already exists"
   local remote msg
   remote="${facts#*remote=}"; remote="${remote%%
 *}"
   if [ "$remote" != none ]; then
-    msg="$(sync_trunk "$(primary_checkout)" "$remote" "$trunk")" || die 1 "$msg; no branch created"
-  fi
-  if [ "$contention" = in-place ]; then
-    git switch -q -c "$branch" "$trunk" || die 2 "could not create $branch"
-    printf 'trunk=%s\nbranch=%s\ndir=%s\n' "$trunk" "$branch" "$root"
-    begin_worklist "$path" "$trunk"
-    return 0
+    msg="$(sync_trunk "$root" "$remote" "$trunk")" || die 1 "$msg; no branch created"
   fi
   local wt="$root/.worktrees/$branch"
   git worktree add -q "$wt" -b "$branch" "$trunk" || die 2 "could not create worktree $wt"
