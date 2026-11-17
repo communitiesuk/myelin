@@ -17,8 +17,7 @@ session works in the primary checkout, and the plugin's documentation
 tells new teams that the worktree path is longer. ADR 0007's restatement
 of the rule is already reconciled (b572550). Closes seeds #143
 (concurrent sessions collide) and #112 (dropped files trip `begin`).
-Seed #200 (strays in the primary checkout) and #84 (numbering race)
-are not this plan's.
+Seed #200 (strays in the primary checkout) is not this plan's.
 
 ## Deferrals
 
@@ -40,7 +39,7 @@ revised ADR by reading it.
 | `evals/git-workflow-0/criteria.json`, `scenario.json` | `Defers:`, then `Reconciles:` | name the contention check as the reason for isolating | Step 7 |
 | `skills/git-workflow/scripts/tests/lib.sh`, `contract.sh`, `run.sh` | `Confirms:` | fixture builder, `--help` words and runner state no isolation rule; `--dirty` stays a legitimate fixture | Landing |
 | `skills/plans/SKILL.md`, `skills/facilitated-discovery/SKILL.md` | `Confirms:` | say `begin` and "edit in place" (a file edit), never when it isolates | Landing |
-| `evals/plan-numbering-0/criteria.json`, `scenario.json`, `setup.sh`, `task.md` | `Confirms:` | score the number a plan is given; no remote, so `begin` gives the agent a worktree and the local merge works from it, as the eval already scores | Landing |
+| `evals/plan-numbering-0/criteria.json`, `scenario.json`, `setup.sh`, `task.md` | `Confirms:` | score only the number a plan is given, which does not depend on where its branch lives | Landing |
 | `docs/adr/0006-where-do-captured-ideas-live.md`, `docs/discovery/0003-escalation-and-orchestration.md`, `docs/discovery/0005-compression-and-handover.md` | `Confirms:` | none states the isolation rule; a note records the thinking of its time | Landing |
 | `.gitignore`, `AGENTS.md` | `Confirms:` | `.worktrees/` is already ignored; `AGENTS.md` states no isolation rule | Landing |
 
@@ -76,7 +75,8 @@ and `discharge.sh` (Step 3), and the comments in
 Steps 1 to 9 run on one implementation branch, `chore-worktree-for-every-artefact`.
 Begin it with `begin skills/git-workflow/scripts/git-workflow.sh --slug worktree-for-every-artefact`,
 and work in `dir=` by absolute path. Until this plan lands, the installed
-rule governs how that branch is made.
+rule governs how that branch is made, and the installed script, not the
+one being edited, does the `begin` and the `land` throughout.
 
 1. **`begin` always makes a worktree, and makes it under the primary checkout.**
 
@@ -93,9 +93,7 @@ rule governs how that branch is made.
      every session now runs from a worktree;
    - the doc-comment says so: no in-place branching; strays and a
      dirty primary checkout do not change where the branch goes, though
-     `begin` still stops with `sync_trunk`'s report when the trunk is
-     behind its remote and the primary checkout cannot be
-     fast-forwarded; and `begin` never touches the primary checkout's
+     `begin` still makes `sync_trunk`'s stops, unchanged; and `begin` never touches the primary checkout's
      files (its trunk update excepted).
 
    Tests, `skills/git-workflow/scripts/tests/begin.sh` (red first):
@@ -163,16 +161,26 @@ rule governs how that branch is made.
    - the `abandoning` helper begins "in place" and commits no
      `.worktrees/` ignore line; it now begins a worktree, and commits
      the line as `artefact` does (line 46) so `begin` leaves nothing
-     uncommitted; ab5 drops `--where`;
+     uncommitted; ab5 drops `--where`. The `abandonment` helper (abg1 to
+     abg4, including the skill-deleted tests) has the same gap, and the
+     `revision` helper's comment that `begin` is in place and `wd` is the
+     repository root is stale: fix both, and correct the "begun in place"
+     comments;
+   - rev9 asserts that the primary is still on `adr-0001-one` after the
+     hard stop; it is on `dev`. r3 lands from the primary on branch
+     `empty`, which `land` now refuses for being the primary checkout
+     before it reaches "nothing since the fork point"; build `empty` as a
+     worktree and land that, so the test still tests the empty branch;
    - in `skills/git-workflow/scripts/tests/autodefer.sh`, test 8 lands
      the repository root (`land "$R/t5"`), which `land` now refuses;
-     land the worktree `two_downstream_revision` echoes. In
+     land `$R/t5/.worktrees/adr-0001-one`. In
      `skills/git-workflow/scripts/tests/discharge.sh`, test 14's `base`
      commits no `.worktrees/` ignore line, so the `.gitignore` that
      `begin` writes in the worktree stays uncommitted and `land`
      refuses it as dirty before the check under test; commit the line
-     in `base`. Run both files after Step 1's change and fix any other
-     test that fails the same way;
+     in `base`. Run all three files (`land.sh`, `autodefer.sh`,
+     `discharge.sh`) after Step 1's change and fix any other test that
+     fails the same way;
    - new: `land` run from the primary checkout on an artefact branch
      exits 2, naming `.worktrees/`, and changes nothing;
    - rename the "merge in place" tests to say what they test; the
@@ -200,7 +208,9 @@ rule governs how that branch is made.
    it), give the command, the reason (parallel sessions share one HEAD in
    the primary checkout, and a check made once at branching cannot hold),
    that git refuses a branch checked out twice so no lock is needed, and
-   that the `.worktrees/` ignore-line paragraph is unchanged; Rule 14:
+   that the `.worktrees/` ignore-line paragraph is unchanged, and drop the
+   "When you isolate" lead-in of the paragraph on working inside the
+   worktree (the rest, never touching the primary checkout's files, stays); Rule 14:
    cut the "Work done in the primary checkout returns that checkout to
    trunk" sentence, "Where the work was isolated" (the primary checkout
    never moves), and "or on trunk where the work was in place"; Rule 11's
@@ -236,8 +246,8 @@ rule governs how that branch is made.
    and the later steps work in it by absolute path; section 9's
    `git switch dev && git pull --ff-only origin dev` becomes a
    fast-forward pull in the primary, which is already on `dev`, and
-   removes the worktree first if `gh pr merge --delete-branch` cannot
-   delete a branch a worktree holds; section 11's primary-or-scratch
+   removes the worktree first, because `gh pr merge --delete-branch`
+   cannot delete a branch a worktree holds; section 11's primary-or-scratch
    rule keeps; section 12 removes the worktree and the branch and checks
    that the primary is on `dev`. Commit:
    `Reconcile the release skill to a worktree per release branch (plan 0024 Step 6)`,
@@ -247,29 +257,49 @@ rule governs how that branch is made.
 
    > **Directive for the implementer**: this step will write or modify executable code. Load the `test-first-workflow` skill before writing the code (docstrings → failing tests → code).
 
-   Here the evals are the tests; run each before editing (Step 8 gives
-   the command) so the failure being fixed is seen.
+   Here the evals are the tests. `--context .` already carries the new
+   rule, so a run before editing cannot fail on it: once a fixture is
+   edited, run it with Step 8's command plus `--context-commit <fork>`,
+   where `<fork>` is `git merge-base dev HEAD`, which sources the old
+   skill (expect a failure), and again without it (expect a pass). If
+   the old-skill run does not fail, say so in Progress notes and rely on
+   the unit tests for that change.
    - `evals/git-workflow-0/`: the fixture is dirty on the trunk, which
      the old rule isolated too, so it does not tell the rules apart.
-     Make it a clean trunk: drop the README edit and
-     `benchmark-notes.txt`, and ignore `.venv/` and `node_modules/` so
-     `git status --porcelain` is empty (the criteria that nothing built
-     is committed still hold). Reword the criteria and `scenario.json`
-     ("isolate into a worktree", "the contention check must select
-     isolation") to "every artefact branch gets a worktree" and the
-     primary checkout stays on `dev`, tree clean, branch never checked
-     out; fix the setup.sh comments (lines 224 and 288-292). The old
-     rule branched in place here, so the run before editing fails on
-     the right thing.
-   - `evals/git-workflow-1/`: the primary sits on `main`, off the trunk
-     (not dirty); reword "the contention check must select isolation"
-     and "Rule 5 selects isolation" to "every artefact branch gets a
-     worktree" in `criteria.json` and the setup.sh comments (lines 235
-     and 240).
+     Make it a clean trunk: drop the README edit, `benchmark-notes.txt`
+     and the untracked `.venv/` (an untracked file would make the old
+     rule isolate too); `node_modules/` is already gitignored, so add
+     nothing. Reword the criteria and `scenario.json` ("isolate into a
+     worktree", "the contention check must select isolation") to "every
+     artefact branch gets a worktree". Rewrite "The primary checkout's
+     own files are untouched" as: `git status --porcelain
+     --untracked-files=no` in the primary prints nothing, its `HEAD` is
+     still `fixture-base-dev`, and the branch was never checked out.
+     In "Configuration copied ...", drop the `.venv` clauses (keep the
+     settings copy and `node_modules`), and move them to git-workflow-1,
+     which has no built-dependency check: add an untracked `.venv/` with
+     contents to its fixture (its `.gitignore` spells the directory
+     `venv/`) and a criterion that the worktree has no `.venv/`, the
+     primary's `.venv/` survives, and no commit adds it. Fix the
+     setup.sh comments (lines 224 and 288-292). The old rule branched
+     in place on the clean trunk, so the old-skill run should fail
+     on the right thing.
+   - `evals/git-workflow-1/`: the primary sits on `main`, off the trunk;
+     reword "the skill's contention check must isolate into a
+     worktree" in `criteria.json`'s context and "Rule 5 selects
+     isolation" in the "Isolated into a worktree" criterion to "every
+     artefact branch gets a worktree", and the setup.sh comment
+     "the contention check must select isolation" (line 235); its
+     criterion that in-place branching is the failure stays true. The
+     fixture is no longer wholly clean once `.venv/` is added: say
+     "no tracked change" in the context.
    - `evals/plans-0/` and `evals/plans-1/`: their fixtures check the
      plan branch out in the primary checkout. `plans-0` lands, and
      `land` now refuses that; build the branch as a worktree at
-     `.worktrees/plan-0001-forecast-source` with the primary on `dev`.
+     `.worktrees/plan-0001-forecast-source` with the primary on `dev`,
+     using `git worktree add --relative-paths` so it survives the harness
+     moving the fixture, and check `git worktree list` in the first
+     run's solution directory.
      `plans-1` never reaches `land` (it stops at an escalation), but its
      fixture and context would describe a layout the workflow no longer
      produces; change it the same way. In each, say in `task.md` and the
@@ -319,8 +349,8 @@ rule governs how that branch is made.
 
 - `begin` on a clean trunk, on a dirty trunk and from inside another
   worktree each print `dir=<primary>/.worktrees/<branch>`; the primary
-  checkout is unchanged (`git -C <primary> status --porcelain` and
-  `rev-parse HEAD` equal before and after).
+  checkout is unchanged (`git -C <primary> status --porcelain --untracked-files=no`
+  and `rev-parse HEAD` equal before and after).
 - Two `begin`s on different slugs in one repository, the second while the
   first's worktree exists, both succeed at distinct worktrees (the
   Step 1 test; a repository with a remote is not claimed).
@@ -329,11 +359,15 @@ rule governs how that branch is made.
   from the worktree it merges with two parents and leaves the primary
   on the trunk.
 - `grep -rn 'contention=\|isolation on contention\|on contention' skills evals/git-workflow-0 evals/git-workflow-1 README.md`
-  and `grep -rn -i 'where the work was in place\|--where\|checked out in place\|begun in place\|in-place branching' skills evals`
-  find nothing. Other "in place" hits are about editing a file, and
+  and `grep -rn -i 'where the work was in place\|--where\|checked out in place\|begun in place\|in-place branching' skills evals --exclude-dir=git-workflow-1`
+  find nothing (`evals/git-workflow-1`'s criterion names in-place
+  branching as the failure, rightly). Other "in place" hits are about editing a file, and
   `evals/scenario-0`'s "contention" is database write contention.
-- `git worktree list` after landing shows only the primary checkout.
+- After landing, `git worktree list` shows no worktree for
+  `chore-worktree-for-every-artefact` (other sessions' may remain).
 - `history outstanding-deferrals` lists none whose origin is
-  `docs/adr/0003-git-workflow.md`.
+  `docs/adr/0003-git-workflow.md`, and none naming
+  `plans/0024-worktree-for-every-artefact.md`: the eight re-deferred
+  files each carry `Reconciles:`.
 
 ## Progress notes
