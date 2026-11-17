@@ -232,9 +232,9 @@ git tag fixture-base-main main
 # The working tree the agent meets: on MAIN, and clean. It has been on
 # main throughout; dev was built in a worktree.
 #
-# main is not the trunk, so the contention check must select isolation
-# into a worktree, and the fork point must be DERIVED as dev rather than
-# taken from wherever HEAD is. In git-workflow-0 the fixture starts on
+# main is not the trunk; every artefact branch gets a worktree, and
+# the fork point must be DERIVED as dev rather than taken from wherever
+# HEAD is. In git-workflow-0 the fixture starts on
 # dev, so branching from HEAD scores full marks there without deriving
 # anything; here it forks from the wrong branch and fails. The fixture
 # leaves NO reflog entry reading `checkout: moving from main to ...`,
