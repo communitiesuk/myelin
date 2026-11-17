@@ -387,3 +387,50 @@ one being edited, does the `begin` and the `land` throughout.
   as dirt and isolated; it stays as a guard. The "from inside a
   worktree" test parks the primary off the trunk so that the old code
   makes its first worktree too and fails on the nesting alone.
+- Steps 1 to 3: `skills/git-workflow/scripts/tests/run.sh` 131 tests,
+  0 failed; `skills/history/scripts/tests/run.sh` 19 tests, 0 failed.
+  Both Verification greps find nothing.
+- Step 7, `evals/git-workflow-0`: the rewritten "primary checkout's own
+  files" criterion uses `git diff --name-only --diff-filter=MDT
+  fixture-base-dev` rather than the bare `git diff --name-only`: the
+  bare form also lists files the harness adds to the index when it
+  injects its context, which the plan meant it not to trip on. The
+  setup.sh comment on `.gitignore`'s `venv/` spelling, stale once the
+  fixture makes no `.venv/`, is corrected too.
+- Step 7, `evals/git-workflow-1`: `scenario.json`'s "isolate because the
+  checkout is not on trunk" is reworded with the rest, though the plan
+  did not list it.
+- Step 7, `evals/plans-0` and `plans-1`: the fixture's plan commit
+  carries a `.gitignore` holding `.worktrees/`, as begin's
+  `include=.gitignore` would; the fixture has no `.gitignore` on `dev`.
+  A local run of plans-0's fixture, moved after setup, kept its
+  worktree and landed with the new script.
+- Step 7's old-skill runs could not run: `tessl eval run ... --context .
+  --context-commit <fork>` exits at once with "--context-commit is not
+  supported for a plugin context yet — a plugin is packed from the
+  working tree. Use it with a file or glob context for now." (all four:
+  git-workflow-0, git-workflow-1, plans-0, plans-1). Not worked around;
+  the unit tests (Steps 1 to 3, red then green) stand for the change.
+- Step 8: `skills/git-workflow/scripts/tests/run.sh` 131 tests, 0
+  failed; `skills/history/scripts/tests/run.sh` 19 tests, 0 failed.
+  Eval runs, `--context .` on deepseek-v4.1-flash, all completed:
+  - git-workflow-0, `-n 3`: 100/100/100, run
+    01a1ea89-853a-7369-a60d-1396150f9718.
+  - git-workflow-1, `-n 3`: 100/100/99 (mean 99.67; the one point lost
+    on "Isolated into a worktree that is still present"), run
+    01a1ea89-8626-7546-acee-dbc7d2c04d33.
+  - plan-numbering-0: 100, run 01a1ea89-860b-75f5-a367-f16a2744e82e.
+  - plans-0: 100, run 01a1ea89-864a-77d5-81da-942bc01845b6 (the plan
+    landed into `dev`, which the new `land` allows only from the
+    worktree; the solution directory's `git worktree list` is not
+    readable from the CLI).
+  - plans-1: 100, run 01a1ea89-854b-76d4-a4b5-955740b14f80.
+  - adr-0: 100, run 01a1ea89-85c1-7648-82f0-bce8d3896a0a.
+  - adr-1: 100, run 01a1ea89-858f-75ab-9b4f-b7c5545ea314.
+  No failure to classify. `git-workflow`'s `compatibility` now cites
+  these runs; the floor (none) and the bars are unchanged. No
+  `Confirms:` in the Landing table proved wrong.
+- An extra, unintended eval run, 01a1eab4-bb8c-73b8-a333-0e816e25d997,
+  was started by a bare `tessl eval` (which runs every scenario, not
+  prints help); the CLI has no cancel. It is not part of this plan's
+  evidence.
