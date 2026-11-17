@@ -7,13 +7,15 @@ description: Releases this plugin as a published mhclg-aaai/myelin version. TRIG
 
 Releases myelin: bump the version on its own branch, run five gates, land the branch in `dev`, fast-forward `main` to that merge, tag it, publish the tag's commit to the tessl registry as `mhclg-aaai/myelin`. Rationale is in `docs/adr/0005-releases.md`. This skill is a project skill of this repository and is never packaged.
 
-Every branch, commit and pull request below follows `skills/git-workflow/SKILL.md`, except that the release branch lands with the commands in this skill rather than the script's `land`: a version bump carries no `Derives-From` trailer by ADR 0005's design, and `land` refuses a branch without one. The release branch is work governed by no packaged skill, so it takes the `chore` token. Any gate failing stops the release: nothing is published and `main` does not move.
+Every branch, commit and pull request below follows `skills/git-workflow/SKILL.md`, except that the release branch lands with the commands in this skill rather than the script's `land`: a version bump carries no `Derives-From` trailer by ADR 0005's design, and `land` refuses a branch without one. The release branch is work governed by no packaged skill, so it takes the `chore` token, and like every artefact branch it lives in its own worktree: the primary checkout stays on `dev` throughout and is not worked in. Any gate failing stops the release: nothing is published and `main` does not move.
 
 ## 1. Preconditions
 
+Run from the primary checkout; call its absolute path `<primary>`.
+
 ```sh
-git rev-parse --abbrev-ref HEAD        # dev
-git status --porcelain                 # nothing
+git rev-parse --abbrev-ref HEAD        # dev, and it stays there
+git status --porcelain --untracked-files=no   # nothing, so step 9 can fast-forward it
 tessl whoami && gh auth status         # both succeed
 git fetch --tags origin
 git describe --tags --abbrev=0 origin/main   # previous release tag; fails on the first release, which is fine
@@ -24,12 +26,14 @@ The human names the new version and the bump (semantic versioning, `0.x` while e
 ## 2. Branch
 
 ```sh
-git switch -c chore-release-<version> dev
+git worktree add .worktrees/chore-release-<version> -b chore-release-<version> dev
 ```
+
+Call `<primary>/.worktrees/chore-release-<version>` `<wt>`. Steps 3 to 8 and the push in step 9 run in `<wt>`, by absolute path (`git -C <wt> ...`, or `cd <wt>` for the `tessl` commands); never edit or commit in the primary checkout. The worktree receives tracked files only: copy `.claude/settings.local.json` in if the gates need its permissions.
 
 ## 3. Bump
 
-Set `"version"` in `.tessl-plugin/plugin.json` to `<version>`. Commit it. The first commit on the branch carries no trailer: a release adds no edge between artefacts.
+Set `"version"` in `<wt>/.tessl-plugin/plugin.json` to `<version>`. Commit it in `<wt>`. The first commit on the branch carries no trailer: a release adds no edge between artefacts.
 
 ## 4. Gate 1 — structure
 
@@ -99,17 +103,21 @@ One line per merge on the first-parent line. A pull request merged on the host h
 
 ## 9. Land
 
-Push, open a pull request against `dev`, merge it with a merge commit, and record the merge commit:
+Push from `<wt>`, open a pull request against `dev`, and merge it with a merge commit. Merge without `--delete-branch`, as `land` does: `gh` cannot delete a branch a worktree holds. Then, at this one point and from the primary checkout, remove the worktree, fast-forward the primary (already on `dev`; no switch), delete the branch locally and on the remote, and record the merge commit:
 
 ```sh
-git push -u origin chore-release-<version>
+git -C <wt> push -u origin chore-release-<version>
 gh pr create --base dev --head chore-release-<version> --title "Release <version>" --body-file <scratch>/notes.md
-gh pr merge <n> --merge --delete-branch
-git switch dev && git pull --ff-only origin dev
+gh pr merge <n> --merge
+cd <primary>
+git worktree remove --force .worktrees/chore-release-<version>
+git pull --ff-only origin dev
+git branch -d chore-release-<version>
+git push origin --delete chore-release-<version>
 MERGE=$(git rev-parse HEAD)     # confirm with git log -1: it is the merge of chore-release-<version>
 ```
 
-If the merge is refused by the host or by the harness, stop here and report the pull request, the refused command and the state left behind; do not merge locally.
+If the merge is refused by the host or by the harness, stop here and report the pull request, the refused command and the state left behind (branch pushed, worktree `<wt>` kept); do not merge locally and do not remove the worktree.
 
 ## 10. Release
 
@@ -151,8 +159,9 @@ A file printed here was published but never reaches a consumer. Report it as a f
 ## 12. Clean up
 
 ```sh
-git branch -d chore-release-<version> 2>/dev/null || true
-git rev-parse --abbrev-ref HEAD                  # dev
+git worktree list | grep -c chore-release-<version>     # 0: the release worktree is gone
+git branch --list chore-release-<version>               # nothing: the branch is gone
+git rev-parse --abbrev-ref HEAD                          # dev: the primary never left it
 ```
 
 Report the version, the tag, the merge commit, the eval run id, and the install command: `tessl install mhclg-aaai/myelin`.
