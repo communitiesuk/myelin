@@ -1,4 +1,4 @@
-# check: derive the trunk, the remote, the host and the contention facts.
+# check: derive the trunk, the remote and the host facts, and nothing else.
 # Every fixture carries the decoys the eval scenarios use: a
 # workflow.trunk config key and a CONTRIBUTING.md that both say main.
 
@@ -59,17 +59,13 @@ t "host: a non-github URL is unknown:<url>"
   fixture "$R/j" --trunk dev --remote origin --remote-url https://gitlab.example.org/x/y.git >/dev/null
   out="$(check "$R/j")"; assert_eq "host=unknown:https://gitlab.example.org/x/y.git" "$(line "$out" host)" "$out"
 
-t "contention: on the trunk and clean -> in-place"
+t "output: exactly trunk=, remote=, host= on a clean trunk, a dirty trunk and another branch, and no contention= line"
   fixture "$R/k" --trunk dev --config >/dev/null
-  out="$(check "$R/k")"; assert_eq "contention=in-place" "$(line "$out" contention)" "$out"
-
-t "contention: on the trunk but dirty -> worktree"
   fixture "$R/l" --trunk dev --dirty >/dev/null
-  out="$(check "$R/l")"; assert_eq "contention=worktree" "$(line "$out" contention)" "$out"
-
-t "contention: clean but on another branch -> worktree"
-  fixture "$R/m" --trunk dev --branch topic >/dev/null
-  (cd "$R/m" && g switch -q topic)
-  out="$(check "$R/m")"
-  assert_eq "trunk=dev" "$(line "$out" trunk)" "$out"
-  assert_eq "contention=worktree" "$(line "$out" contention)" "$out"
+  fixture "$R/m" --trunk dev --branch topic >/dev/null; (cd "$R/m" && g switch -q topic)
+  for d in k l m; do
+    out="$(check "$R/$d")"
+    assert_eq "$(printf 'trunk=dev\nremote=none\nhost=none')" "$out" "$d: $out"
+    case "$out" in *contention=*) fail "$d: printed a contention= line" ;; esac
+  done
+  true

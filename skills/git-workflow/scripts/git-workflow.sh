@@ -10,7 +10,7 @@
 # Subcommands
 #   check   Derive and print the facts the workflow acts on, changing
 #           nothing: trunk=<ref>, remote=<name|none>,
-#           host=<none|github|unknown:<url>>, contention=<in-place|worktree>.
+#           host=<none|github|unknown:<url>>.
 #   begin   Name the artefact branch from its path; where a remote
 #           exists, fetch it and fast-forward the local trunk to the
 #           remote's, or stop (exit 1) creating nothing; then create the
@@ -77,7 +77,7 @@ die() {
 
 # check — derive the facts the workflow acts on; change nothing.
 #
-# Prints four lines to stdout:
+# Prints three lines to stdout:
 #   trunk=<ref>        the first of: a local dev branch, a local develop
 #                      branch, the branch refs/remotes/origin/HEAD names
 #   remote=<name|none> none when `git remote` prints nothing; origin when
@@ -85,8 +85,6 @@ die() {
 #   host=<...>         none when there is no remote; github when the
 #                      remote's URL names github.com in https or ssh
 #                      form; otherwise unknown:<url>
-#   contention=<...>   in-place when HEAD is the trunk and the working
-#                      tree is clean; worktree otherwise
 # Exits 2, printing which refs were looked for, when no rung of the
 # trunk ladder resolves; exits 2 naming the candidates when there is
 # more than one remote and none is origin. Reads configuration keys and
