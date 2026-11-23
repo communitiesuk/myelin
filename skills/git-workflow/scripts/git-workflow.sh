@@ -495,7 +495,7 @@ stop() {
   if [ "$code" = 3 ]; then
     printf '  this branch is a decision: a human merges it.\n'
   else
-    printf '  to let future artefacts land unattended, allow the merge command in the harness permission settings, for example Bash(gh pr merge *).\n'
+    printf '  the merge was refused; landing it is now the human'"'"'s decision. (If they want artefacts to land unattended, they can allow it in the harness permission settings, for example Bash(gh pr merge *).)\n'
   fi
   exit "$code"
 }
