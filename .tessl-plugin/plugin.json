@@ -1,6 +1,6 @@
 {
   "name": "mhclg-aaai/myelin",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Thinking tools and engineering conventions to accelerate project development",
   "private": true,
   "skills": "./skills/",
