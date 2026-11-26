@@ -1,0 +1,56 @@
+# Installed by proj-site's site-init.sh. Fails a PR that adds no per-PR entry,
+# or that leaves a due weekly summary missing (see the site-writing skill).
+# Locates the proj-site tile from the project's tessl.json, in any tessl mode:
+# a `file:` source is used as it stands; otherwise only proj-site, at the
+# listed version, is installed into a temporary folder, never the project's
+# other dependencies. Fails with a message when proj-site is not listed or not
+# pinned, or the tile did not arrive.
+name: Site check
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Locate the proj-site tile
+        run: |
+          set -euo pipefail
+          pkg=mhclg-aaai/proj-site
+          [ -f tessl.json ] || { echo "::error::There is no tessl.json at the repository root; it must list $pkg."; exit 1; }
+          dep=$(jq -c --arg p "$pkg" '.dependencies[$p] // empty' tessl.json)
+          [ -n "$dep" ] || { echo "::error::tessl.json does not list $pkg."; exit 1; }
+          source=$(jq -r '.source // empty' <<<"$dep")
+          version=$(jq -r '.version // empty' <<<"$dep")
+          if [ -n "$source" ] && [ "${source#file:}" != "$source" ]; then
+            tile=${source#file:}
+            what="$source in tessl.json"
+          elif [ -n "$version" ]; then
+            dir=$(mktemp -d "$RUNNER_TEMP/proj-site.XXXXXX")
+            jq -n --arg p "$pkg" --arg v "$version" \
+              '{name: "site-tile", mode: "managed", dependencies: {($p): {version: $v}}}' > "$dir/tessl.json"
+            (cd "$dir" && npx -y @tessl/cli@0.123.0 install --yes --accept-warnings) || true
+            tile="$dir/.tessl/plugins/$pkg"
+            what="version $version, from tessl.json"
+          else
+            echo "::error::tessl.json lists $pkg with neither a file: source nor a version."; exit 1
+          fi
+          [ -f "$tile/skills/site-setup/scripts/check-pr.sh" ] || {
+            echo "::error::The proj-site tile ($what) was not installed at $tile. Check that tessl install could fetch it."
+            exit 1
+          }
+          echo "SITE_TILE=$tile" >> "$GITHUB_ENV"
+      - name: Check per-PR entry and weekly summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          bash "$SITE_TILE/skills/site-setup/scripts/check-pr.sh"
+          --base "origin/${{ github.base_ref }}"
+          --head HEAD
+          --pr "${{ github.event.pull_request.number }}"
+          --repo "${{ github.repository }}"

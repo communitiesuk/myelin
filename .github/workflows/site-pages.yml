@@ -1,0 +1,86 @@
+# Installed by proj-site's site-init.sh. Builds the project site and deploys
+# it to GitHub Pages on every push to the trunk. Enable Pages for the
+# repository with "GitHub Actions" as the source. Locates the proj-site tile
+# from the project's tessl.json, in any tessl mode: a `file:` source is used as
+# it stands; otherwise only proj-site, at the listed version, is installed
+# into a temporary folder, never the project's other dependencies. Fails with
+# a message when proj-site is not listed or not pinned, or the tile did not
+# arrive.
+name: Site
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HUGO_VERSION: 0.170.1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Locate the proj-site tile
+        run: |
+          set -euo pipefail
+          pkg=mhclg-aaai/proj-site
+          [ -f tessl.json ] || { echo "::error::There is no tessl.json at the repository root; it must list $pkg."; exit 1; }
+          dep=$(jq -c --arg p "$pkg" '.dependencies[$p] // empty' tessl.json)
+          [ -n "$dep" ] || { echo "::error::tessl.json does not list $pkg."; exit 1; }
+          source=$(jq -r '.source // empty' <<<"$dep")
+          version=$(jq -r '.version // empty' <<<"$dep")
+          if [ -n "$source" ] && [ "${source#file:}" != "$source" ]; then
+            tile=${source#file:}
+            what="$source in tessl.json"
+          elif [ -n "$version" ]; then
+            dir=$(mktemp -d "$RUNNER_TEMP/proj-site.XXXXXX")
+            jq -n --arg p "$pkg" --arg v "$version" \
+              '{name: "site-tile", mode: "managed", dependencies: {($p): {version: $v}}}' > "$dir/tessl.json"
+            (cd "$dir" && npx -y @tessl/cli@0.123.0 install --yes --accept-warnings) || true
+            tile="$dir/.tessl/plugins/$pkg"
+            what="version $version, from tessl.json"
+          else
+            echo "::error::tessl.json lists $pkg with neither a file: source nor a version."; exit 1
+          fi
+          [ -f "$tile/skills/site-setup/scripts/check-pr.sh" ] || {
+            echo "::error::The proj-site tile ($what) was not installed at $tile. Check that tessl install could fetch it."
+            exit 1
+          }
+          echo "SITE_TILE=$tile" >> "$GITHUB_ENV"
+      - name: Install Hugo
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/hugo.tgz" \
+            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_${HUGO_VERSION}_linux-amd64.tar.gz"
+          tar -xzf "$RUNNER_TEMP/hugo.tgz" -C "$RUNNER_TEMP" hugo
+          sudo mv "$RUNNER_TEMP/hugo" /usr/local/bin/hugo
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - id: pages
+        uses: actions/configure-pages@v6
+      - name: Build site
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SITE_BASE_URL: ${{ steps.pages.outputs.base_url }}/
+        run: bash "$SITE_TILE/skills/site-setup/core/build.sh" . "$RUNNER_TEMP/site"
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/site/public
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

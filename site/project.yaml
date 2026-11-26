@@ -1,0 +1,6 @@
+name: myelin
+repository: communitiesuk/myelin
+content_type: knowledge        # knowledge | code | both
+languages: []
+upcoming:
+  source: github-issues
