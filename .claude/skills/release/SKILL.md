@@ -38,12 +38,15 @@ Set `"version"` in `<wt>/.tessl-plugin/plugin.json` to `<version>`. Commit it in
 ## 4. Gate 1 — structure
 
 ```sh
+bash .claude/tests/tessl-pin.sh                    # must exit 0: tessl.json's myelin pin has every included skill, and the refresh hook installs the same set
 tessl plugin publish --dry-run                     # must exit 0: structure valid, workspace aaai exists, publish permission held, version free
 tessl plugin pack --output <scratch>/myelin.tgz && tar tzf <scratch>/myelin.tgz
 tar tzf <scratch>/myelin.tgz | grep -v '/$' | grep -vE '\.(md|txt|json|yml|yaml|toml|sh|py|js|ts|tsx|jsx)$'   # must print nothing
 ```
 
 The archive must contain nothing under `.claude/`, `docs/` or `plans/`, and must contain a `SKILL.md` for every directory under `skills/`. Every file in it must end in one of the listed extensions: the registry silently drops any other file on install, including extensionless scripts and a bare `LICENSE`, and does not keep the executable bit, so scripts are always run as `bash <path>`. The pack and the dry run both still list a file the registry will drop; only the install in step 11 shows what consumers receive. The dry run prints its own file list only once permission is held; the pack archive is the list either way.
+
+The refresh hook restores `tessl.json` after every session's install, so its pinned commit for `communitiesuk/myelin` only moves when someone commits it, and every non-Claude install (Cursor, CI, a fresh clone) uses that pin. If `tessl-pin.sh` fails on a missing skill, set the pin in `<wt>/tessl.json` to `git rev-parse origin/dev` and commit it on the release branch; if it fails on the hook's list, make the hook's `--skill` arguments match the include list.
 
 ## 5. Gate 2 — scenarios
 
