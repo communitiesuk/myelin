@@ -12,6 +12,14 @@
 # GH_STUB_SQUASH.
 # "pr view" reports an open pull request, printing its URL, only when
 # GH_STUB_PR=open; it ignores --json and --jq. "pr edit" succeeds.
+# "api" prints what the host module's --jq would select, ignoring --jq:
+# for a .../rules/branches/... path, the contexts in
+# GH_STUB_RULESET_REQUIRED, otherwise for a .../branches/... path those in
+# GH_STUB_REQUIRED, one per line; GH_STUB_API=fail makes it fail.
+# "pr checks" prints name<TAB>bucket lines, ignoring --json and --jq, from
+# GH_STUB_CHECKS: snapshots separated by "|", each space-separated
+# name=bucket pairs; each call takes the next snapshot and the last one
+# repeats. An empty snapshot reports no checks, exit 1, as real gh does.
 set -u
 printf '%s\n' "$*" >> "${GH_STUB_LOG:?}"
 case "${1:-} ${2:-}" in
@@ -52,5 +60,20 @@ case "${1:-} ${2:-}" in
     [ "${GH_STUB_PR:-none}" = open ] || { echo "no pull requests found for branch" >&2; exit 1; }
     echo "https://github.com/example/repo/pull/7"; exit 0 ;;
   "pr edit") exit 0 ;;
+  "api "*)
+    [ "${GH_STUB_API:-ok}" = fail ] && { echo "gh: HTTP 500" >&2; exit 1; }
+    case "$2" in
+      */rules/branches/*) list="${GH_STUB_RULESET_REQUIRED:-}" ;;
+      */branches/*) list="${GH_STUB_REQUIRED:-}" ;;
+      *) list="" ;;
+    esac
+    for c in $list; do printf '%s\n' "$c"; done
+    exit 0 ;;
+  "pr checks")
+    n="$(cat "$GH_STUB_LOG.checks" 2>/dev/null || echo 0)"; echo $((n + 1)) > "$GH_STUB_LOG.checks"
+    snap="$(printf '%s' "${GH_STUB_CHECKS:-}" | awk -v RS='|' -v i="$n" '{s[NR-1]=$0} END{print (i in s) ? s[i] : s[NR-1]}')"
+    [ -n "$(printf '%s' "$snap" | tr -d ' \n')" ] || { echo "no checks reported on the '$3' branch" >&2; exit 1; }
+    for p in $snap; do printf '%s\t%s\n' "${p%%=*}" "${p#*=}"; done
+    exit 0 ;;
   *) echo "stub gh: unsupported: $*" >&2; exit 1 ;;
 esac
