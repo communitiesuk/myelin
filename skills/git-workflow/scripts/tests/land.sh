@@ -378,6 +378,90 @@ t "github: settings that allow a squash are reported before merging"
   wd="$(artefact "$R/g3" --remote origin)"; githubify "$R/g3"
   out="$(GH_STUB_SQUASH=true land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"; assert_contains "$out" "squash"
 
+# Required status checks (issue #216): land waits for the checks the trunk
+# requires before it merges, and merges at once when it requires none.
+fresh_log() { : > "$GH_STUB_LOG"; rm -f "$GH_STUB_LOG.checks"; }
+first_line() { grep -n "$2" "$1" | head -1 | cut -d: -f1; }
+export GIT_WORKFLOW_CHECKS_INTERVAL=0
+# unmerged DIR — the stop left everything as it was: branch pushed at the
+# same SHA, local branch and worktree kept, origin's trunk carries no merge.
+unmerged() {
+  assert_eq "$(cd "$1" && git rev-parse discovery-0002-x)" "$(bare_tip "$1" discovery-0002-x)" "pushed at the same SHA"
+  assert_eq "1" "$(cd "$1" && git for-each-ref refs/heads/discovery-0002-x | wc -l | tr -d ' ')"
+  [ -d "$1/.worktrees/discovery-0002-x" ] || fail "worktree removed without a merge"
+  assert_eq "0" "$(git --git-dir="$1/.origin/repo.git" log --merges --format=%H dev | wc -l | tr -d ' ')" "origin trunk carries a merge"
+  case "$(cat "$GH_STUB_LOG")" in *"pr merge"*) fail "merge attempted before the required checks passed" ;; esac
+}
+
+t "checks: the trunk requires none -> merges at once without polling, as before"
+  wd="$(artefact "$R/c1" --remote origin)"; githubify "$R/c1"; fresh_log
+  out="$(GH_STUB_CHECKS="lint=fail" land "$wd"; echo "exit=$?")"; assert_contains "$out" "exit=0"
+  assert_contains "$(cat "$GH_STUB_LOG")" "pr merge"
+  case "$(cat "$GH_STUB_LOG")" in *"pr checks"*) fail "polled checks though none is required" ;; esac
+  assert_eq "2" "$(git --git-dir="$R/c1/.origin/repo.git" log -1 --format=%P dev | wc -w | tr -d ' ')"
+
+t "checks: a required check pending, then passing -> waits, then merges"
+  wd="$(artefact "$R/c2" --remote origin)"; githubify "$R/c2"; fresh_log
+  out="$(GH_STUB_REQUIRED="check" GH_STUB_CHECKS="check=pending|check=pending|check=pass" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "3" "$(grep -c 'pr checks' "$GH_STUB_LOG")" "polled until the check passed"
+  [ "$(first_line "$GH_STUB_LOG" 'pr checks')" -lt "$(first_line "$GH_STUB_LOG" 'pr merge')" ] || fail "merged before polling the checks"
+  assert_contains "$(grep 'api ' "$GH_STUB_LOG")" "branches/dev"
+  assert_eq "2" "$(git --git-dir="$R/c2/.origin/repo.git" log -1 --format=%P dev | wc -w | tr -d ' ')"
+
+t "checks: a required check not yet reported when the pull request opens -> waits for it rather than merging"
+  wd="$(artefact "$R/c3" --remote origin)"; githubify "$R/c3"; fresh_log
+  out="$(GH_STUB_REQUIRED="check" GH_STUB_CHECKS="|lint=pass|lint=pass check=pass" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "3" "$(grep -c 'pr checks' "$GH_STUB_LOG")" "merged before the required check reported"
+
+t "checks: a required check fails -> exit 1 naming it and gh pr checks, no merge, no permission hint"
+  wd="$(artefact "$R/c4" --remote origin)"; githubify "$R/c4"; fresh_log
+  head_before="$(cd "$R/c4" && git rev-parse --abbrev-ref HEAD)"
+  out="$(GH_STUB_REQUIRED="test check" GH_STUB_CHECKS="test=pass check=pending|test=pass check=fail" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=1"; assert_contains "$out" "pull/7"; assert_contains "$out" "gh pr checks"
+  assert_contains "$(printf '%s\n' "$out" | grep stopped)" "check"
+  case "$out" in *"Bash(gh pr merge *)"*|*"merge was refused"*) fail "a failed check reported as a refusal: $out" ;; esac
+  unmerged "$R/c4"
+  assert_eq "$head_before" "$(cd "$R/c4" && git rev-parse --abbrev-ref HEAD)"
+
+t "checks: land again after a failed check, now passing -> reuses the open pull request and merges"
+  fresh_log
+  out="$(GH_STUB_PR=open GH_STUB_REQUIRED="test check" GH_STUB_CHECKS="test=pass check=pass" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  case "$(cat "$GH_STUB_LOG")" in *"pr create"*) fail "a second pull request was opened" ;; esac
+  assert_eq "2" "$(git --git-dir="$R/c4/.origin/repo.git" log -1 --format=%P dev | wc -w | tr -d ' ')"
+
+t "checks: a required check cancelled -> exit 1, no merge"
+  wd="$(artefact "$R/c5" --remote origin)"; githubify "$R/c5"; fresh_log
+  out="$(GH_STUB_REQUIRED="check" GH_STUB_CHECKS="check=cancel" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=1"; unmerged "$R/c5"
+
+t "checks: still pending when the wait runs out -> exit 1 saying to land again, no merge, no permission hint"
+  wd="$(artefact "$R/c6" --remote origin)"; githubify "$R/c6"; fresh_log
+  out="$(GIT_WORKFLOW_CHECKS_TIMEOUT=2 GIT_WORKFLOW_CHECKS_INTERVAL=1 GH_STUB_REQUIRED="check" GH_STUB_CHECKS="check=pending" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=1"; assert_contains "$out" "pull/7"; assert_contains "$out" "land again"
+  case "$out" in *"Bash(gh pr merge *)"*|*"merge was refused"*) fail "a timeout reported as a refusal: $out" ;; esac
+  unmerged "$R/c6"
+
+t "checks: a check a ruleset requires is waited for too"
+  wd="$(artefact "$R/c7" --remote origin)"; githubify "$R/c7"; fresh_log
+  out="$(GH_STUB_RULESET_REQUIRED="site" GH_STUB_CHECKS="site=fail" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=1"; assert_contains "$(printf '%s\n' "$out" | grep stopped)" "site"; unmerged "$R/c7"
+  assert_contains "$(grep 'api ' "$GH_STUB_LOG")" "rules/branches/dev"
+
+t "checks: a failing check the trunk does not require, and a skipped required one, do not block"
+  wd="$(artefact "$R/c8" --remote origin)"; githubify "$R/c8"; fresh_log
+  out="$(GH_STUB_REQUIRED="test docs" GH_STUB_CHECKS="test=pass docs=skipping lint=fail" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  assert_eq "2" "$(git --git-dir="$R/c8/.origin/repo.git" log -1 --format=%P dev | wc -w | tr -d ' ')"
+
+t "checks: the requirement cannot be read -> merges as before, leaving enforcement to the host"
+  wd="$(artefact "$R/c9" --remote origin)"; githubify "$R/c9"; fresh_log
+  out="$(GH_STUB_API=fail GH_STUB_CHECKS="check=fail" land "$wd"; echo "exit=$?")"
+  assert_contains "$out" "exit=0"
+  case "$(cat "$GH_STUB_LOG")" in *"pr checks"*) fail "polled checks though the requirement could not be read" ;; esac
+
 t "stop: the host refuses the merge -> pushed, branch and worktree kept, HEAD unchanged, exit 1 with the hint"
   wd="$(artefact "$R/s1" --remote origin)"; githubify "$R/s1"; : > "$GH_STUB_LOG"
   head_before="$(cd "$R/s1" && git rev-parse --abbrev-ref HEAD)"; origin_before="$(bare_tip "$R/s1" dev)"

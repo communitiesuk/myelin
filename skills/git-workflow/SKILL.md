@@ -33,9 +33,12 @@ It prints `trunk=`, `branch=` and `dir=`. Work in `dir=` and nowhere else, never
 bash "$SKILL_DIR/scripts/git-workflow.sh" land
 ```
 
+On a host whose trunk requires status checks, `land` waits for them before it merges, for up to `GIT_WORKFLOW_CHECKS_TIMEOUT` seconds (default 300), so give the command a tool timeout longer than that.
+
 - **0**: it merged with two parents, cleaned up, and left the primary checkout where it was, and the local trunk is current or a note says why not. Report the merge it printed.
 - **3**: the branch adds an ADR, carries `Revises`, or carries `Abandons` naming an ADR, so it is a decision: it is pushed and proposed, and a human merges it. Say so, give the pull request and each `artefact:` link it printed (the ADR as it stands on the branch, for the human to read before merging, or, for an abandoned ADR, as it stands on the trunk), and stop.
 - **1**: a host command was missing, failed or refused. Relay the report it printed in full: the pull request if one was opened, the command, the state left behind, and the permission hint. Do not merge locally, do not clean up, and do not describe the artefact as landed.
+  A check the trunk requires that failed, or had not passed when the wait ran out, also exits 1, with no permission hint: nothing was refused. For a failure, fix the branch, commit, and run `land` again; for a timeout, run `land` again once the checks pass. Either way the open pull request is reused.
 - **2**: a precondition failed, usually the trailer on the first commit, a dirty tree, or `land` run from the primary checkout rather than the artefact's worktree. Fix it and run `land` again from `dir=`.
 
 Between the two moments, commit as the governing skill directs (Rule 3), and put the trailers where Rule 9 says.
