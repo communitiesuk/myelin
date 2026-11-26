@@ -3,7 +3,7 @@
   "mode": "managed",
   "dependencies": {
     "communitiesuk/myelin": {
-      "version": "5debf29299b29070db277114c2e11e01bfe7afd5",
+      "version": "4936780e684ce69be91bec74c60775ff7bc420a7",
       "source": "https://github.com/communitiesuk/myelin",
       "include": {
         "skills": [
