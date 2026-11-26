@@ -11,6 +11,27 @@
 #                                                is already open, rewrite its
 #                                                title and description from
 #                                                those instead; prints its URL
+#   bash hosts/github.sh checks <branch> <trunk>    wait for the status checks the
+#                                                trunk requires (branch
+#                                                protection's and every
+#                                                ruleset's) to pass on that
+#                                                pull request: exit 0 at
+#                                                once when the trunk
+#                                                requires none or the
+#                                                requirement cannot be read
+#                                                (the host still enforces
+#                                                it at merge), 0 when each
+#                                                has reported pass or
+#                                                skipping, 1 as soon as one
+#                                                reports fail or cancel
+#                                                (naming it on stderr), 4
+#                                                when any is still pending
+#                                                or unreported after
+#                                                GIT_WORKFLOW_CHECKS_TIMEOUT
+#                                                seconds (default 300),
+#                                                polling every
+#                                                GIT_WORKFLOW_CHECKS_INTERVAL
+#                                                seconds (default 10)
 #   bash hosts/github.sh merge <branch> <trunk>     merge that pull request with a
 #                                                merge commit, never a squash
 #                                                or a rebase. It merges only:
@@ -31,8 +52,9 @@
 #                                                rebase=<true|false> as the
 #                                                repository allows them
 #
-# Depends on gh. Exit 0 done; 1 the host refused or the command failed;
-# 127 gh is not on PATH.
+# Depends on gh. Exit 0 done; 1 the host refused, the command failed, or
+# (checks) a required check failed; 4 (checks) a required check had not
+# passed in time; 127 gh is not on PATH.
 set -u
 command -v gh >/dev/null 2>&1 || exit 127
 case "${1:-}" in
@@ -47,6 +69,9 @@ case "${1:-}" in
     else
       gh pr create --head "$2" --base "$3" --title "$title" --body "$body" || exit 1
     fi ;;
+  checks)
+    [ $# -ge 3 ] || { echo "usage: checks <branch> <trunk>" >&2; exit 2; }
+    exit 0 ;;
   merge)
     [ $# -ge 3 ] || { echo "usage: merge <branch> <trunk>" >&2; exit 2; }
     gh pr merge "$2" --merge || exit 1 ;;
@@ -60,5 +85,5 @@ case "${1:-}" in
     printf '%s' "$out" | grep -qE '"squashMergeAllowed":[[:space:]]*true' && sq=true
     printf '%s' "$out" | grep -qE '"rebaseMergeAllowed":[[:space:]]*true' && rb=true
     printf 'squash=%s rebase=%s\n' "$sq" "$rb" ;;
-  *) echo "usage: hosts/github.sh propose|merge|link|settings" >&2; exit 2 ;;
+  *) echo "usage: hosts/github.sh propose|checks|merge|link|settings" >&2; exit 2 ;;
 esac
