@@ -71,7 +71,28 @@ case "${1:-}" in
     fi ;;
   checks)
     [ $# -ge 3 ] || { echo "usage: checks <branch> <trunk>" >&2; exit 2; }
-    exit 0 ;;
+    # The branch endpoint's protection summary and the rules endpoint are
+    # both readable with read access; the protection endpoint needs admin.
+    prot="$(gh api "repos/{owner}/{repo}/branches/$3" --jq '.protection.required_status_checks.contexts[]?' 2>/dev/null)" || exit 0
+    rules="$(gh api "repos/{owner}/{repo}/rules/branches/$3" --jq '.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context' 2>/dev/null)" || rules=""
+    required="$(printf '%s\n%s\n' "$prot" "$rules" | sed '/^$/d' | sort -u)"
+    [ -n "$required" ] || exit 0
+    timeout="${GIT_WORKFLOW_CHECKS_TIMEOUT:-300}"; interval="${GIT_WORKFLOW_CHECKS_INTERVAL:-10}"
+    start=$SECONDS
+    while :; do
+      # A check not yet reported, as just after the pull request opens,
+      # counts as pending, never as passed.
+      report="$(gh pr checks "$2" --json name,bucket --jq '.[] | "\(.name)\t\(.bucket)"' 2>/dev/null)"
+      waiting=""
+      while IFS= read -r c; do
+        b="$(printf '%s\n' "$report" | awk -F '\t' -v n="$c" '$1 == n {print $2}')"
+        case "$b" in *fail*|*cancel*) printf '%s\n' "$c" >&2; exit 1 ;; esac
+        case "$b" in ""|*pending*) waiting="${waiting:+$waiting, }$c" ;; esac
+      done <<< "$required"
+      [ -z "$waiting" ] && exit 0
+      [ $((SECONDS - start)) -ge "$timeout" ] && { printf '%s\n' "$waiting" >&2; exit 4; }
+      sleep "$interval"
+    done ;;
   merge)
     [ $# -ge 3 ] || { echo "usage: merge <branch> <trunk>" >&2; exit 2; }
     gh pr merge "$2" --merge || exit 1 ;;

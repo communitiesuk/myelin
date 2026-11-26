@@ -489,12 +489,14 @@ primary_checkout() { physical "$(git worktree list --porcelain | awk 'NR==1 && $
 script_dir() { cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P; }
 physical() { (cd "$1" 2>/dev/null && pwd -P); }
 
-# stop CODE SUMMARY URL COMMAND BRANCH REMOTE PRIMARY WT [LINKS] — report and
-# exit. LINKS, optional, is newline-separated URLs, each printed after the
-# pull request as "  artefact: <url>". The state line reports the primary
-# checkout where it was, since land never moves it.
+# stop CODE SUMMARY URL COMMAND BRANCH REMOTE PRIMARY WT [LINKS [ADVICE]] —
+# report and exit. LINKS, optional, is newline-separated URLs, each printed
+# after the pull request as "  artefact: <url>". ADVICE, optional, replaces
+# the refusal's permission hint as the last line, for a stop that nothing
+# refused. The state line reports the primary checkout where it was, since
+# land never moves it.
 stop() {
-  local code="$1" summary="$2" url="$3" command="$4" branch="$5" remote="$6" primary="$7" wt="$8" links="${9:-}"
+  local code="$1" summary="$2" url="$3" command="$4" branch="$5" remote="$6" primary="$7" wt="$8" links="${9:-}" advice="${10:-}"
   printf 'git-workflow: stopped: %s\n' "$summary"
   [ -n "$url" ] && printf '  pull request: %s\n' "$url"
   [ -n "$links" ] && printf '%s\n' "$links" | sed '/^$/d; s/^/  artefact: /'
@@ -505,6 +507,8 @@ stop() {
     "$branch" "$pushed" "$([ -n "$wt" ] && echo "worktree $wt kept" || echo "no worktree")" "$(git -C "$primary" rev-parse --abbrev-ref HEAD)"
   if [ "$code" = 3 ]; then
     printf '  this branch is a decision: a human merges it.\n'
+  elif [ -n "$advice" ]; then
+    printf '  %s\n' "$advice"
   else
     printf '  the merge was refused; landing it is now the human'"'"'s decision. (If they want artefacts to land unattended, they can allow it in the harness permission settings, for example Bash(gh pr merge *).)\n'
   fi
@@ -867,6 +871,16 @@ $(printf '%s' "$bad_redefer" | sort -u)
   url="$(bash "$module" propose "$branch" "$trunk")" || {
     rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request could not be opened" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"
     stop 1 "the host refused to open the pull request" "" "gh pr create" "$branch" "$remote" "$primary" "$wt"; }
+  local failing
+  failing="$( (cd "$primary" && bash "$module" checks "$branch" "$trunk") 2>&1 >/dev/null)" || {
+    rc=$?; failing="$(printf '%s' "$failing" | tr '\n' ' ' | sed 's/ *$//')"
+    case "$rc" in
+      127) stop 1 "gh is not on PATH; the pull request is open and unmerged" "$url" "gh pr checks $branch" "$branch" "$remote" "$primary" "$wt" ;;
+      4) stop 1 "the checks the trunk requires had not passed in time (still waiting: $failing); the pull request is open and unmerged" "$url" "gh pr checks $branch --watch" "$branch" "$remote" "$primary" "$wt" "" \
+           "nothing was refused: land again once the checks pass, and it merges the open pull request." ;;
+      *) stop 1 "a check the trunk requires failed ($failing); the pull request is open and unmerged" "$url" "gh pr checks $branch" "$branch" "$remote" "$primary" "$wt" "" \
+           "nothing was refused: fix the branch, commit, and land again; the open pull request is reused." ;;
+    esac; }
   (cd "$primary" && bash "$module" merge "$branch" "$trunk") || {
     rc=$?; [ "$rc" = 127 ] && stop 1 "gh is not on PATH; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"
     stop 1 "the merge was refused; the pull request is open and unmerged" "$url" "gh pr merge $branch --merge --delete-branch" "$branch" "$remote" "$primary" "$wt"; }
